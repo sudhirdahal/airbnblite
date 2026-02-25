@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast'; 
 import Navbar from './components/layout/Navbar';
-import Hero from './components/layout/Hero'; // --- NEW: Hero Component ---
+import Hero from './components/layout/Hero'; 
 import SearchBar from './components/layout/SearchBar';
 import CategoryBar from './components/layout/CategoryBar';
 import Footer from './components/layout/Footer';
@@ -24,47 +24,16 @@ import { Map as MapIcon, List } from 'lucide-react';
 
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap }) => {
   const userRole = user ? user.role : 'guest';
-  
   return (
     <div style={{ position: 'relative' }}>
-      {/* --- NEW: Modern Hero Section --- */}
       <Hero user={user} />
-
-      {/* OLD CODE (Commented out as requested):
-      <div style={{ textAlign: 'center', padding: '2rem', backgroundColor: '#fff' }}>
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>
-          {user?.role === 'admin' ? "Manage your properties or explore stays" : 
-           user ? `Where to next, ${user.name.split(' ')[0]}?` : 
-           "Find your next adventure"}
-        </h2>
-        {user ? (
-          <p style={{ color: '#717171' }}>Logged in as <strong>{user.name}</strong> ({user.role})</p>
-        ) : (
-          <p style={{ color: '#717171' }}>Log in to experience full features of AirBnB Lite.</p>
-        )}
-      </div>
-      */}
-
       <SearchBar onSearch={onSearch} />
       <CategoryBar activeCategory={activeCategory} onSelect={onCategorySelect} />
-      
       <div style={{ width: '100%', margin: '0 auto', padding: showMap ? '0' : '0 2rem' }}>
-        {showMap ? (
-          <ListingMap listings={listings} />
-        ) : (
-          <ListingGrid listings={listings} userRole={userRole} loading={loading} />
-        )}
+        {showMap ? <ListingMap listings={listings} /> : <ListingGrid listings={listings} userRole={userRole} loading={loading} />}
       </div>
-      
       <div style={{ position: 'fixed', bottom: '100px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000 }}>
-        <button 
-          onClick={() => setShowMap(!showMap)}
-          style={{
-            backgroundColor: '#222', color: 'white', border: 'none', borderRadius: '30px', padding: '0.8rem 1.2rem',
-            display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)', transition: 'transform 0.2s'
-          }}
-        >
+        <button onClick={() => setShowMap(!showMap)} style={{ backgroundColor: '#222', color: 'white', border: 'none', borderRadius: '30px', padding: '0.8rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
           {showMap ? <><List size={18} /> Show list</> : <><MapIcon size={18} /> Show map</>}
         </button>
       </div>
@@ -76,11 +45,10 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // --- NEW: Auth loading state ---
   const [showMap, setShowMap] = useState(false);
   const [activeCategory, setActiveCategory] = useState('');
-  const [searchParams, setSearchParams] = useState({
-    location: '', checkInDate: '', checkOutDate: '', guests: '', minPrice: '', maxPrice: ''
-  });
+  const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', minPrice: '', maxPrice: '' });
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -88,10 +56,17 @@ const App = () => {
     
     if (savedUser && token) {
       API.get('/auth/profile')
-        .then(response => setUser(response.data))
-        .catch(() => handleLogout());
+        .then(response => {
+          setUser(response.data);
+          setIsAuthLoading(false); // Auth check done
+        })
+        .catch(() => {
+          handleLogout();
+          setIsAuthLoading(false); // Auth check done (failed)
+        });
+    } else {
+      setIsAuthLoading(false); // No user to check
     }
-    
     fetchListings();
   }, []);
 
@@ -106,10 +81,8 @@ const App = () => {
       if (params.guests) url += `guests=${params.guests}&`;
       if (params.checkInDate) url += `checkInDate=${params.checkInDate}&`;
       if (params.checkOutDate) url += `checkOutDate=${params.checkOutDate}&`;
-
       if (url.endsWith('&')) url = url.slice(0, -1);
       if (url.endsWith('?')) url = url.slice(0, -1);
-      
       const response = await API.get(url);
       setListings(response.data);
     } catch (err) {
@@ -119,33 +92,15 @@ const App = () => {
     }
   };
 
-  const handleSearch = (newParams) => {
-    setSearchParams(newParams);
-    fetchListings(newParams, activeCategory);
-  };
+  const handleSearch = (newParams) => { setSearchParams(newParams); fetchListings(newParams, activeCategory); };
+  const handleCategorySelect = (category) => { const newCategory = activeCategory === category ? '' : category; setActiveCategory(newCategory); fetchListings(searchParams, newCategory); };
+  const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
+  const resetHome = () => { setShowMap(false); setActiveCategory(''); setSearchParams({ location: '', checkInDate: '', checkOutDate: '', guests: '', minPrice: '', maxPrice: '' }); fetchListings({ location: '', checkInDate: '', checkOutDate: '', guests: '', minPrice: '', maxPrice: '' }, ''); };
 
-  const handleCategorySelect = (category) => {
-    const newCategory = activeCategory === category ? '' : category;
-    setActiveCategory(newCategory);
-    fetchListings(searchParams, newCategory);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await API.post('/auth/logout-all');
-    } catch (err) {
-      console.error('Global logout failed', err);
-    }
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-  };
-
-  const resetHome = () => {
-    setShowMap(false);
-    setActiveCategory('');
-    setSearchParams({ location: '', checkInDate: '', checkOutDate: '', guests: '', minPrice: '', maxPrice: '' });
-    fetchListings({ location: '', checkInDate: '', checkOutDate: '', guests: '', minPrice: '', maxPrice: '' }, '');
+  // --- NEW: Helper for Protected Routes ---
+  const ProtectedAdminRoute = ({ children }) => {
+    if (isAuthLoading) return null; // Don't redirect while still checking session
+    return user?.role === 'admin' ? children : <Navigate to="/" replace />;
   };
 
   return (
@@ -166,7 +121,8 @@ const App = () => {
             <Route path="/wishlist" element={<Wishlist user={user} />} />
             <Route path="/pay" element={<MockPayment />} />
             <Route path="/bookings" element={user ? <Bookings /> : <Navigate to="/login" replace />} />
-            <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard user={user} refreshListings={fetchListings} /> : <Navigate to="/" replace />} />
+            {/* UPDATED ADMIN ROUTE */}
+            <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard user={user} refreshListings={fetchListings} /></ProtectedAdminRoute>} />
           </Routes>
         </main>
         <Footer />
