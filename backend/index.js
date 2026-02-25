@@ -18,30 +18,38 @@ const { handleChatMessage, handleJoinRoom } = require('./controllers/chatControl
 const app = express();
 const server = http.createServer(app);
 
-// --- DEPLOYMENT READY: Dynamic CORS ---
-// In production, we only allow requests from our Vercel URL
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+// --- UPDATED: MORE ROBUST CORS FOR PRODUCTION ---
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://airbnblite.vercel.app', // Hardcode yours as a fallback
+  'http://localhost:5173'
+];
 
 app.use(cors({
-  origin: frontendUrl,
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
 
 app.use(express.json());
-
-// Serve static uploads (Note: S3 is now preferred, but we keep this for safety)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// DB Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB Connected'))
   .catch(err => console.error('MongoDB Connection Error:', err));
 
-// --- DEPLOYMENT READY: Socket.IO Config ---
+// --- UPDATED: ROBUST SOCKET.IO CORS ---
 const io = new Server(server, {
   cors: {
-    origin: frontendUrl,
+    origin: allowedOrigins,
     methods: ["GET", "POST"]
   }
 });
@@ -52,7 +60,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {});
 });
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/bookings', bookingRoutes);
