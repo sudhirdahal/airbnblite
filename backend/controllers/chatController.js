@@ -1,76 +1,111 @@
 const Message = require('../models/Message');
+const Listing = require('../models/Listing');
 
+/**
+ * Persists a new message to the database.
+ */
 const saveMessage = async (senderId, listingId, content) => {
+  const newMessage = new Message({
+    sender: senderId,
+    listingId,
+    content
+  });
+  return await newMessage.save();
+};
+
+/**
+ * Fetches unique conversations for the current user.
+ */
+exports.getInbox = async (req, res) => {
   try {
-    const newMessage = new Message({
-      sender: senderId,
-      listing: listingId,
-      content,
-      timestamp: new Date()
+    // 1. Find all listings owned by the user (if they are a host)
+    const myListings = await Listing.find({ adminId: req.user.id }).select('_id');
+    const myListingIds = myListings.map(l => l._id);
+
+    // 2. Find all messages involving the user (as sender OR related to their listings)
+    const messages = await Message.find({
+      $or: [
+        { sender: req.user.id },
+        { listingId: { $in: myListingIds } }
+      ]
+    })
+    .populate('sender', 'name avatar')
+    .populate('listingId', 'title images')
+    .sort({ timestamp: -1 });
+
+    // 3. Group by listingId to create "threads"
+    const threads = {};
+    messages.forEach(msg => {
+      const lid = msg.listingId._id.toString();
+      if (!threads[lid]) {
+        threads[lid] = {
+          listing: msg.listingId,
+          lastMessage: msg,
+          unreadCount: 0
+        };
+      }
+      // Count unread if the user is NOT the sender
+      if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
+        threads[lid].unreadCount++;
+      }
     });
-    await newMessage.save();
-    return newMessage;
-  } catch (error) {
-    console.error('Backend Error: saveMessage failed', error);
-    throw error;
+
+    res.json(Object.values(threads));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server Error');
   }
 };
 
-const getChatHistory = async (listingId) => {
+/**
+ * Marks all messages in a thread as read for the current recipient.
+ */
+exports.markAsRead = async (req, res) => {
   try {
-    return await Message.find({ listing: listingId })
-      .populate('sender', 'name')
-      .sort('timestamp');
-  } catch (error) {
-    console.error('Backend Error: getChatHistory failed', error);
-    throw error;
+    const { listingId } = req.params;
+    await Message.updateMany(
+      { listingId, sender: { $ne: req.user.id }, isRead: false },
+      { $set: { isRead: true } }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).send('Server Error');
   }
 };
 
-const handleChatMessage = async (io, socket, msg) => {
-  // Ensure listingId is a string
-  const roomId = String(msg.listingId);
-  console.log(`Backend: Processing message for room ${roomId}`, msg);
-
+/**
+ * Fetches message history for a specific listing.
+ */
+exports.getMessageHistory = async (req, res) => {
   try {
-    const savedMessage = await saveMessage(msg.senderId, roomId, msg.content);
+    const messages = await Message.find({ listingId: req.params.listingId })
+      .populate('sender', 'name avatar')
+      .sort({ timestamp: 1 });
+    res.json(messages);
+  } catch (err) {
+    res.status(500).send('Server Error');
+  }
+};
+
+exports.handleJoinRoom = (io, socket, listingId) => {
+  socket.join(listingId);
+};
+
+exports.handleChatMessage = async (io, socket, msg) => {
+  try {
+    const savedMessage = await saveMessage(msg.senderId, msg.listingId, msg.content);
+    await savedMessage.populate('sender', 'name avatar');
     
-    // Populate the sender so the frontend gets the name
-    await savedMessage.populate('sender', 'name');
-
     const payload = {
       _id: savedMessage._id,
-      sender: { 
-        _id: savedMessage.sender._id, 
-        name: savedMessage.sender.name 
-      },
-      listing: String(savedMessage.listing), // Ensure string
+      sender: { _id: savedMessage.sender._id, name: savedMessage.sender.name, avatar: savedMessage.sender.avatar },
       content: savedMessage.content,
-      timestamp: savedMessage.timestamp
+      timestamp: savedMessage.timestamp,
+      isRead: false
     };
 
-    console.log(`Backend: Broadcasting to room ${roomId}`, payload);
-    io.to(roomId).emit('chat message', payload);
-    
-  } catch (error) {
-    console.error('Backend Error: handleChatMessage failed', error);
-    socket.emit('chat error', { message: 'Server could not process message' });
+    io.to(msg.listingId).emit('chat message', payload);
+  } catch (err) {
+    console.error('Socket Error:', err);
   }
 };
-
-const handleJoinRoom = async (io, socket, listingId) => {
-  const roomId = String(listingId);
-  console.log(`Backend: Socket ${socket.id} joined room ${roomId}`);
-  
-  socket.join(roomId);
-
-  try {
-    const history = await getChatHistory(roomId);
-    socket.emit('chat history', history);
-  } catch (error) {
-    console.error('Backend Error: handleJoinRoom history fetch failed', error);
-    socket.emit('chat error', { message: 'Failed to fetch history' });
-  }
-};
-
-module.exports = { saveMessage, getChatHistory, handleChatMessage, handleJoinRoom };

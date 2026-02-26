@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogOut, Menu, X, Heart, Briefcase, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Menu, X, Heart, Briefcase, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Navbar = ({ userRole, onLogout, resetHomeView }) => {
+const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -22,6 +22,17 @@ const Navbar = ({ userRole, onLogout, resetHomeView }) => {
       ) : (
         <>
           {userRole === 'admin' && <Link to="/admin" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><LayoutDashboard size={18} /> Dashboard</Link>}
+          
+          {/* --- NEW: INBOX LINK WITH BADGE --- */}
+          <Link to="/inbox" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <MessageSquare size={18} /> Inbox
+              {unreadCount > 0 && (
+                <span style={unreadBadgeStyle}>{unreadCount}</span>
+              )}
+            </div>
+          </Link>
+
           <Link to="/wishlist" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><Heart size={18} /> Wishlist</Link>
           <Link to="/bookings" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><Briefcase size={18} /> Trips</Link>
           <Link to="/profile" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><User size={18} /> Profile</Link>
@@ -33,26 +44,14 @@ const Navbar = ({ userRole, onLogout, resetHomeView }) => {
 
   return (
     <nav style={navbarContainerStyle}>
-      {/* ADDED CLASS: navbar-inner */}
       <div className="navbar-inner" style={navbarInnerStyle}>
-        
         <div onClick={handleBrandClick} style={logoStyle}>
           <div style={logoIconStyle}>A</div>
           <span style={logoTextStyle}>airnb<span style={{ color: '#ff385c' }}>lite</span></span>
         </div>
-
-        {/* ADDED CLASS: desktop-menu */}
-        <div className="desktop-menu" style={desktopMenuStyle}>
-          <NavLinks />
-        </div>
-
-        {/* ADDED CLASS: mobile-trigger */}
-        <button className="mobile-trigger" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} style={mobileTriggerStyle}>
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-
+        <div className="desktop-menu" style={desktopMenuStyle}><NavLinks /></div>
+        <button className="mobile-trigger" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} style={mobileTriggerStyle}>{isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
       </div>
-
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} style={mobileDrawerStyle}>
@@ -62,6 +61,12 @@ const Navbar = ({ userRole, onLogout, resetHomeView }) => {
       </AnimatePresence>
     </nav>
   );
+};
+
+const unreadBadgeStyle = {
+  backgroundColor: '#ff385c', color: 'white', fontSize: '0.6rem', fontWeight: 'bold',
+  minWidth: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center',
+  justifyContent: 'center', padding: '2px'
 };
 
 const navbarContainerStyle = { height: '80px', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff', position: 'sticky', top: 0, zIndex: 1000, width: '100%' };
