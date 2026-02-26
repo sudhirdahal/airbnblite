@@ -1,63 +1,52 @@
 const express = require('express');
-const router = express.Router(); // Create a new router instance.
+const router = express.Router();
+const multer = require('multer');
+const { S3Client } = require('@aws-sdk/client-s3');
+const multerS3 = require('multer-s3');
 const { 
-  register,          // Controller for user registration
-  login,             // Controller for user login
-  forgotPassword,    // Controller for initiating password reset
-  resetPassword,     // Controller for completing password reset
-  getProfile,        // Controller for fetching user profile
-  updateProfile,     // Controller for updating user profile
-  verifyEmail,       // Controller for email verification via link
-  toggleWishlist,    // Controller for adding/removing items from wishlist
-  getWishlist,       // Controller for fetching user's wishlist
-  logoutAll          // Controller for invalidating all user sessions
+  register, login, getProfile, updateProfile, verifyEmail, 
+  forgotPassword, resetPassword, logoutAll, getWishlist, toggleWishlist 
 } = require('../controllers/authController');
-const authMiddleware = require('../middleware/auth'); // Middleware to protect private routes.
+const authMiddleware = require('../middleware/auth');
 
-// Public Routes: No authentication required for these.
+// --- S3 SETUP FOR AVATARS ---
+const s3 = new S3Client({
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
+});
 
-// @route POST /api/auth/register
-// Registers a new user account.
+const upload = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: process.env.AWS_BUCKET_NAME,
+    key: (req, file, cb) => {
+      cb(null, `avatars/${Date.now().toString()}-${file.originalname}`);
+    },
+  }),
+});
+
+// Routes
 router.post('/register', register);
-
-// @route GET /api/auth/verify/:token
-// Verifies a user's email address using a unique token.
-router.get('/verify/:token', verifyEmail);
-
-// @route POST /api/auth/login
-// Authenticates a user and issues a JWT.
 router.post('/login', login);
+router.get('/verify/:token', verifyEmail);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
-// @route POST /api/auth/forgotpassword
-// Initiates the password reset process by sending a code to the user's email.
-router.post('/forgotpassword', forgotPassword);
+// Protected routes
+router.use(authMiddleware);
+router.get('/profile', getProfile);
+router.put('/profile', updateProfile);
+router.post('/logout-all', logoutAll);
+router.get('/wishlist', getWishlist);
+router.post('/wishlist/:id', toggleWishlist);
 
-// @route POST /api/auth/resetpassword
-// Resets the user's password using a verification code.
-router.post('/resetpassword', resetPassword);
+// --- NEW: Avatar Upload Route ---
+router.post('/avatar', upload.single('avatar'), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+  res.json({ avatarUrl: req.file.location });
+});
 
-
-// Private Routes: These routes require a valid JWT for access.
-// The 'authMiddleware' will execute first to verify the token.
-
-// @route GET /api/auth/profile
-// Fetches the authenticated user's profile information.
-router.get('/profile', authMiddleware, getProfile);
-
-// @route PUT /api/auth/profile
-// Updates the authenticated user's profile details.
-router.put('/profile', authMiddleware, updateProfile);
-
-// @route GET /api/auth/wishlist
-// Fetches the authenticated user's saved wishlist items.
-router.get('/wishlist', authMiddleware, getWishlist);
-
-// @route POST /api/auth/wishlist/:id
-// Toggles a specific listing in the authenticated user's wishlist (add or remove).
-router.post('/wishlist/:id', authMiddleware, toggleWishlist);
-
-// @route POST /api/auth/logout-all
-// Invalidates all active sessions for the authenticated user, forcing re-login on all devices.
-router.post('/logout-all', authMiddleware, logoutAll);
-
-module.exports = router; // Export the router to be used in the main application file.
+module.exports = router;
