@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, MessageCircle, ArrowRight } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom'; // --- UPDATED ---
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import API from '../services/api';
+import socket from '../services/socket'; // --- IMPORT SOCKET ---
 import PageHeader from '../components/layout/PageHeader';
 
-/**
- * Inbox Page: A central hub for communication.
- */
-const Inbox = ({ onThreadOpened }) => {
+const Inbox = ({ user, onThreadOpened }) => {
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -20,16 +18,25 @@ const Inbox = ({ onThreadOpened }) => {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchInbox(); }, []);
+  useEffect(() => {
+    fetchInbox();
 
-  // --- NEW: Mark as Read on click ---
+    // --- NEW: LISTEN FOR MESSAGES IN REAL-TIME ---
+    const handleNewMessageInbox = (message) => {
+      // Re-fetch the whole list to ensure correct sorting and unread counts
+      fetchInbox();
+    };
+
+    socket.on('chat message', handleNewMessageInbox);
+    return () => {
+      socket.off('chat message', handleNewMessageInbox);
+    };
+  }, []);
+
   const handleOpenThread = async (listingId) => {
     try {
-      // 1. Tell backend these are read
       await API.put(`/auth/chat-read/${listingId}`);
-      // 2. Trigger global count update
       if (onThreadOpened) onThreadOpened();
-      // 3. Navigate to chat
       navigate(`/listing/${listingId}`);
     } catch (err) { navigate(`/listing/${listingId}`); }
   };

@@ -21,6 +21,7 @@ import Wishlist from './pages/Wishlist';
 import MockPayment from './pages/MockPayment';
 import Inbox from './pages/Inbox';
 import API from './services/api';
+import socket from './services/socket'; // --- IMPORT GLOBAL SOCKET ---
 
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
   const userRole = user ? user.role : 'guest';
@@ -55,6 +56,7 @@ const App = () => {
   const [sort, setSort] = useState('newest');
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
+  // --- REFINED SYNC ENGINE ---
   const syncUpdates = async () => {
     if (!user) return;
     try {
@@ -68,9 +70,27 @@ const App = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
     syncUpdates();
-    const interval = setInterval(syncUpdates, 15000); 
-    return () => clearInterval(interval);
+
+    // --- NEW: GLOBAL SOCKET LISTENER FOR INSTANT NOTIFS ---
+    const handleNewMessageGlobal = (message) => {
+      const myId = user._id || user.id;
+      // If I am the recipient, increment the unread count instantly
+      if (message.sender._id !== myId) {
+        setUnreadCount(prev => prev + 1);
+        // We also trigger a full sync to update the Inbox list data if the user is on that page
+        syncUpdates(); 
+      }
+    };
+
+    socket.on('chat message', handleNewMessageGlobal);
+    
+    const interval = setInterval(syncUpdates, 30000); 
+    return () => {
+      socket.off('chat message', handleNewMessageGlobal);
+      clearInterval(interval);
+    };
   }, [user]);
 
   useEffect(() => {
@@ -99,8 +119,13 @@ const App = () => {
 
   const handleSearch = (np) => { setSearchParams(p => ({...p, ...np})); fetchListings({...searchParams, ...np}, activeCategory, sort); };
   const handleCategorySelect = (c) => { const nc = activeCategory === c ? '' : c; setActiveCategory(nc); fetchListings(searchParams, nc, sort); };
-  const handleSortChange = (ns) => { setSort(nc => ns); fetchListings(searchParams, activeCategory, ns); };
+  const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
+
+  const ProtectedAdminRoute = ({ children }) => {
+    if (isAuthLoading) return null;
+    return user?.role === 'admin' ? children : <Navigate to="/" replace />;
+  };
 
   return (
     <Router>
@@ -113,7 +138,7 @@ const App = () => {
           unreadCount={unreadCount}
           notifications={notifications}
           onNotificationRead={syncUpdates}
-          onInboxClick={syncUpdates} // --- NEW: Trigger sync when clicking Inbox ---
+          onInboxClick={syncUpdates}
         />
         <main style={{ flex: 1, width: '100%' }}>
           <Routes>
@@ -126,10 +151,10 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
             <Route path="/wishlist" element={<Wishlist user={user} />} />
-            <Route path="/inbox" element={<Inbox onThreadOpened={syncUpdates} />} />
+            <Route path="/inbox" element={<Inbox user={user} onThreadOpened={syncUpdates} />} />
             <Route path="/pay" element={<MockPayment />} />
             <Route path="/bookings" element={user ? <Bookings /> : <Navigate to="/login" replace />} />
-            <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard user={user} refreshListings={fetchListings} /> : <Navigate to="/" replace />} />
+            <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard user={user} refreshListings={fetchListings} /></ProtectedAdminRoute>} />
           </Routes>
         </main>
         <Footer />
