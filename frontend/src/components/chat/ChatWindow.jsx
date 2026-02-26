@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../services/socket';
 import { Send, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns'; // --- NEW: Time Formatting ---
+import { formatDistanceToNow } from 'date-fns'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
-/**
- * ChatWindow Component: Now with Typing Indicators & Relative Timestamps.
- */
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isOtherTyping, setIsOtherTyping] = useState(false); // --- NEW: Typing State ---
+  const [isOtherTyping, setIsOtherTyping] = useState(false); 
   const typingTimeoutRef = useRef(null);
   
   const messagesEndRef = useRef(null);
@@ -35,12 +32,13 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
   useEffect(() => {
     if (!currentUser || !listingId) return; 
+    
     socket.emit('join room', listingId);
 
     const handleNewMessage = (message) => {
       if (message.listingId === listingId) {
         setMessages(prev => [...prev, message]);
-        setIsOtherTyping(false); // Stop typing indicator if message arrives
+        setIsOtherTyping(false); 
         if (!isOpenRef.current) {
           setUnreadCount(prev => prev + 1);
           audioRef.current.play().catch(() => {});
@@ -48,8 +46,8 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
       }
     };
 
-    // --- NEW: Typing Socket Listeners ---
     const handleTyping = (data) => {
+      // Show indicator only if it's the OTHER person typing
       if (data.listingId === listingId && data.userId !== getUserId(currentUser)) {
         setIsOtherTyping(true);
       }
@@ -71,18 +69,16 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
   useEffect(() => { if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
 
-  // --- NEW: Typing Indicator Logic ---
   const handleInputChange = (e) => {
     setNewMessage(e.target.value);
     
-    // Emit typing event
+    // BROADCAST: Let the other person know I'm typing
     socket.emit('typing', { listingId, userId: getUserId(currentUser) });
 
-    // Clear previous timeout and set a new one to stop typing
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       socket.emit('stop_typing', { listingId });
-    }, 2000);
+    }, 3000);
   };
 
   const handleSendMessage = (e) => {
@@ -112,22 +108,26 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
           {messages.map((msg) => {
             const isMe = getUserId(msg.sender) === getUserId(currentUser);
             return (
-              <div key={msg._id} style={{ marginBottom: '1rem', alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                {!isMe && <div style={senderNameStyle}>{msg.sender.name}</div>}
+              <div key={msg._id} style={{ marginBottom: '1.2rem', alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                {!isMe && <div style={senderNameStyle}>{msg.sender?.name || 'User'}</div>}
                 <div style={bubbleStyle(isMe, isHost)}>
                   {msg.content}
                 </div>
-                {/* --- NEW: RELATIVE TIMESTAMP --- */}
-                <div style={timeStyle(isMe)}>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</div>
+                {/* --- FIXED: HIGH CONTRAST TIMESTAMP --- */}
+                {msg.timestamp && (
+                  <div style={timeStyle(isMe)}>
+                    {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
+                  </div>
+                )}
               </div>
             );
           })}
           
-          {/* --- NEW: TYPING INDICATOR UI --- */}
           <AnimatePresence>
             {isOtherTyping && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={typingIndicatorStyle}>
-                <span className="dot-pulse" /> {isHost ? 'Guest' : 'Host'} is typing...
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} style={typingIndicatorStyle}>
+                <div style={dotPulseStyle} />
+                <span style={{ fontWeight: '600' }}>{isHost ? 'Guest' : 'Host'}</span> is typing...
               </motion.div>
             )}
           </AnimatePresence>
@@ -145,16 +145,17 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
 // --- STYLES ---
 const floatingBtnStyle = (isHost) => ({ position: 'fixed', bottom: '30px', right: '30px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: isHost ? '#4a148c' : '#ff385c', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 });
-const chatContainerStyle = { position: 'fixed', bottom: '100px', right: '30px', width: '380px', height: '500px', maxHeight: 'calc(100vh - 150px)', backgroundColor: 'white', borderRadius: '16px', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000, border: '1px solid #eee' };
+const chatContainerStyle = { position: 'fixed', bottom: '100px', right: '30px', width: '380px', height: '520px', maxHeight: 'calc(100vh - 150px)', backgroundColor: 'white', borderRadius: '16px', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000, border: '1px solid #eee' };
 const headerStyle = (isHost) => ({ padding: '1rem', backgroundColor: isHost ? '#4a148c' : '#ff385c', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
 const messageListStyle = { flexGrow: 1, padding: '1.2rem', overflowY: 'auto', backgroundColor: '#fcfcfc', display: 'flex', flexDirection: 'column' };
-const bubbleStyle = (isMe, isHost) => ({ padding: '0.7rem 1.1rem', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', backgroundColor: isMe ? (isHost ? '#4a148c' : '#ff385c') : '#fff', color: isMe ? 'white' : '#333', fontSize: '0.9rem', border: isMe ? 'none' : '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' });
-const timeStyle = (isMe) => ({ fontSize: '0.65rem', color: '#b0b0b0', marginTop: '0.3rem', textAlign: isMe ? 'right' : 'left', marginRight: isMe ? '0.4rem' : 0, marginLeft: isMe ? 0 : '0.4rem' });
-const senderNameStyle = { fontSize: '0.7rem', color: '#717171', marginLeft: '0.4rem', marginBottom: '0.2rem', fontWeight: '600' };
+const bubbleStyle = (isMe, isHost) => ({ padding: '0.75rem 1.1rem', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', backgroundColor: isMe ? (isHost ? '#4a148c' : '#ff385c') : '#fff', color: isMe ? 'white' : '#222', fontSize: '0.92rem', border: isMe ? 'none' : '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' });
+const timeStyle = (isMe) => ({ fontSize: '0.68rem', color: '#888', marginTop: '0.35rem', textAlign: isMe ? 'right' : 'left', marginRight: isMe ? '0.4rem' : 0, marginLeft: isMe ? 0 : '0.4rem', fontWeight: '500' });
+const senderNameStyle = { fontSize: '0.72rem', color: '#717171', marginLeft: '0.4rem', marginBottom: '0.2rem', fontWeight: '700' };
 const formStyle = { padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.5rem', backgroundColor: 'white' };
 const inputStyle = { flexGrow: 1, padding: '0.75rem 1.2rem', borderRadius: '24px', border: '1px solid #eee', outline: 'none', fontSize: '0.9rem', backgroundColor: '#f9f9f9' };
 const sendBtnStyle = (isHost) => ({ backgroundColor: isHost ? '#4a148c' : '#ff385c', color: 'white', border: 'none', borderRadius: '50%', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' });
 const unreadBadgeStyle = { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#222', color: 'white', borderRadius: '50%', width: '24px', height: '24px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' };
-const typingIndicatorStyle = { fontSize: '0.75rem', color: '#717171', fontStyle: 'italic', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' };
+const typingIndicatorStyle = { fontSize: '0.8rem', color: '#717171', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.5rem' };
+const dotPulseStyle = { width: '8px', height: '8px', backgroundColor: '#ff385c', borderRadius: '50%', animation: 'pulse 1.5s infinite' };
 
 export default ChatWindow;
