@@ -1,149 +1,118 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, MapPin, Calendar, Users, X } from 'lucide-react';
 
-// SearchBar Component: Provides input fields for filtering listings by location, dates, guests, and price range.
-// It uses internal state to manage input values and triggers a search callback on submission.
+/**
+ * SearchBar Component: Premium, interactive search widget.
+ * Features real-time parameter passing for location, dates, and guests.
+ */
 const SearchBar = ({ onSearch }) => {
-  // Internal state for all search parameters.
-  const [searchParams, setSearchParams] = useState({
+  const [params, setParams] = useState({
     location: '',
     checkInDate: '',
     checkOutDate: '',
-    guests: '',
-    minPrice: '',
-    maxPrice: ''
+    guests: ''
   });
 
-  // Handles changes to any input field, updating the corresponding state.
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setSearchParams(prev => ({ ...prev, [name]: value }));
+    setParams({ ...params, [e.target.name]: e.target.value });
   };
 
-  // Handles form submission, triggering the 'onSearch' callback with current parameters.
-  const handleSubmit = (e) => {
-    e.preventDefault(); // Prevent default browser form submission.
-    onSearch(searchParams); // Pass all collected search parameters.
+  const handleSearch = () => {
+    onSearch(params);
+  };
+
+  const handleClear = () => {
+    const cleared = { location: '', checkInDate: '', checkOutDate: '', guests: '' };
+    setParams(cleared);
+    onSearch(cleared);
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      padding: '2rem 1rem',
-      backgroundColor: '#f7f7f7'
-    }}>
-      <form onSubmit={handleSubmit} style={{
-        display: 'flex',
-        alignItems: 'center',
-        backgroundColor: 'white',
-        border: '1px solid #ddd',
-        borderRadius: '32px',
-        padding: '0.5rem 1.5rem',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05)',
-        width: '100%',
-        maxWidth: '850px', // Wider search bar to accommodate new fields.
-        flexWrap: 'wrap', // Allow wrapping on smaller screens.
-        gap: '0.5rem 1rem' // Gap between elements.
-      }}>
+    <div style={containerStyle}>
+      <div style={searchWrapperStyle}>
+        
         {/* Location Input */}
-        <div style={{ flex: '1 1 20%', minWidth: '120px', padding: '0 0.5rem', borderRight: '1px solid #ddd' }}>
-          <label style={{ fontSize: '0.7rem', fontWeight: 'bold', display: 'block' }}>Location</label>
+        <div style={inputGroupStyle}>
+          <div style={labelStyle}><MapPin size={14} /> Location</div>
           <input 
             type="text" 
             name="location"
             placeholder="Where are you going?" 
-            value={searchParams.location}
+            value={params.location}
             onChange={handleChange}
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem' }} 
+            style={inputStyle} 
           />
         </div>
-        
-        {/* Check-in Date Input */}
-        <div style={{ flex: '1 1 15%', minWidth: '100px', padding: '0 0.5rem', borderRight: '1px solid #ddd' }}>
-          <label style={{ fontSize: '0.7rem', fontWeight: 'bold', display: 'block' }}>Check-in</label>
+
+        <div style={dividerStyle} />
+
+        {/* Date Inputs */}
+        <div style={inputGroupStyle}>
+          <div style={labelStyle}><Calendar size={14} /> Check-in</div>
           <input 
             type="date" 
             name="checkInDate"
-            value={searchParams.checkInDate}
+            value={params.checkInDate}
             onChange={handleChange}
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem' }} 
+            style={inputStyle} 
           />
         </div>
 
-        {/* Check-out Date Input */}
-        <div style={{ flex: '1 1 15%', minWidth: '100px', padding: '0 0.5rem', borderRight: '1px solid #ddd' }}>
-          <label style={{ fontSize: '0.7rem', fontWeight: 'bold', display: 'block' }}>Check-out</label>
+        <div style={dividerStyle} />
+
+        <div style={inputGroupStyle}>
+          <div style={labelStyle}><Calendar size={14} /> Checkout</div>
           <input 
             type="date" 
             name="checkOutDate"
-            value={searchParams.checkOutDate}
+            value={params.checkOutDate}
             onChange={handleChange}
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem' }} 
+            style={inputStyle} 
           />
         </div>
 
-        {/* Guests Input */}
-        <div style={{ flex: '1 1 10%', minWidth: '80px', padding: '0 0.5rem', borderRight: '1px solid #ddd' }}>
-          <label style={{ fontSize: '0.7rem', fontWeight: 'bold', display: 'block' }}>Guests</label>
+        <div style={dividerStyle} />
+
+        {/* Guest Input */}
+        <div style={inputGroupStyle}>
+          <div style={labelStyle}><Users size={14} /> Guests</div>
           <input 
             type="number" 
             name="guests"
-            placeholder="Add" 
-            value={searchParams.guests}
+            placeholder="Add guests" 
+            value={params.guests}
             onChange={handleChange}
-            min="1"
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem' }} 
+            style={inputStyle} 
           />
         </div>
 
-        {/* Min Price Input */}
-        <div style={{ flex: '1 1 10%', minWidth: '80px', padding: '0 0.5rem', borderRight: '1px solid #ddd' }}>
-          <label style={{ fontSize: '0.7rem', fontWeight: 'bold', display: 'block' }}>Min Price</label>
-          <input 
-            type="number" 
-            name="minPrice"
-            placeholder="$0" 
-            value={searchParams.minPrice}
-            onChange={handleChange}
-            min="0"
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem' }} 
-          />
+        {/* Action Buttons */}
+        <div style={buttonGroupStyle}>
+          {(params.location || params.checkInDate || params.guests) && (
+            <button onClick={handleClear} style={clearButtonStyle} title="Clear Filters">
+              <X size={18} />
+            </button>
+          )}
+          <button onClick={handleSearch} style={searchButtonStyle}>
+            <Search size={18} color="white" />
+            <span style={{ color: 'white', fontWeight: 'bold' }}>Search</span>
+          </button>
         </div>
 
-        {/* Max Price Input */}
-        <div style={{ flex: '1 1 10%', minWidth: '80px', padding: '0 0.5rem' }}>
-          <label style={{ fontSize: '0.7rem', fontWeight: 'bold', display: 'block' }}>Max Price</label>
-          <input 
-            type="number" 
-            name="maxPrice"
-            placeholder="$1000+" 
-            value={searchParams.maxPrice}
-            onChange={handleChange}
-            min="0"
-            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem' }} 
-          />
-        </div>
-
-        {/* Search Button */}
-        <button type="submit" style={{
-          backgroundColor: '#ff385c',
-          color: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          padding: '0.8rem',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0 // Prevent button from shrinking.
-        }}>
-          <Search size={20} />
-        </button>
-      </form>
+      </div>
     </div>
   );
 };
+
+// --- STYLES ---
+const containerStyle = { display: 'flex', justifyContent: 'center', padding: '1rem 2rem', backgroundColor: '#fff', position: 'sticky', top: 0, zIndex: 100 };
+const searchWrapperStyle = { display: 'flex', alignItems: 'center', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '40px', padding: '0.5rem 1rem', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', gap: '0.5rem', transition: 'box-shadow 0.2s' };
+const inputGroupStyle = { display: 'flex', flexDirection: 'column', padding: '0.4rem 1rem', gap: '0.2rem' };
+const labelStyle = { fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', color: '#222', display: 'flex', alignItems: 'center', gap: '0.3rem' };
+const inputStyle = { border: 'none', outline: 'none', fontSize: '0.9rem', color: '#222', backgroundColor: 'transparent', width: '140px' };
+const dividerStyle = { width: '1px', height: '32px', backgroundColor: '#ddd' };
+const buttonGroupStyle = { display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '1rem' };
+const searchButtonStyle = { backgroundColor: '#ff385c', border: 'none', borderRadius: '30px', padding: '0.8rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', transition: 'background 0.2s' };
+const clearButtonStyle = { backgroundColor: '#f7f7f7', border: 'none', borderRadius: '50%', padding: '0.6rem', cursor: 'pointer', color: '#717171', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
 export default SearchBar;
