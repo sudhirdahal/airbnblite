@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, CreditCard, PlaneTakeoff, XCircle } from 'lucide-react'; 
+import { Calendar, MapPin, CreditCard, PlaneTakeoff, XCircle, Clock, History } from 'lucide-react'; 
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast'; // --- NEW: Feedback ---
+import toast from 'react-hot-toast';
 import API from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
 
@@ -14,121 +14,123 @@ const Bookings = () => {
     try {
       const response = await API.get('/bookings/mybookings');
       setBookings(response.data);
-    } catch (err) {
-      console.error('Error fetching bookings:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchBookings();
-  }, []);
+  useEffect(() => { fetchBookings(); }, []);
 
-  // --- NEW: Cancellation Handler ---
   const handleCancel = async (id) => {
-    if (!window.confirm("Are you sure you want to cancel this trip?")) return;
-    
-    const cancelToast = toast.loading('Processing cancellation...');
+    if (!window.confirm("Cancel this reservation?")) return;
+    const cancelToast = toast.loading('Cancelling...');
     try {
       await API.put(`/bookings/${id}/cancel`);
-      toast.success('Reservation cancelled. An email confirmation has been sent.', { id: cancelToast });
-      fetchBookings(); // Refresh the list
-    } catch (err) {
-      toast.error('Failed to cancel reservation.', { id: cancelToast });
-    }
+      toast.success('Cancelled successfully', { id: cancelToast });
+      fetchBookings();
+    } catch (err) { toast.error('Failed to cancel', { id: cancelToast }); }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '4rem' }}>Loading your trips...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '4rem' }}>Loading trips...</div>;
+
+  // --- NEW: TRIP SEGMENTATION LOGIC ---
+  const today = new Date();
+  const upcoming = bookings.filter(b => b.status === 'confirmed' && new Date(b.checkIn) >= today);
+  const past = bookings.filter(b => b.status === 'confirmed' && new Date(b.checkIn) < today);
+  const cancelled = bookings.filter(b => b.status === 'cancelled');
 
   return (
     <div style={{ maxWidth: '2560px', width: '98%', margin: '3rem auto', padding: '0 2rem' }}>
-      <PageHeader 
-        title="Trips" 
-        subtitle="Review your upcoming and past adventures." 
-        icon={PlaneTakeoff}
-      />
-      
+      <PageHeader title="Trips" subtitle="Your journey history and upcoming adventures." icon={PlaneTakeoff} />
+
       {bookings.length === 0 ? (
-        <div style={{ padding: '3rem', border: '1px solid #eee', borderRadius: '16px', textAlign: 'center', backgroundColor: '#fafafa' }}>
-          <h2>No trips booked... yet!</h2>
-          <p style={{ color: '#717171', marginBottom: '1.5rem' }}>Time to dust off your bags and start planning your next adventure.</p>
-          <Link to="/" style={{ display: 'inline-block', padding: '0.8rem 1.5rem', backgroundColor: '#222', borderRadius: '8px', textDecoration: 'none', color: '#fff', fontWeight: 'bold' }}>Start searching</Link>
+        <div style={emptyStateStyle}>
+          <h2>No trips found</h2>
+          <Link to="/" style={primaryBtnStyle}>Find your next stay</Link>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
-          {bookings.map((booking) => {
-            const listing = booking.listingId;
-            if (!listing) return null;
-            const isConfirmed = booking.status === 'confirmed';
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4rem' }}>
+          
+          {/* SECTION: UPCOMING */}
+          <TripSection 
+            title="Upcoming Stays" 
+            icon={Clock} 
+            data={upcoming} 
+            onCancel={handleCancel} 
+            showCancel={true}
+          />
 
-            return (
-              <motion.div key={booking._id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} whileHover={{ scale: 1.005 }} style={bookingCardStyle(isConfirmed)}>
-                <Link to={`/listing/${listing._id}`}>
-                  <img src={listing.images[0]} alt={listing.title} style={{ width: '220px', height: '160px', objectFit: 'cover', borderRadius: '12px', border: '1px solid #eee' }} />
-                </Link>
-                
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <div>
-                        <Link to={`/listing/${listing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                          <h3 style={{ margin: '0 0 0.4rem 0', fontSize: '1.3rem', fontWeight: '700' }}>{listing.title}</h3>
-                        </Link>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#717171', fontSize: '0.9rem' }}>
-                          <MapPin size={16} /> {listing.location}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '1.4rem', fontWeight: '800', color: isConfirmed ? '#222' : '#999' }}>${booking.totalPrice}</span>
-                        <div style={{ fontSize: '0.7rem', color: '#717171', fontWeight: '700', textTransform: 'uppercase' }}>Total Paid</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
-                    <div style={{ display: 'flex', gap: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '12px', flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                        <div style={iconBoxStyle}><Calendar size={18} color="#ff385c" /></div>
-                        <div>
-                          <div style={labelStyle}>Reservation Dates</div>
-                          <div style={valueStyle}>{new Date(booking.checkIn).toLocaleDateString()} - {new Date(booking.checkOut).toLocaleDateString()}</div>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                        <div style={iconBoxStyle}><XCircle size={18} color={isConfirmed ? "#ff385c" : "#999"} /></div>
-                        <div>
-                          <div style={labelStyle}>Booking Status</div>
-                          <div style={{ ...valueStyle, textTransform: 'capitalize', color: isConfirmed ? '#1d7044' : '#999' }}>{booking.status}</div>
-                        </div>
-                      </div>
-                    </div>
+          {/* SECTION: PAST */}
+          <TripSection 
+            title="Where you've been" 
+            icon={History} 
+            data={past} 
+            isPast={true}
+          />
 
-                    {/* --- NEW: CANCEL BUTTON (Visible only if confirmed) --- */}
-                    {isConfirmed && (
-                      <button 
-                        onClick={() => handleCancel(booking._id)}
-                        style={cancelButtonStyle}
-                      >
-                        Cancel Reservation
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+          {/* SECTION: CANCELLED */}
+          {cancelled.length > 0 && (
+            <TripSection 
+              title="Cancelled Trips" 
+              icon={XCircle} 
+              data={cancelled} 
+              isCancelled={true}
+            />
+          )}
+
         </div>
       )}
     </div>
   );
 };
 
+// --- Reusable Section Component ---
+const TripSection = ({ title, icon: Icon, data, onCancel, showCancel, isPast, isCancelled }) => {
+  if (data.length === 0) return null;
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem' }}>
+        <Icon size={20} color="#717171" />
+        <h2 style={{ fontSize: '1.5rem', fontWeight: '700' }}>{title}</h2>
+      </div>
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        {data.map(b => (
+          <TripCard key={b._id} booking={b} onCancel={onCancel} showCancel={showCancel} isPast={isPast} isCancelled={isCancelled} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TripCard = ({ booking, onCancel, showCancel, isPast, isCancelled }) => {
+  const listing = booking.listingId;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={cardStyle(isCancelled)}>
+      <Link to={`/listing/${listing._id}`}>
+        <img src={listing.images[0]} style={{ width: '200px', height: '140px', objectFit: 'cover', borderRadius: '12px' }} alt="Thumb" />
+      </Link>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h3 style={{ margin: '0 0 0.2rem 0' }}>{listing.title}</h3>
+          <p style={{ color: '#717171', margin: 0 }}>{listing.location}</p>
+          <div style={{ marginTop: '1rem', fontSize: '0.9rem', fontWeight: '600' }}>
+            {new Date(booking.checkIn).toLocaleDateString()} - {new Date(booking.checkOut).toLocaleDateString()}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontWeight: '800', fontSize: '1.2rem' }}>${booking.totalPrice}</div>
+          {showCancel && <button onClick={() => onCancel(booking._id)} style={cancelBtnStyle}>Cancel</button>}
+          {isPast && <div style={statusBadge('#eee', '#717171')}>Completed</div>}
+          {isCancelled && <div style={statusBadge('#fff1f2', '#ff385c')}>Cancelled</div>}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 // --- STYLES ---
-const bookingCardStyle = (active) => ({ display: 'flex', gap: '2rem', padding: '1.5rem', border: '1px solid #eee', borderRadius: '20px', backgroundColor: '#fff', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', opacity: active ? 1 : 0.7 });
-const iconBoxStyle = { width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #eee' };
-const labelStyle = { fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', color: '#717171', marginBottom: '0.2rem' };
-const valueStyle = { fontSize: '0.95rem', fontWeight: '600', color: '#222' };
-const cancelButtonStyle = { marginLeft: '2rem', padding: '0.8rem 1.2rem', backgroundColor: 'transparent', color: '#ff385c', border: '1px solid #ff385c', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' };
+const emptyStateStyle = { padding: '4rem', textAlign: 'center', border: '1px solid #eee', borderRadius: '20px' };
+const primaryBtnStyle = { display: 'inline-block', marginTop: '1rem', padding: '0.8rem 1.5rem', backgroundColor: '#222', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold' };
+const cardStyle = (cancelled) => ({ display: 'flex', gap: '2rem', padding: '1.2rem', border: '1px solid #eee', borderRadius: '16px', opacity: cancelled ? 0.6 : 1 });
+const cancelBtnStyle = { marginTop: '0.5rem', padding: '0.5rem 1rem', border: '1px solid #ff385c', color: '#ff385c', backgroundColor: 'transparent', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
+const statusBadge = (bg, col) => ({ display: 'inline-block', marginTop: '0.5rem', padding: '0.3rem 0.8rem', backgroundColor: bg, color: col, borderRadius: '20px', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase' });
 
 export default Bookings;

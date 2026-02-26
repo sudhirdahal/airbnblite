@@ -26,11 +26,13 @@ Implemented `populate('sender', 'name')` hydration in the Socket.IO controller b
 ### 2. Wishlist Persistence & Defensive Programming
 Added defensive initialization in the controller: `if (!user.wishlist) user.wishlist = [];` to prevent crashes on legacy user documents.
 
-### 3. Advanced Search Logic (Availability & Capacity)
-Updated the `getListings` controller to perform a multi-collection exclusion query using the MongoDB `$nin` operator to hide properties with confirmed booking conflicts.
+### 3. Advanced Search & Dynamic Sorting
+Updated the `getListings` controller to handle complex query parameters:
+- **Availability:** Multi-collection exclusion query using the MongoDB `$nin` operator.
+- **Sorting:** Server-side ordering logic for **Price (Asc/Desc)**, **Top Rated**, and **Newest** properties.
 
-### 4. Advanced Amenity Filtering
-Implemented a multi-select filter engine using the MongoDB **`$all`** operator. This ensures that search results strictly contain *every* selected feature (e.g., WiFi + Pool), providing high-precision discovery.
+### 4. Intelligent Data Segmentation (Trips)
+Refactored the Bookings page to automatically categorize reservations into **Upcoming**, **Past**, and **Cancelled** clusters based on server-side timestamps and status flags.
 
 ---
 
@@ -63,13 +65,11 @@ Visualize monthly revenue aggregation via `Chart.js` in the Admin Dashboard, inc
 ### 3. Interactive Visual Discovery
 -   **Map Popups:** Marker pins reveal interactive mini-cards with property previews.
 -   **Smart Amenity Icons:** A keyword-matching engine that dynamically maps text amenities (e.g., "WiFi", "Pool") to professional SVG icons.
--   **Cinematic Image Lightbox:** Integrated a full-screen, high-fidelity modal gallery using `framer-motion` for immersive property exploration.
+-   **Cinematic Image Lightbox:** Integrated a full-screen gallery modal for immersive exploration.
 
 ---
 
 ## ☁️ Phase 5: Cloud Migration & Production Readiness
-
-Moving to production (Render & Vercel) required solving the "Ephemeral Storage" problem.
 
 ### 1. Cloud Image Storage (AWS S3)
 Migrated the storage engine from local disk to **Amazon S3** using `multer-s3`. This ensures images are permanent and served via global CDN.
@@ -90,9 +90,8 @@ Added a `vercel.json` rewrite rule to ensure the production server correctly rou
 | **Interface** | From HTML Text to Animated Dashboard-Style Hero | Premium, space-efficient branding |
 | **Interactivity**| From Informative Text to Clickable Action Cards | High-fidelity "SaaS" feel |
 | **Search** | From Manual Forms to One-Click Location Tags | Accelerated discovery & UX |
-| **Map** | From Static Pins to Interactive Mini-Card Popups | Visual discovery and deep-linking |
-| **Gallery** | From Static Grid to Cinematic Lightbox | Immersive property exploration |
-| **Filtering** | From Keyword Search to Multi-Amenity `$all` Logic | High-precision search results |
+| **Sorting** | From Random Results to Dynamic Price/Rating Ordering | Personalized browsing experience |
+| **Segmentation**| From Flat Trip Lists to Grouped Chronological History | Superior user organization |
 
 ---
 **Happy coding and exploring AirBnB Lite!** 🚀🏠

@@ -2,14 +2,14 @@ const Listing = require('../models/Listing');
 const Booking = require('../models/Booking'); 
 
 /**
- * @desc Get all listings with advanced filtering.
- * UPDATED: Added multi-amenity filtering logic.
+ * @desc Get all listings with advanced filtering and sorting.
  */
 exports.getListings = async (req, res) => {
   try {
     const { 
       location, category, adminId, minPrice, maxPrice, 
-      guests, checkInDate, checkOutDate, amenities // --- NEW: amenities param ---
+      guests, checkInDate, checkOutDate, amenities,
+      sort // --- NEW: sort param ---
     } = req.query; 
     
     let query = {}; 
@@ -24,15 +24,10 @@ exports.getListings = async (req, res) => {
       if (maxPrice) query.rate.$lte = Number(maxPrice);
     }
 
-    if (guests) {
-      query.maxGuests = { $gte: Number(guests) };
-    }
+    if (guests) query.maxGuests = { $gte: Number(guests) };
 
-    // --- NEW: AMENITY FILTERING ---
-    // Expects a comma-separated string: "wifi,pool,kitchen"
     if (amenities) {
       const amenityList = amenities.split(',').map(a => a.trim());
-      // Use $all to ensure the listing has EVERY selected amenity
       query.amenities = { $all: amenityList };
     }
 
@@ -46,24 +41,27 @@ exports.getListings = async (req, res) => {
       query._id = { $nin: conflicts.map(b => b.listingId) };
     }
 
-    const listings = await Listing.find(query);
+    // --- NEW: DYNAMIC SORTING LOGIC ---
+    let sortOptions = { createdAt: -1 }; // Default: Newest first
+    if (sort === 'price-asc') sortOptions = { rate: 1 };
+    if (sort === 'price-desc') sortOptions = { rate: -1 };
+    if (sort === 'rating') sortOptions = { rating: -1 };
+
+    const listings = await Listing.find(query).sort(sortOptions);
     res.json(listings); 
   } catch (err) {
-    console.error('Error in getListings:', err.message);
+    console.error(err.message);
     res.status(500).send('Server Error');
   }
 };
 
-// ... (Other controllers remain unchanged)
+// (Other controllers remain same)
 exports.getListingById = async (req, res) => {
   try {
     const listing = await Listing.findById(req.params.id);
     if (!listing) return res.status(404).json({ message: 'Listing not found' });
     res.json(listing);
-  } catch (err) {
-    if (err.kind === 'ObjectId') return res.status(404).json({ message: 'Listing not found' });
-    res.status(500).send('Server Error');
-  }
+  } catch (err) { res.status(500).send('Server Error'); }
 };
 
 exports.createListing = async (req, res) => {
@@ -72,9 +70,7 @@ exports.createListing = async (req, res) => {
     const newListing = new Listing({ title, description, fullDescription, location, rate, images, amenities, host, coordinates, category, maxGuests, bedrooms, beds, adminId: req.user.id });
     const listing = await newListing.save();
     res.status(201).json(listing);
-  } catch (err) {
-    res.status(500).send('Server Error: ' + err.message); 
-  }
+  } catch (err) { res.status(500).send('Server Error: ' + err.message); }
 };
 
 exports.updateListing = async (req, res) => {
