@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { PlusCircle, Trash, Edit, Calendar, User as UserIcon, X, Upload, BarChart3, TrendingUp, DollarSign, LayoutDashboard, ListChecks, XCircle } from 'lucide-react';
+import { 
+  PlusCircle, Trash, Edit, Calendar, User as UserIcon, X, Upload, BarChart3, TrendingUp, DollarSign, 
+  LayoutDashboard, ListChecks, XCircle, 
+  Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee // --- NEW: Amenity Icons ---
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bar } from 'react-chartjs-2'; 
@@ -8,16 +12,14 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import API from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
 
-// Chart.js Registration
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 /**
  * ============================================================================
- * ADMIN DASHBOARD (The Host Management Suite)
+ * ADMIN DASHBOARD (V5 - THE AMENITY UPDATE)
  * ============================================================================
- * This component acts as the control center for 'admin' users.
- * It has evolved from a basic CRUD list into a professional analytics
- * and management suite with deep-linking and real-time feedback.
+ * UPDATED: Added an interactive Amenity Selector to the property form.
+ * Hosts can now visually toggle features like WiFi, Pool, and Gym.
  */
 const AdminDashboard = ({ user, refreshListings }) => {
   const [activeTab, setActiveTab] = useState('listings');
@@ -26,15 +28,23 @@ const AdminDashboard = ({ user, refreshListings }) => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   
-  // Management Form State
+  // --- NEW: Defined standard amenities for the selector ---
+  const standardAmenities = [
+    { id: 'WiFi', icon: Wifi }, { id: 'Kitchen', icon: Utensils },
+    { id: 'Pool', icon: Waves }, { id: 'Parking', icon: Car },
+    { id: 'TV', icon: Tv }, { id: 'AC', icon: Wind },
+    { id: 'Gym', icon: Dumbbell }, { id: 'Security', icon: Shield },
+    { id: 'Breakfast', icon: Coffee }
+  ];
+
   const [formData, setFormData] = useState({
     _id: null, title: '', location: '', description: '', fullDescription: '', 
     rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
-    maxGuests: 2, bedrooms: 1, beds: 1
+    maxGuests: 2, bedrooms: 1, beds: 1,
+    amenities: [] // --- NEW: Explicitly track amenities ---
   });
   const [isUploading, setIsUploading] = useState(false);
 
-  // Re-fetch data on context change (tab switch)
   useEffect(() => { fetchAdminData(); }, [activeTab]);
 
   const fetchAdminData = async () => {
@@ -47,44 +57,17 @@ const AdminDashboard = ({ user, refreshListings }) => {
         const response = await API.get('/bookings/admin');
         setBookings(response.data);
       }
-    } catch (err) {
-      toast.error("Failed to load dashboard data");
-    } finally { setLoading(false); }
+    } catch (err) { toast.error("Dashboard Sync Failed"); } finally { setLoading(false); }
   };
 
-  /**
-   * REVENUE INSIGHTS CALCULATOR
-   * Dynamically aggregates database results into a time-series dataset.
-   */
   const getChartData = () => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const revenueByMonth = new Array(12).fill(0);
-    
-    // Only aggregate revenue from non-cancelled bookings
     bookings.filter(b => b.status === 'confirmed').forEach(booking => {
       const date = new Date(booking.createdAt);
       revenueByMonth[date.getMonth()] += booking.totalPrice;
     });
-    
-    return { 
-      labels: months, 
-      datasets: [{ 
-        label: 'Confirmed Revenue ($)', 
-        data: revenueByMonth, 
-        backgroundColor: '#ff385c', 
-        borderRadius: 8 
-      }] 
-    };
-  };
-
-  const handleCancelBooking = async (id) => {
-    if (!window.confirm("As a host, are you sure?")) return;
-    const cancelToast = toast.loading('Cancelling...');
-    try {
-      await API.put(`/bookings/${id}/cancel`);
-      toast.success('Reservation cancelled.', { id: cancelToast });
-      fetchAdminData(); // Refresh list to reflect 'cancelled' status
-    } catch (err) { toast.error('Error', { id: cancelToast }); }
+    return { labels: months, datasets: [{ label: 'Confirmed Revenue ($)', data: revenueByMonth, backgroundColor: '#ff385c', borderRadius: 8 }] };
   };
 
   const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((acc, curr) => acc + curr.totalPrice, 0);
@@ -95,20 +78,26 @@ const AdminDashboard = ({ user, refreshListings }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  /**
-   * DIRECT S3 UPLOAD
-   * Phase 7 implementation: Bypasses local disk entirely.
-   */
+  // --- NEW: Amenity Toggle Logic ---
+  const toggleAmenity = (id) => {
+    setFormData(prev => ({
+      ...prev,
+      amenities: prev.amenities.includes(id) 
+        ? prev.amenities.filter(a => a !== id) 
+        : [...prev.amenities, id]
+    }));
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     const data = new FormData(); data.append('image', file); 
     setIsUploading(true); 
-    const uploadToast = toast.loading('Uploading to S3...');
+    const uploadToast = toast.loading('Streaming to S3...');
     try {
       const response = await API.post('/listings/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } });
       setFormData(prev => ({ ...prev, images: [...prev.images, response.data.imageUrl] }));
-      toast.success('Done!', { id: uploadToast });
-    } catch (err) { toast.error('Failed', { id: uploadToast }); } finally { setIsUploading(false); }
+      toast.success('Uploaded!', { id: uploadToast });
+    } catch (err) { toast.error('Upload failed', { id: uploadToast }); } finally { setIsUploading(false); }
   };
 
   const handleRemoveImage = (indexToRemove) => {
@@ -117,13 +106,21 @@ const AdminDashboard = ({ user, refreshListings }) => {
 
   const toggleForm = () => {
     setShowForm(prev => {
-      if (prev) setFormData({ _id: null, title: '', location: '', description: '', fullDescription: '', rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '', maxGuests: 2, bedrooms: 1, beds: 1 });
+      if (prev) setFormData({ _id: null, title: '', location: '', description: '', fullDescription: '', rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '', maxGuests: 2, bedrooms: 1, beds: 1, amenities: [] });
       return !prev;
     });
   };
 
   const handleEditClick = (listing) => {
-    setFormData({ _id: listing._id, title: listing.title, location: listing.location, description: listing.description, fullDescription: listing.fullDescription, rate: listing.rate, category: listing.category, images: listing.images, lat: listing.coordinates?.lat || '', lng: listing.coordinates?.lng || '', imageUrlInput: '', maxGuests: listing.maxGuests, bedrooms: listing.bedrooms, beds: listing.beds });
+    setFormData({ 
+      _id: listing._id, title: listing.title, location: listing.location, 
+      description: listing.description, fullDescription: listing.fullDescription, 
+      rate: listing.rate, category: listing.category, images: listing.images, 
+      lat: listing.coordinates?.lat || '', lng: listing.coordinates?.lng || '', 
+      imageUrlInput: '', maxGuests: listing.maxGuests, bedrooms: listing.bedrooms, 
+      beds: listing.beds,
+      amenities: listing.amenities || [] // --- FIXED: Load existing amenities ---
+    });
     setShowForm(true); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -134,31 +131,40 @@ const AdminDashboard = ({ user, refreshListings }) => {
     if (formData.imageUrlInput) finalImages.push(...formData.imageUrlInput.split(',').map(url => url.trim()).filter(url => url));
     if (finalImages.length === 0) return toast.error('At least one image is required.');
     
-    const saveToast = toast.loading('Saving...');
+    const saveToast = toast.loading('Publishing...');
     try {
-      const payload = { ...formData, images: finalImages, rate: Number(formData.rate), coordinates: { lat: Number(formData.lat || 0), lng: Number(formData.lng || 0) }, host: { name: user.name, avatar: user.avatar } };
+      // NOTE: 'amenities' is now correctly part of the payload
+      const payload = { 
+        ...formData, 
+        images: finalImages, 
+        rate: Number(formData.rate), 
+        coordinates: { lat: Number(formData.lat || 0), lng: Number(formData.lng || 0) }, 
+        host: { name: user.name, avatar: user.avatar } 
+      };
+      
       if (formData._id) await API.put(`/listings/${formData._id}`, payload);
       else await API.post('/listings', payload);
-      toast.success('Successfully saved!', { id: saveToast });
+      
+      toast.success('Successfully published!', { id: saveToast });
       toggleForm(); fetchAdminData(); refreshListings();   
-    } catch (err) { toast.error('Failed', { id: saveToast }); }
+    } catch (err) { toast.error('Error', { id: saveToast }); }
   };
 
-  const handleDeleteListing = async (id) => {
-    if (!window.confirm("Delete listing?")) return; 
-    const deleteToast = toast.loading('Deleting...');
+  const handleCancelBooking = async (id) => {
+    if (!window.confirm("Cancel reservation?")) return;
+    const cancelToast = toast.loading('Processing...');
     try {
-      await API.delete(`/listings/${id}`); 
-      toast.success('Deleted', { id: deleteToast });
-      fetchAdminData(); refreshListings();   
-    } catch (err) { toast.error('Failed', { id: deleteToast }); }
+      await API.put(`/bookings/${id}/cancel`);
+      toast.success('Cancelled.', { id: cancelToast });
+      fetchAdminData();
+    } catch (err) { toast.error('Failed', { id: cancelToast }); }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '4rem' }}>Loading Dashboard...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '4rem' }}>Connecting to host panel...</div>;
 
   return (
     <div style={{ maxWidth: '2560px', width: '98%', margin: '2rem auto', padding: '0 2rem' }}>
-      <PageHeader title="Admin Dashboard" subtitle="Control center for your high-fidelity properties." icon={LayoutDashboard} />
+      <PageHeader title="Admin Dashboard" subtitle={`Manage your ${adminListings.length} active properties.`} icon={LayoutDashboard} />
       
       <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #ddd', marginBottom: '2rem' }}>
         <button onClick={() => setActiveTab('listings')} style={tabButtonStyle(activeTab === 'listings')}>My Listings</button>
@@ -167,25 +173,23 @@ const AdminDashboard = ({ user, refreshListings }) => {
       </div>
 
       <AnimatePresence mode="wait">
-        
-        {/* INSIGHTS TAB */}
         {activeTab === 'insights' && (
           <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-              <div style={statCardStyle}><DollarSign color="#4f46e5" /><div><p style={statLabelStyle}>Total Revenue</p><h3 style={statValueStyle}>${totalRevenue.toLocaleString()}</h3></div></div>
+              <div style={statCardStyle}><DollarSign color="#4f46e5" /><div><p style={statLabelStyle}>Confirmed Revenue</p><h3 style={statValueStyle}>${totalRevenue.toLocaleString()}</h3></div></div>
               <div style={statCardStyle}><Calendar color="#ff385c" /><div><p style={statLabelStyle}>Confirmed Stays</p><h3 style={statValueStyle}>{totalBookings}</h3></div></div>
             </div>
-            <div style={chartBoxStyle}><h3>Earnings Overview</h3><div style={{ height: '350px' }}><Bar data={getChartData()} options={{ maintainAspectRatio: false }} /></div></div>
+            <div style={chartBoxStyle}><h3>Monthly Performance</h3><div style={{ height: '350px' }}><Bar data={getChartData()} options={{ maintainAspectRatio: false }} /></div></div>
           </motion.div>
         )}
 
-        {/* LISTINGS TAB */}
         {activeTab === 'listings' && (
           <motion.div key="listings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h3 style={{ margin: 0 }}>Active Properties</h3>
               <button onClick={toggleForm} style={primaryButtonStyle}>{showForm ? <><X size={18} /> Cancel</> : <><PlusCircle size={18} /> Add New Listing</>}</button>
             </div>
+            
             {showForm && (
               <div style={formContainerStyle}>
                 <form onSubmit={handleCreateOrUpdateListing} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
@@ -199,31 +203,41 @@ const AdminDashboard = ({ user, refreshListings }) => {
                   <select name="category" value={formData.category} onChange={handleChange} style={inputStyle}>
                     <option value="pools">Amazing Pools</option><option value="beach">Beachfront</option><option value="cabins">Cabins</option><option value="arctic">Arctic</option>
                   </select>
+                  
+                  {/* S3 UPLOAD UI */}
                   <div style={{ gridColumn: 'span 2', padding: '1.5rem', border: '2px dashed #ddd', borderRadius: '16px', textAlign: 'center' }}>
-                    <label style={{ cursor: 'pointer' }}><Upload size={32} /><div>{isUploading ? 'Uploading...' : 'Upload Property Photo'}</div><input type="file" onChange={handleFileUpload} style={{ display: 'none' }} /></label>
+                    <label style={{ cursor: 'pointer' }}><Upload size={32} /><div>{isUploading ? 'Streaming...' : 'Upload Image'}</div><input type="file" onChange={handleFileUpload} style={{ display: 'none' }} /></label>
                     <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1rem', justifyContent: 'center' }}>
                       {formData.images.map((url, i) => (<div key={i} style={{ position: 'relative' }}><img src={url} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }} /><button type="button" onClick={() => handleRemoveImage(i)} style={removeImgBtnStyle}>X</button></div>))}
                     </div>
                   </div>
-                  <textarea name="fullDescription" placeholder="Property Details..." value={formData.fullDescription} onChange={handleChange} style={{ ...inputStyle, gridColumn: 'span 2', height: '100px' }} required />
+
+                  {/* --- NEW: AMENITY SELECTOR GRID --- */}
+                  <div style={{ gridColumn: 'span 2', marginTop: '1rem' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '1rem', fontSize: '0.9rem' }}>Select Amenities</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.8rem' }}>
+                      {standardAmenities.map(a => (
+                        <button 
+                          key={a.id} type="button" onClick={() => toggleAmenity(a.id)}
+                          style={amenityPickerStyle(formData.amenities.includes(a.id))}
+                        >
+                          <a.icon size={16} /> {a.id}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <textarea name="fullDescription" placeholder="Description" value={formData.fullDescription} onChange={handleChange} style={{ ...inputStyle, gridColumn: 'span 2', height: '100px' }} required />
                   <button type="submit" style={{ ...primaryButtonStyle, gridColumn: 'span 2' }}>Save Property</button>
                 </form>
               </div>
             )}
+
             <div style={tableWrapperStyle}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr style={tableHeaderRowStyle}><th style={thStyle}>Listing</th><th style={thStyle}>Rate</th><th style={thStyle}>Actions</th></tr></thead>
               <tbody>{adminListings.map(l => (
                 <tr key={l._id} style={tableRowStyle}>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-                      {/* INTERACTIVE THUMBNAIL (Phase 4) */}
-                      <Link to={`/listing/${l._id}`}><img src={l.images[0]} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} alt="Thumb" /></Link>
-                      <div>
-                        <Link to={`/listing/${l._id}`} style={{ textDecoration: 'none', color: 'inherit', fontWeight: '700' }}>{l.title}</Link>
-                        <div style={{ fontSize: '0.8rem', color: '#717171' }}>{l.location}</div>
-                      </div>
-                    </div>
-                  </td>
+                  <td style={tdStyle}><div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}><Link to={`/listing/${l._id}`}><img src={l.images[0]} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} /></Link><div><Link to={`/listing/${l._id}`} style={{ textDecoration: 'none', color: 'inherit', fontWeight: '700' }}>{l.title}</Link><div style={{ fontSize: '0.8rem', color: '#717171' }}>{l.location}</div></div></div></td>
                   <td style={tdStyle}><span style={{ fontWeight: '700' }}>${l.rate}</span></td>
                   <td style={tdStyle}><div style={{ display: 'flex', gap: '0.5rem' }}><button onClick={() => handleEditClick(l)} style={actionButtonStyle}><Edit size={16} /></button><button onClick={() => handleDeleteListing(l._id)} style={{ ...actionButtonStyle, color: '#ff385c' }}><Trash size={16} /></button></div></td>
                 </tr>
@@ -232,7 +246,6 @@ const AdminDashboard = ({ user, refreshListings }) => {
           </motion.div>
         )}
 
-        {/* BOOKINGS TAB */}
         {activeTab === 'bookings' && (
           <motion.div key="bookings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <h3 style={{ marginBottom: '1.5rem' }}>Guest Reservations</h3>
@@ -241,7 +254,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
               <tbody>{bookings.map(b => (
                 <tr key={b._id} style={{ ...tableRowStyle, opacity: b.status === 'cancelled' ? 0.6 : 1 }}>
                   <td style={tdStyle}><Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}><div style={avatarCircleStyle}>{b.userId?.name.charAt(0)}</div><div><div style={{ fontWeight: '700' }}>{b.userId?.name}</div></div></div></Link></td>
-                  <td style={tdStyle}><Link to={`/listing/${b.listingId?._id}`} style={{ textDecoration: 'none', color: 'inherit' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}><img src={b.listingId?.images?.[0]} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} alt="Listing" /><span style={{ fontWeight: '500' }}>{b.listingId?.title}</span></div></Link></td>
+                  <td style={tdStyle}><Link to={`/listing/${b.listingId?._id}`} style={{ textDecoration: 'none', color: 'inherit' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}><img src={b.listingId?.images?.[0]} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} /><span style={{ fontWeight: '500' }}>{b.listingId?.title}</span></div></Link></td>
                   <td style={tdStyle}><span style={{ fontWeight: '700' }}>${b.totalPrice}</span><div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: b.status === 'confirmed' ? 'green' : 'red' }}>{b.status}</div></td>
                   <td style={tdStyle}>
                     {b.status === 'confirmed' && (
@@ -258,7 +271,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
   );
 };
 
-// Styles (Omitted for brevity, matching previous high-fidelity layout)
+// --- STYLES ---
 const tabButtonStyle = (isActive) => ({ padding: '1rem 0', background: 'none', border: 'none', borderBottom: isActive ? '3px solid #ff385c' : '3px solid transparent', color: isActive ? '#000' : '#717171', fontWeight: isActive ? 'bold' : '600', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.3s' });
 const primaryButtonStyle = { backgroundColor: '#222', color: 'white', border: 'none', padding: '0.7rem 1.4rem', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' };
 const inputStyle = { padding: '0.8rem', borderRadius: '12px', border: '1px solid #ddd', fontSize: '1rem', outline: 'none', backgroundColor: '#fff' };
@@ -276,5 +289,13 @@ const statValueStyle = { fontSize: '1.8rem', fontWeight: '800', margin: 0, color
 const chartBoxStyle = { padding: '2.5rem', border: '1px solid #eee', borderRadius: '28px', backgroundColor: 'white', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' };
 const avatarCircleStyle = { width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.85rem' };
 const removeImgBtnStyle = { position: 'absolute', top: -8, right: -8, background: '#ff385c', color: 'white', borderRadius: '50%', border: '2px solid white', width: '24px', height: '24px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' };
+
+// --- NEW STYLES ---
+const amenityPickerStyle = (active) => ({
+  display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1rem', 
+  borderRadius: '12px', border: `1px solid ${active ? '#222' : '#eee'}`, 
+  backgroundColor: active ? '#222' : '#fff', color: active ? '#fff' : '#717171', 
+  fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
+});
 
 export default AdminDashboard;
