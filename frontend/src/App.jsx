@@ -21,7 +21,7 @@ import Wishlist from './pages/Wishlist';
 import MockPayment from './pages/MockPayment';
 import Inbox from './pages/Inbox';
 import API from './services/api';
-import socket from './services/socket'; // --- IMPORT GLOBAL SOCKET ---
+import socket from './services/socket';
 
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
   const userRole = user ? user.role : 'guest';
@@ -56,7 +56,14 @@ const App = () => {
   const [sort, setSort] = useState('newest');
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
-  // --- REFINED SYNC ENGINE ---
+  /**
+   * ============================================================================
+   * SCALABILITY FIX: EVENT-DRIVEN SYNC
+   * ============================================================================
+   * We've removed 'setInterval'. The app now only syncs:
+   * 1. On Initial Load.
+   * 2. When a Socket event 'new_notification' or 'new_message_alert' is pushed.
+   */
   const syncUpdates = async () => {
     if (!user) return;
     try {
@@ -71,25 +78,25 @@ const App = () => {
 
   useEffect(() => {
     if (!user) return;
+    
+    // Join private room for alerts
+    socket.emit('identify', user._id || user.id);
+    
+    // Initial sync
     syncUpdates();
 
-    // --- NEW: GLOBAL SOCKET LISTENER FOR INSTANT NOTIFS ---
-    const handleNewMessageGlobal = (message) => {
-      const myId = user._id || user.id;
-      // If I am the recipient, increment the unread count instantly
-      if (message.sender._id !== myId) {
-        setUnreadCount(prev => prev + 1);
-        // We also trigger a full sync to update the Inbox list data if the user is on that page
-        syncUpdates(); 
-      }
+    // Listen for pushes
+    const handleInstantUpdate = () => {
+      console.log("Socket: Received instant alert. Syncing UI...");
+      syncUpdates();
     };
 
-    socket.on('chat message', handleNewMessageGlobal);
+    socket.on('new_notification', handleInstantUpdate);
+    socket.on('new_message_alert', handleInstantUpdate);
     
-    const interval = setInterval(syncUpdates, 30000); 
     return () => {
-      socket.off('chat message', handleNewMessageGlobal);
-      clearInterval(interval);
+      socket.off('new_notification', handleInstantUpdate);
+      socket.off('new_message_alert', handleInstantUpdate);
     };
   }, [user]);
 
@@ -122,11 +129,6 @@ const App = () => {
   const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
 
-  const ProtectedAdminRoute = ({ children }) => {
-    if (isAuthLoading) return null;
-    return user?.role === 'admin' ? children : <Navigate to="/" replace />;
-  };
-
   return (
     <Router>
       <div className="app" style={{ fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -154,7 +156,7 @@ const App = () => {
             <Route path="/inbox" element={<Inbox user={user} onThreadOpened={syncUpdates} />} />
             <Route path="/pay" element={<MockPayment />} />
             <Route path="/bookings" element={user ? <Bookings /> : <Navigate to="/login" replace />} />
-            <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard user={user} refreshListings={fetchListings} /></ProtectedAdminRoute>} />
+            <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard user={user} refreshListings={fetchListings} /> : <Navigate to="/" replace />} />
           </Routes>
         </main>
         <Footer />

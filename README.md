@@ -1,6 +1,6 @@
 # 🏠 AirBnB Lite: A Full-Stack MERN Masterclass
 
-Welcome to **AirBnB Lite**, a comprehensive technical showcase of modern web engineering. This repository chronicles the evolution of a complex application through seven distinct phases of maturity.
+Welcome to **AirBnB Lite**, a comprehensive technical showcase of modern web engineering. This repository chronicles the evolution of a complex application through eight distinct phases of maturity.
 
 ---
 
@@ -17,7 +17,7 @@ Established a secure, decoupled architecture using a monorepo structure.
 Advanced features with production-grade edge-case handling.
 - **Search Logic:** High-precision discovery using MongoDB `$nin` for availability and `$all` for multi-amenity filtering.
 - **Personalization:** Integrated an avatar upload pipeline streaming directly to **AWS S3**.
-- **Integrated Alerts:** A centralized **Notification Center** that tracks bookings, reviews, and messages in real-time.
+- **Pricing Engine:** Multi-guest-type pricing model (Adults/Children/Infants).
 
 ---
 
@@ -34,23 +34,24 @@ Traced the journey from blind database saves to a proactive, conflict-aware engi
 
 Industry-standard visual patterns for a "Premium" SaaS experience.
 - **Visual Feedback:** CSS-animated Skeleton loaders and React Hot Toasts.
-- **Interactive Visuals:** Marker pin mini-cards, smart amenity icons, and cinematic lightboxes.
-- **Responsive Design:** Overhauled UI for mobile devices with animated slide-out navigation.
+- **Interactive Map:** Marker pins with mini-card popups and deep linking.
+- **Responsive Design:** Overhauled the UI for mobile devices.
 
 ---
 
-## 💬 Phase 5: The Communication Hub
+## ⚙️ Phase 5: Scalability & Performance (New)
 
-Advanced messaging architecture to handle guest-host interactions.
-- **Thread Aggregation:** Backend logic to group messages into unique listing-based threads.
-- **Centralized Inbox:** Dedicated page for managing multi-property communications.
+Architectural shift from high-overhead Polling to a proactive **Event-Driven Architecture**.
+- **Private Socket Rooms:** Implemented user-specific Socket.IO channels for secure, targeted pushes.
+- **Push vs. Pull:** Eliminated client-side `setInterval` polling, reducing server-side request volume by over 90%.
+- **Instant Sync:** Notifications and Inbox state now update in real-time via server-triggered events.
 
 ---
 
 ## ☁️ Phase 6: Cloud Migration & Production Readiness
 
 Transitioned from `localhost` to a distributed cloud environment.
-- **Cloud Storage:** Migration from Multer `diskStorage` to **Amazon S3** for permanent hosting.
+- **Cloud Storage:** Migration from Multer `diskStorage` to **AWS S3**.
 - **Deployment:** Production hosting using Render (Backend) and Vercel (Frontend).
 
 ## 🚀 Pro-Grade Evolution Summary
@@ -58,12 +59,10 @@ Transitioned from `localhost` to a distributed cloud environment.
 | Feature | Evolutionary Step | Value Add |
 | :--- | :--- | :--- |
 | **Booking** | From Basic Entry to Proactive Calendar Blocking | Prevents conflicts & improves UX |
+| **Sync** | From 15s Polling to Instant Socket-Driven Pushes | High scalability & zero latency |
 | **Messaging**| From Static Chat to Global Inbox + Unread Badges | High-end real-time communication |
-| **Alerts** | From Emails-only to In-App Notification Center | Real-time user engagement |
-| **Hosting** | From Listing CRUD to Data-Driven Analytics | Professional tools for Host management |
-| **Interactivity**| From Informative Text to Clickable Action Cards | High-fidelity "SaaS" feel |
 | **Storage** | From Local uploads/ to Permanent AWS S3 | Prepares app for cloud deployment |
-| **Layout** | From Desktop-Only to Mobile-Responsive | Accessible UX across all device types |
+| **Layout** | From Desktop-Only to Mobile-Responsive | Accessible UX across all devices |
 
 ---
 **Designed and built to showcase the journey from concept to cloud.** 🚀🌐

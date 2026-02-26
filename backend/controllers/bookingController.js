@@ -2,7 +2,7 @@ const Booking = require('../models/Booking');
 const Listing = require('../models/Listing');
 const User = require('../models/User');
 const { sendBookingConfirmationEmail, sendCancellationEmail } = require('../services/emailService');
-const { createNotification } = require('./notificationController'); // --- NEW: Trigger Notifications ---
+const { createNotification } = require('./notificationController');
 
 exports.getTakenDates = async (req, res) => {
   try {
@@ -13,6 +13,8 @@ exports.getTakenDates = async (req, res) => {
 
 exports.createBooking = async (req, res) => {
   const { listingId, checkIn, checkOut, totalPrice } = req.body;
+  const io = req.app.get('socketio'); // Get the global socket instance
+
   try {
     const listing = await Listing.findById(listingId);
     if (!listing) return res.status(404).json({ message: 'Listing not found' });
@@ -31,32 +33,26 @@ exports.createBooking = async (req, res) => {
     const booking = new Booking({ listingId, userId: req.user.id, checkIn: newCheckIn, checkOut: newCheckOut, totalPrice });
     await booking.save();
 
-    // 1. Send Email
     sendBookingConfirmationEmail(user.email, user.name, { listingTitle: listing.title, location: listing.location, checkIn, checkOut, totalPrice });
 
-    // 2. --- NEW: Generate Notifications ---
-    // For Guest:
-    await createNotification({
-      recipient: req.user.id,
-      type: 'booking',
-      title: 'Booking Confirmed!',
-      message: `Your stay at ${listing.title} is all set.`,
-      link: '/bookings'
+    // --- SCALABILITY FIX: EMIT TO PRIVATE ROOMS ---
+    const guestNotif = await createNotification({
+      recipient: req.user.id, type: 'booking', title: 'Booking Confirmed!', message: `Your stay at ${listing.title} is all set.`, link: '/bookings'
     });
-    // For Host:
-    await createNotification({
-      recipient: listing.adminId,
-      type: 'booking',
-      title: 'New Reservation',
-      message: `${user.name} booked ${listing.title}.`,
-      link: '/admin'
+    const hostNotif = await createNotification({
+      recipient: listing.adminId, type: 'booking', title: 'New Reservation', message: `${user.name} booked ${listing.title}.`, link: '/admin'
     });
+
+    // Instant Push
+    io.to(req.user.id.toString()).emit('new_notification', guestNotif);
+    io.to(listing.adminId.toString()).emit('new_notification', hostNotif);
 
     res.status(201).json(booking);
   } catch (err) { res.status(500).send('Server Error'); }
 };
 
 exports.cancelBooking = async (req, res) => {
+  const io = req.app.get('socketio');
   try {
     const booking = await Booking.findById(req.params.id).populate('listingId').populate('userId');
     if (!booking) return res.status(404).json({ message: 'Not found' });
@@ -70,14 +66,13 @@ exports.cancelBooking = async (req, res) => {
 
     sendCancellationEmail(booking.userId.email, booking.userId.name, { listingTitle: booking.listingId.title, checkIn: booking.checkIn.toLocaleDateString(), checkOut: booking.checkOut.toLocaleDateString() });
 
-    // --- NEW: Generate Cancellation Notification ---
-    await createNotification({
-      recipient: isGuest ? booking.listingId.adminId : booking.userId._id,
-      type: 'booking',
-      title: 'Stay Cancelled',
-      message: `The reservation for ${booking.listingId.title} has been cancelled.`,
-      link: isGuest ? '/admin' : '/bookings'
+    const recipientId = isGuest ? booking.listingId.adminId : booking.userId._id;
+    const notif = await createNotification({
+      recipient: recipientId, type: 'booking', title: 'Stay Cancelled', message: `The reservation for ${booking.listingId.title} has been cancelled.`, link: isGuest ? '/admin' : '/bookings'
     });
+
+    // Instant Push
+    io.to(recipientId.toString()).emit('new_notification', notif);
 
     res.json({ message: 'Cancelled' });
   } catch (err) { res.status(500).send('Server Error'); }
