@@ -14,18 +14,6 @@ We adopted a unified structure to keep the full-stack logic tightly coupled duri
 ### 2. Schema-Driven Data Integrity
 Using Mongoose, we enforced strict data structures to support advanced features like nested map coordinates and relational user features.
 
-**The User Schema (Security-First):**
-```javascript
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ['registered', 'admin'], default: 'registered' },
-  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Listing' }],
-  tokenVersion: { type: Number, default: 0 } // Key for global logout
-});
-```
-
 ---
 
 ## 🚀 Phase 2: Feature Engineering & "Real-World" Bug Squashing
@@ -40,6 +28,9 @@ Added defensive initialization in the controller: `if (!user.wishlist) user.wish
 
 ### 3. Advanced Search Logic (Availability & Capacity)
 Updated the `getListings` controller to perform a multi-collection exclusion query using the MongoDB `$nin` operator to hide properties with confirmed booking conflicts.
+
+### 4. Secure Review Deletion & Data Sync
+Implemented a deletion pipeline that verifies ownership and automatically triggers a recalculation of the Listing's `averageRating` and `reviewsCount` to maintain data accuracy.
 
 ---
 
@@ -72,7 +63,7 @@ Visualize monthly revenue aggregation via `Chart.js` in the Admin Dashboard, inc
 ### 3. Interactive Visual Discovery
 -   **Map Popups:** Marker pins reveal interactive mini-cards with property previews.
 -   **Smart Amenity Icons:** A keyword-matching engine that dynamically maps text amenities (e.g., "WiFi", "Pool") to professional SVG icons.
--   **Tactile Feedback:** Extensive use of `framer-motion` for page transitions and hover-reactive action cards.
+-   **Cinematic Image Lightbox:** Integrated a full-screen, high-fidelity modal gallery using `framer-motion` for immersive property exploration.
 
 ---
 
@@ -100,6 +91,7 @@ Added a `vercel.json` rewrite rule to ensure the production server correctly rou
 | **Interactivity**| From Informative Text to Clickable Action Cards | High-fidelity "SaaS" feel |
 | **Search** | From Manual Forms to One-Click Location Tags | Accelerated discovery & UX |
 | **Map** | From Static Pins to Interactive Mini-Card Popups | Visual discovery and deep-linking |
+| **Gallery** | From Static Grid to Cinematic Lightbox | Immersive property exploration |
 
 ---
 **Happy coding and exploring AirBnB Lite!** 🚀🏠

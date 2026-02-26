@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User,
-  Wifi, Coffee, Tv, Wind, Utensils, Waves, Car, Shield, Dumbbell // --- NEW: Amenity Icons ---
+  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize,
+  Wifi, Coffee, Tv, Wind, Utensils, Waves, Car, Shield, Dumbbell 
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Calendar from 'react-calendar'; 
 import 'react-calendar/dist/Calendar.css'; 
 import toast from 'react-hot-toast';
 import API from '../services/api'; 
 import ChatWindow from '../components/chat/ChatWindow'; 
 
-// --- NEW: Amenity Icon Mapper ---
 const getAmenityIcon = (name) => {
   const n = name.toLowerCase();
   if (n.includes('wifi')) return <Wifi size={20} />;
@@ -23,19 +22,8 @@ const getAmenityIcon = (name) => {
   if (n.includes('park') || n.includes('garage')) return <Car size={20} />;
   if (n.includes('gym') || n.includes('fit')) return <Dumbbell size={20} />;
   if (n.includes('security') || n.includes('safe')) return <Shield size={20} />;
-  return <CheckCircle size={20} />; // Fallback
+  return <CheckCircle size={20} />;
 };
-
-const calendarStyles = `
-  .react-calendar { width: 100% !important; border: none !important; font-family: inherit !important; padding: 10px; }
-  .react-calendar__tile--active { background: #ff385c !important; color: white !important; border-radius: 50%; }
-  .react-calendar__tile--range { background: #f7f7f7 !important; color: #ff385c !important; border-radius: 0 !important; }
-  .react-calendar__tile--rangeStart { border-top-left-radius: 50% !important; border-bottom-left-radius: 50% !important; background: #ff385c !important; color: white !important; }
-  .react-calendar__tile--rangeEnd { border-top-right-radius: 50% !important; border-bottom-right-radius: 50% !important; background: #ff385c !important; color: white !important; }
-  .react-calendar__tile:disabled { background-color: #fff !important; color: #ccc !important; text-decoration: line-through !important; cursor: not-allowed !important; }
-  .react-calendar__tile { height: 60px; font-weight: 600; font-size: 1.1rem; transition: background 0.2s; }
-  .react-calendar__navigation button { font-size: 1.2rem; font-weight: bold; }
-`;
 
 const ListingDetail = ({ userRole, user }) => { 
   const { id } = useParams(); 
@@ -47,6 +35,7 @@ const ListingDetail = ({ userRole, user }) => {
   const [loading, setLoading] = useState(true);       
   const [activeImage, setActiveImage] = useState(0);  
   const [showSticky, setShowSticky] = useState(false); 
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false); // --- NEW: Lightbox state ---
   
   const placeholderImage = "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80";
 
@@ -77,7 +66,6 @@ const ListingDetail = ({ userRole, user }) => {
       setListing(listingRes.data);
       setReviews(reviewsRes.data);
       setTakenDates(takenRes.data);
-      
       if (user) {
         const existing = reviewsRes.data.find(r => r.userId._id === user._id || r.userId === user._id);
         if (existing) setUserRating(existing.rating);
@@ -96,10 +84,20 @@ const ListingDetail = ({ userRole, user }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [id, user]);
 
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm("Are you sure you want to delete your review?")) return;
+    try {
+      await API.delete(`/reviews/${reviewId}`);
+      toast.success("Review deleted");
+      fetchListingAndReviews(); // Refresh stats and list
+    } catch (err) {
+      toast.error("Failed to delete review");
+    }
+  };
+
   const isDateTaken = ({ date, view }) => {
     if (view !== 'month') return false;
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
     if (date < today) return true;
     return takenDates.some(booking => {
       const start = new Date(booking.checkIn);
@@ -109,18 +107,10 @@ const ListingDetail = ({ userRole, user }) => {
   };
 
   const handleReserve = async () => {
-    if (!dateRange[0] || !dateRange[1]) {
-      toast.error("Please select your dates on the calendar.");
-      return;
-    }
+    if (!dateRange[0] || !dateRange[1]) return toast.error("Please select your dates on the calendar.");
     navigate('/pay', { state: { 
       listingId: id, 
-      bookingDetails: {
-        checkIn: dateRange[0].toISOString(),
-        checkOut: dateRange[1].toISOString(),
-        total: pricing.total,
-        nights: pricing.nights
-      },
+      bookingDetails: { checkIn: dateRange[0].toISOString(), checkOut: dateRange[1].toISOString(), total: pricing.total, nights: pricing.nights },
       listing
     }});
   };
@@ -132,11 +122,7 @@ const ListingDetail = ({ userRole, user }) => {
   const handleRatingSubmit = async (rating) => {
     if (!user) return toast.error("Please log in to rate");
     setUserRating(rating);
-    try { 
-      await API.post('/reviews', { listingId: id, rating }); 
-      fetchListingAndReviews(); 
-      toast.success(`You rated this ${rating} stars!`);
-    } catch (err) {}
+    try { await API.post('/reviews', { listingId: id, rating }); fetchListingAndReviews(); toast.success(`Rated ${rating} stars!`); } catch (err) {}
   };
 
   const handleCommentSubmit = async (e) => {
@@ -146,7 +132,7 @@ const ListingDetail = ({ userRole, user }) => {
       await API.post('/reviews', { listingId: id, comment: userComment });
       setUserComment('');
       fetchListingAndReviews();
-      toast.success('Review posted successfully!');
+      toast.success('Review posted!');
     } catch (err) {}
     finally { setSubmittingReview(false); }
   };
@@ -160,7 +146,18 @@ const ListingDetail = ({ userRole, user }) => {
 
   return (
     <div style={{ position: 'relative' }}>
-      <style>{calendarStyles}</style>
+      <AnimatePresence>
+        {isLightboxOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={lightboxOverlayStyle}>
+            <button onClick={() => setIsLightboxOpen(false)} style={closeLightboxBtnStyle}><X size={32} /></button>
+            <button onClick={prevImage} style={lightboxNavBtnStyle('left')}><ChevronLeft size={48} /></button>
+            <motion.img initial={{ scale: 0.9 }} animate={{ scale: 1 }} src={listing.images[activeImage]} style={lightboxImgStyle} />
+            <button onClick={nextImage} style={lightboxNavBtnStyle('right')}><ChevronRight size={48} /></button>
+            <div style={lightboxCounterStyle}>{activeImage + 1} / {listing.images.length}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, backgroundColor: 'white', borderBottom: '1px solid #ddd', padding: '1rem 0', zIndex: 1000,
         transform: showSticky ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.3s ease-in-out', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
@@ -180,7 +177,8 @@ const ListingDetail = ({ userRole, user }) => {
         </div>
 
         <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', maxHeight: '700px', borderRadius: '12px', overflow: 'hidden', marginBottom: '2rem', backgroundColor: '#f0f0f0' }}>
-          <img src={listing.images[activeImage]} alt={listing.title} onError={(e) => e.target.src = placeholderImage} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={listing.images[activeImage]} alt={listing.title} onClick={() => setIsLightboxOpen(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }} />
+          <button onClick={() => setIsLightboxOpen(true)} style={maximizeBtnStyle}><Maximize size={18} /> Show all photos</button>
           {listing.images.length > 1 && (
             <><button onClick={prevImage} style={galleryBtnStyle('left')}><ChevronLeft size={30} /></button><button onClick={nextImage} style={galleryBtnStyle('right')}><ChevronRight size={30} /></button></>
           )}
@@ -190,15 +188,9 @@ const ListingDetail = ({ userRole, user }) => {
           <div style={{ flex: 2 }}>
             <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
               <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                <motion.div 
-                  whileHover={{ backgroundColor: '#f9f9f9' }}
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: '12px', cursor: 'pointer', border: '1px solid transparent', transition: 'all 0.2s' }}
-                >
-                  <div>
-                    <h2 style={{ margin: 0 }}>Entire home hosted by {listing.host.name}</h2>
-                    <p style={{ margin: '0.5rem 0 0', color: '#717171' }}>{listing.maxGuests} guests · {listing.bedrooms} bedroom · {listing.beds} bed</p>
-                  </div>
-                  <img src={listing.host.avatar} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} alt={listing.host.name} />
+                <motion.div whileHover={{ backgroundColor: '#f9f9f9' }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: '12px', cursor: 'pointer' }}>
+                  <div><h2 style={{ margin: 0 }}>Entire home hosted by {listing.host.name}</h2><p style={{ margin: '0.5rem 0 0', color: '#717171' }}>{listing.maxGuests} guests · {listing.bedrooms} bedroom · {listing.beds} bed</p></div>
+                  <img src={listing.host.avatar} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} alt={listing.host.name} />
                 </motion.div>
               </Link>
             </div>
@@ -215,16 +207,10 @@ const ListingDetail = ({ userRole, user }) => {
               <p style={{ lineHeight: '1.6' }}>{listing.fullDescription}</p>
             </div>
 
-            {/* UPDATED: AMENITIES WITH ICONS */}
             <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
               <h3>What this place offers</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginTop: '1rem' }}>
-                {listing.amenities.map((a, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#222', fontSize: '1.05rem' }}>
-                    <div style={{ color: '#717171' }}>{getAmenityIcon(a)}</div>
-                    {a}
-                  </div>
-                ))}
+                {listing.amenities.map((a, i) => (<div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#222', fontSize: '1.05rem' }}><div style={{ color: '#717171' }}>{getAmenityIcon(a)}</div>{a}</div>))}
               </div>
             </div>
 
@@ -243,7 +229,22 @@ const ListingDetail = ({ userRole, user }) => {
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1rem' }}>
-                {reviews.map(r => (<div key={r._id}><div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}><div style={{ background: '#eee', borderRadius: '50%', padding: '0.5rem' }}><User size={20} /></div><div><div style={{ fontWeight: 'bold' }}>{r.userId.name}</div><div style={{ color: '#717171', fontSize: '0.8rem' }}><Star size={12} fill="#000" /> {r.rating}</div></div></div><p style={{ fontSize: '0.9rem' }}>{r.comment || <em>Rated only</em>}</p></div>))}
+                {reviews.map(r => (
+                  <div key={r._id} style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                      <div style={{ background: '#eee', borderRadius: '50%', padding: '0.5rem' }}><User size={20} /></div>
+                      <div>
+                        <div style={{ fontWeight: 'bold' }}>{r.userId.name}</div>
+                        <div style={{ color: '#717171', fontSize: '0.8rem' }}><Star size={12} fill="#000" /> {r.rating}</div>
+                      </div>
+                      {/* --- NEW: Delete Review Button --- */}
+                      {(user?._id === r.userId._id || user?.id === r.userId._id) && (
+                        <button onClick={() => handleDeleteReview(r._id)} style={deleteReviewBtnStyle} title="Delete your review"><Trash2 size={16} /></button>
+                      )}
+                    </div>
+                    <p style={{ fontSize: '0.9rem' }}>{r.comment || <em>Rated only</em>}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -257,7 +258,6 @@ const ListingDetail = ({ userRole, user }) => {
               </div>
               {pricing.nights > 0 && (<div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>${listing.rate} x {pricing.nights} nights</span><span>${pricing.subtotal}</span></div><div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #eee', paddingTop: '0.5rem', fontSize: '1.1rem' }}><span>Total</span><span>${pricing.total}</span></div></div>)}
               {userRole === 'registered' ? <button onClick={handleReserve} style={bookingBtnStyle}>Reserve</button> : <Link to="/login" style={{ textDecoration: 'none' }}><button style={bookingBtnStyle}>Login to Reserve</button></Link>}
-              <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#717171', marginTop: '1rem' }}>You won't be charged yet</p>
             </div>
           </div>
         </div>
@@ -269,5 +269,12 @@ const ListingDetail = ({ userRole, user }) => {
 
 const galleryBtnStyle = (side) => ({ position: 'absolute', top: '50%', [side]: '1rem', transform: 'translateY(-50%)', backgroundColor: 'rgba(255,255,255,0.9)', border: '1px solid #ddd', borderRadius: '50%', padding: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 });
 const bookingBtnStyle = { width: '100%', padding: '1rem', backgroundColor: '#ff385c', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
+const maximizeBtnStyle = { position: 'absolute', bottom: '1.5rem', right: '1.5rem', padding: '0.6rem 1rem', backgroundColor: '#fff', border: '1px solid #222', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' };
+const lightboxOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 5000, display: 'flex', justifyContent: 'center', alignItems: 'center' };
+const lightboxImgStyle = { maxWidth: '90%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px' };
+const closeLightboxBtnStyle = { position: 'absolute', top: '2rem', left: '2rem', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' };
+const lightboxNavBtnStyle = (side) => ({ position: 'absolute', top: '50%', [side]: '2rem', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' });
+const lightboxCounterStyle = { position: 'absolute', bottom: '2rem', color: '#fff', fontSize: '1rem' };
+const deleteReviewBtnStyle = { background: 'none', border: 'none', color: '#717171', cursor: 'pointer', padding: '4px', marginLeft: 'auto', borderRadius: '4px', transition: 'all 0.2s' };
 
 export default ListingDetail;
