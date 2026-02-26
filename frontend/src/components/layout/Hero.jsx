@@ -3,9 +3,19 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles, Home } from 'lucide-react';
 
+/**
+ * ============================================================================
+ * HERO COMPONENT (The Dashboard Banner)
+ * ============================================================================
+ * This component evolved significantly during Phase 4 (UI/UX Polish).
+ * It transitioned from a basic text greeting to a high-fidelity, interactive
+ * dashboard banner featuring Framer Motion entrance animations and 
+ * context-aware interactive profile cards.
+ */
 const Hero = ({ user }) => {
   const userRole = user ? user.role : 'guest';
   
+  // Dynamic Text Generation based on RBAC
   const getHeading = () => {
     if (userRole === 'admin') return "Property Management";
     if (userRole === 'registered') return `Welcome back, ${user.name.split(' ')[0]}`;
@@ -18,25 +28,65 @@ const Hero = ({ user }) => {
     return "Find unique stays for your next trip";
   };
 
+  /* --- HISTORICAL CODE: PHASE 1 BASIC GREETING ---
+   * Before the "Dashboard-Style" refactor, the Hero was just a large centered block of text.
+   * We removed this because it took up too much vertical space on mobile and 
+   * felt like a generic landing page rather than a web application.
+   *
+   * return (
+   *   <div style={{ textAlign: 'center', padding: '2rem', backgroundColor: '#fff' }}>
+   *     <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>
+   *       {user ? `Where to next, ${user.name}?` : "Find your next adventure"}
+   *     </h2>
+   *     <p style={{ color: '#717171' }}>Log in to experience full features.</p>
+   *   </div>
+   * );
+   */
+
   return (
-    // ADDED CLASS: hero-container
     <div className="hero-container" style={bannerContainerStyle}>
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={contentWrapperStyle}>
+      {/* 
+        FRAMER MOTION: `initial` sets the starting state (invisible, shifted left).
+        `animate` tells React what state to smoothly transition into on mount. 
+      */}
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        transition={{ duration: 0.5 }} 
+        style={contentWrapperStyle}
+      >
         <div style={topRowStyle}>
           <div style={iconBadgeStyle}>{userRole === 'admin' ? <Home size={16} /> : <Sparkles size={16} />}</div>
-          <Link to="/" style={{ textDecoration: 'none' }}><span style={breadcrumbStyle}>AirBnB Lite / {userRole}</span></Link>
+          {/* Deep Linking: The breadcrumb acts as a quick reset/home button */}
+          <Link to="/" style={{ textDecoration: 'none' }}>
+            <span style={breadcrumbStyle}>AirBnB Lite / {userRole}</span>
+          </Link>
         </div>
-        {/* ADDED CLASS: hero-heading */}
         <h1 className="hero-heading" style={modernHeadingStyle}>{getHeading()}</h1>
         <p style={modernSubheadingStyle}>{getSubheading()}</p>
       </motion.div>
 
+      {/* 
+        INTERACTIVE PROFILE CARD
+        Added during Phase 5 to make the banner "useful". It acts as a large 
+        target for users to navigate to their settings. Includes tactile feedback 
+        (whileHover, whileTap).
+      */}
       {user && (
         <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-          {/* ADDED CLASS: profile-card */}
-          <motion.div className="profile-card" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02, backgroundColor: '#fcfcfc', borderColor: '#ff385c' }} whileTap={{ scale: 0.98 }} transition={{ delay: 0.2 }} style={profileCardStyle}>
+          <motion.div 
+            className="profile-card" 
+            initial={{ opacity: 0, scale: 0.9 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            whileHover={{ scale: 1.02, backgroundColor: '#fcfcfc', borderColor: '#ff385c' }} 
+            whileTap={{ scale: 0.98 }} 
+            transition={{ delay: 0.2 }} 
+            style={profileCardStyle}
+          >
             <div style={avatarCircleStyle}>
-              {user.avatar ? <img src={user.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} alt="Avatar" /> : user.name.charAt(0)}
+              {user.avatar ? (
+                <img src={user.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} alt="Avatar" />
+              ) : user.name.charAt(0)}
             </div>
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{user.name}</div>
@@ -49,6 +99,7 @@ const Hero = ({ user }) => {
   );
 };
 
+// --- STYLES ---
 const bannerContainerStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2rem 4rem', backgroundColor: '#fff', borderBottom: '1px solid #f0f0f0', maxWidth: '2560px', margin: '0 auto', width: '100%', boxSizing: 'border-box' };
 const contentWrapperStyle = { display: 'flex', flexDirection: 'column', gap: '0.5rem' };
 const topRowStyle = { display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.2rem' };

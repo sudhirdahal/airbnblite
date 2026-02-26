@@ -8,8 +8,17 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Toolti
 import API from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
 
+// Required boilerplate to use Chart.js within a React component
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+/**
+ * ============================================================================
+ * ADMIN DASHBOARD (The Host Management Suite)
+ * ============================================================================
+ * This component acts as the control center for 'admin' users (Hosts).
+ * It evolved from a basic CRUD form into a high-fidelity SaaS dashboard
+ * featuring Revenue Analytics, interactive thumbnails, and tabbed navigation.
+ */
 const AdminDashboard = ({ user, refreshListings }) => {
   const [activeTab, setActiveTab] = useState('listings');
   const [adminListings, setAdminListings] = useState([]);
@@ -17,6 +26,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   
+  // State for the Property Management Form
   const [formData, setFormData] = useState({
     _id: null, title: '', location: '', description: '', fullDescription: '', 
     rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
@@ -24,6 +34,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
   });
   const [isUploading, setIsUploading] = useState(false);
 
+  // Fetch fresh data every time the user switches tabs
   useEffect(() => { fetchAdminData(); }, [activeTab]);
 
   const fetchAdminData = async () => {
@@ -41,6 +52,32 @@ const AdminDashboard = ({ user, refreshListings }) => {
     } finally { setLoading(false); }
   };
 
+  /**
+   * HOST REVENUE ANALYTICS ENGINE
+   * We calculate the data for the Chart.js Bar chart dynamically on the frontend.
+   * It filters for 'confirmed' bookings, maps their 'totalPrice' to the correct
+   * month based on 'createdAt', and returns the formatted dataset.
+   */
+  const getChartData = () => {
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const revenueByMonth = new Array(12).fill(0);
+    
+    bookings.filter(b => b.status === 'confirmed').forEach(booking => {
+      const date = new Date(booking.createdAt);
+      revenueByMonth[date.getMonth()] += booking.totalPrice;
+    });
+    
+    return { 
+      labels: months, 
+      datasets: [{ 
+        label: 'Confirmed Revenue ($)', 
+        data: revenueByMonth, 
+        backgroundColor: '#ff385c', 
+        borderRadius: 8 
+      }] 
+    };
+  };
+
   const handleCancelBooking = async (id) => {
     if (!window.confirm("As a host, are you sure you want to cancel this reservation?")) return;
     const cancelToast = toast.loading('Cancelling booking...');
@@ -53,16 +90,6 @@ const AdminDashboard = ({ user, refreshListings }) => {
     }
   };
 
-  const getChartData = () => {
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const revenueByMonth = new Array(12).fill(0);
-    bookings.filter(b => b.status === 'confirmed').forEach(booking => {
-      const date = new Date(booking.createdAt);
-      revenueByMonth[date.getMonth()] += booking.totalPrice;
-    });
-    return { labels: months, datasets: [{ label: 'Confirmed Revenue ($)', data: revenueByMonth, backgroundColor: '#ff385c', borderRadius: 8 }] };
-  };
-
   const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((acc, curr) => acc + curr.totalPrice, 0);
   const totalBookings = bookings.filter(b => b.status === 'confirmed').length;
 
@@ -71,6 +98,11 @@ const AdminDashboard = ({ user, refreshListings }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  /**
+   * S3 IMAGE STREAMING (Admin Property Photos)
+   * Converts the selected file into FormData and POSTs it to our dedicated
+   * S3 upload route, returning a permanent cloud URL.
+   */
   const handleFileUpload = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     const data = new FormData(); data.append('image', file); 
@@ -130,8 +162,15 @@ const AdminDashboard = ({ user, refreshListings }) => {
 
   return (
     <div style={{ maxWidth: '2560px', width: '98%', margin: '2rem auto', padding: '0 2rem' }}>
+      
+      {/* 
+        PAGE HEADER COMPONENT
+        Introduced in Phase 4 to replace the basic HTML `<h1>Admin Dashboard</h1>`
+        and provide a unified, premium look across all internal app pages. 
+      */}
       <PageHeader title="Admin Dashboard" subtitle={`Welcome, ${user.name}. Control center for your ${adminListings.length} properties.`} icon={LayoutDashboard} />
       
+      {/* TAB NAVIGATION */}
       <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #ddd', marginBottom: '2rem' }}>
         <button onClick={() => setActiveTab('listings')} style={tabButtonStyle(activeTab === 'listings')}>My Listings</button>
         <button onClick={() => setActiveTab('bookings')} style={tabButtonStyle(activeTab === 'bookings')}>Manage Bookings</button>
@@ -139,6 +178,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
       </div>
 
       <AnimatePresence mode="wait">
+        
+        {/* ======================= INSIGHTS TAB ======================= */}
         {activeTab === 'insights' && (
           <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
@@ -149,12 +190,15 @@ const AdminDashboard = ({ user, refreshListings }) => {
           </motion.div>
         )}
 
+        {/* ======================= LISTINGS TAB ======================= */}
         {activeTab === 'listings' && (
           <motion.div key="listings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h3 style={{ margin: 0 }}>Active Properties</h3>
               <button onClick={toggleForm} style={primaryButtonStyle}>{showForm ? <><X size={18} /> Cancel</> : <><PlusCircle size={18} /> Add New Listing</>}</button>
             </div>
+            
+            {/* CRUD FORM */}
             {showForm && (
               <div style={formContainerStyle}>
                 <form onSubmit={handleCreateOrUpdateListing} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
@@ -168,17 +212,26 @@ const AdminDashboard = ({ user, refreshListings }) => {
                   <select name="category" value={formData.category} onChange={handleChange} style={inputStyle}>
                     <option value="pools">Amazing Pools</option><option value="beach">Beachfront</option><option value="cabins">Cabins</option><option value="arctic">Arctic</option>
                   </select>
+                  
+                  {/* BULK IMAGE UPLOAD UI */}
                   <div style={{ gridColumn: 'span 2', padding: '1.5rem', border: '2px dashed #ddd', borderRadius: '16px', textAlign: 'center' }}>
                     <label style={{ cursor: 'pointer' }}><Upload size={32} /><div>{isUploading ? 'Streaming...' : 'Upload Image'}</div><input type="file" onChange={handleFileUpload} style={{ display: 'none' }} /></label>
                     <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1rem', justifyContent: 'center' }}>
                       {formData.images.map((url, i) => (<div key={i} style={{ position: 'relative' }}><img src={url} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }} /><button type="button" onClick={() => handleRemoveImage(i)} style={removeImgBtnStyle}>X</button></div>))}
                     </div>
                   </div>
+                  
                   <textarea name="fullDescription" placeholder="Description" value={formData.fullDescription} onChange={handleChange} style={{ ...inputStyle, gridColumn: 'span 2', height: '100px' }} required />
                   <button type="submit" style={{ ...primaryButtonStyle, gridColumn: 'span 2' }}>Save Property</button>
                 </form>
               </div>
             )}
+
+            {/* 
+              INTERACTIVE LISTINGS TABLE 
+              During Phase 4, we upgraded this from plain text `<td>{l.title}</td>` 
+              to include clickable image thumbnails and deep links. 
+            */}
             <div style={tableWrapperStyle}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead><tr style={tableHeaderRowStyle}><th style={thStyle}>Listing</th><th style={thStyle}>Rate</th><th style={thStyle}>Actions</th></tr></thead>
               <tbody>{adminListings.map(l => (
@@ -192,6 +245,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
           </motion.div>
         )}
 
+        {/* ======================= BOOKINGS TAB ======================= */}
         {activeTab === 'bookings' && (
           <motion.div key="bookings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <h3 style={{ marginBottom: '1.5rem' }}>Guest Reservations</h3>
@@ -219,6 +273,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
   );
 };
 
+// --- STYLES ---
 const tabButtonStyle = (isActive) => ({ padding: '1rem 0', background: 'none', border: 'none', borderBottom: isActive ? '3px solid #ff385c' : '3px solid transparent', color: isActive ? '#000' : '#717171', fontWeight: isActive ? 'bold' : '600', cursor: 'pointer', fontSize: '1rem', transition: 'all 0.3s' });
 const primaryButtonStyle = { backgroundColor: '#222', color: 'white', border: 'none', padding: '0.7rem 1.4rem', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' };
 const inputStyle = { padding: '0.8rem', borderRadius: '12px', border: '1px solid #ddd', fontSize: '1rem', outline: 'none', backgroundColor: '#fff' };
