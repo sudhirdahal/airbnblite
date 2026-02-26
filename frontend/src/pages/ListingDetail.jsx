@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize,
+  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize, Camera, Upload,
   Wifi, Coffee, Tv, Wind, Utensils, Waves, Car, Shield, Dumbbell 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,10 +35,18 @@ const ListingDetail = ({ userRole, user }) => {
   const [loading, setLoading] = useState(true);       
   const [activeImage, setActiveImage] = useState(0);  
   const [showSticky, setShowSticky] = useState(false); 
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false); // --- NEW: Lightbox state ---
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   
   const placeholderImage = "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80";
 
+  // Review Form States
+  const [userRating, setUserRating] = useState(0);
+  const [userComment, setUserComment] = useState('');
+  const [reviewImages, setReviewImages] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  // Calendar States
   const [dateRange, setDateRange] = useState([null, null]); 
   const [pricing, setPricing] = useState({ nights: 0, subtotal: 0, serviceFee: 0, total: 0 });
 
@@ -68,13 +76,12 @@ const ListingDetail = ({ userRole, user }) => {
       setTakenDates(takenRes.data);
       if (user) {
         const existing = reviewsRes.data.find(r => r.userId._id === user._id || r.userId === user._id);
-        if (existing) setUserRating(existing.rating);
+        if (existing) {
+          setUserRating(existing.rating);
+          setReviewImages(existing.images || []);
+        }
       }
-    } catch (err) {
-      console.error('Error fetching data:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -84,15 +91,41 @@ const ListingDetail = ({ userRole, user }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [id, user]);
 
+  // --- NEW: Review Image Upload Handler ---
+  const handleReviewPhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const data = new FormData();
+    data.append('image', file);
+    setIsUploading(true);
+    const uploadToast = toast.loading('Uploading photo...');
+    try {
+      const response = await API.post('/reviews/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setReviewImages(prev => [...prev, response.data.imageUrl]);
+      toast.success('Photo added!', { id: uploadToast });
+    } catch (err) { toast.error('Upload failed', { id: uploadToast }); } finally { setIsUploading(false); }
+  };
+
   const handleDeleteReview = async (reviewId) => {
-    if (!window.confirm("Are you sure you want to delete your review?")) return;
+    if (!window.confirm("Delete your review?")) return;
     try {
       await API.delete(`/reviews/${reviewId}`);
       toast.success("Review deleted");
-      fetchListingAndReviews(); // Refresh stats and list
-    } catch (err) {
-      toast.error("Failed to delete review");
-    }
+      fetchListingAndReviews();
+    } catch (err) { toast.error("Failed"); }
+  };
+
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    setSubmittingReview(true);
+    try {
+      await API.post('/reviews', { listingId: id, comment: userComment, images: reviewImages });
+      setUserComment('');
+      setReviewImages([]);
+      fetchListingAndReviews();
+      toast.success('Review published!');
+    } catch (err) {}
+    finally { setSubmittingReview(false); }
   };
 
   const isDateTaken = ({ date, view }) => {
@@ -104,37 +137,6 @@ const ListingDetail = ({ userRole, user }) => {
       const end = new Date(booking.checkOut);
       return date >= start && date < end; 
     });
-  };
-
-  const handleReserve = async () => {
-    if (!dateRange[0] || !dateRange[1]) return toast.error("Please select your dates on the calendar.");
-    navigate('/pay', { state: { 
-      listingId: id, 
-      bookingDetails: { checkIn: dateRange[0].toISOString(), checkOut: dateRange[1].toISOString(), total: pricing.total, nights: pricing.nights },
-      listing
-    }});
-  };
-
-  const [userRating, setUserRating] = useState(0);
-  const [userComment, setUserComment] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
-
-  const handleRatingSubmit = async (rating) => {
-    if (!user) return toast.error("Please log in to rate");
-    setUserRating(rating);
-    try { await API.post('/reviews', { listingId: id, rating }); fetchListingAndReviews(); toast.success(`Rated ${rating} stars!`); } catch (err) {}
-  };
-
-  const handleCommentSubmit = async (e) => {
-    e.preventDefault();
-    setSubmittingReview(true);
-    try {
-      await API.post('/reviews', { listingId: id, comment: userComment });
-      setUserComment('');
-      fetchListingAndReviews();
-      toast.success('Review posted!');
-    } catch (err) {}
-    finally { setSubmittingReview(false); }
   };
 
   if (loading) return <div style={{ textAlign: 'center', padding: '4rem' }}>Loading details...</div>;
@@ -164,7 +166,7 @@ const ListingDetail = ({ userRole, user }) => {
       }}>
         <div style={{ maxWidth: '100%', width: '100%', padding: '0 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><div style={{ fontWeight: 'bold' }}>${listing.rate} night</div><div style={{ fontSize: '0.8rem' }}><Star size={12} fill="#000" /> {listing.rating} · {listing.reviewsCount} reviews</div></div>
-          {userRole === 'registered' ? <button onClick={handleReserve} style={bookingBtnStyle}>Reserve</button> : <Link to="/login" style={{ textDecoration: 'none' }}><button style={bookingBtnStyle}>Login to Reserve</button></Link>}
+          {userRole === 'registered' ? <button onClick={() => window.scrollTo({ top: 600, behavior: 'smooth' })} style={bookingBtnStyle}>Reserve</button> : <Link to="/login" style={{ textDecoration: 'none' }}><button style={bookingBtnStyle}>Login to Reserve</button></Link>}
         </div>
       </div>
 
@@ -223,26 +225,45 @@ const ListingDetail = ({ userRole, user }) => {
                     {[1, 2, 3, 4, 5].map((star) => (<Star key={star} size={32} fill={star <= userRating ? "#ff385c" : "none"} color={star <= userRating ? "#ff385c" : "#717171"} style={{ cursor: 'pointer' }} onClick={() => handleRatingSubmit(star)} />))}
                   </div>
                   <form onSubmit={handleCommentSubmit}>
-                    <textarea placeholder="Optional: Tell us more..." value={userComment} onChange={(e) => setUserComment(e.target.value)} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ddd', height: '80px', marginBottom: '1rem' }} />
-                    <button type="submit" disabled={submittingReview} style={{ ...bookingBtnStyle, width: 'auto', padding: '0.6rem 1.5rem', backgroundColor: '#222' }}>{submittingReview ? 'Saving...' : 'Post Written Review'}</button>
+                    <div style={{ position: 'relative' }}>
+                      <textarea placeholder="Tell us about your stay..." value={userComment} onChange={(e) => setUserComment(e.target.value)} style={{ width: '100%', padding: '1rem', paddingRight: '3rem', borderRadius: '12px', border: '1px solid #ddd', minHeight: '100px', marginBottom: '1rem' }} />
+                      <label style={cameraReviewBtnStyle}><Camera size={20} /><input type="file" onChange={handleReviewPhotoUpload} style={{ display: 'none' }} accept="image/*" /></label>
+                    </div>
+                    {/* Review Photo Preview */}
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                      {reviewImages.map((url, i) => (
+                        <div key={i} style={{ position: 'relative' }}>
+                          <img src={url} style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} alt="preview" />
+                          <button type="button" onClick={() => setReviewImages(prev => prev.filter((_, idx) => idx !== i))} style={removeImgBadgeStyle}>X</button>
+                        </div>
+                      ))}
+                    </div>
+                    <button type="submit" disabled={submittingReview} style={{ ...bookingBtnStyle, width: 'auto', padding: '0.6rem 1.5rem', backgroundColor: '#222' }}>{submittingReview ? 'Publishing...' : 'Post Visual Review'}</button>
                   </form>
                 </div>
               )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1rem' }}>
                 {reviews.map(r => (
-                  <div key={r._id} style={{ position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
-                      <div style={{ background: '#eee', borderRadius: '50%', padding: '0.5rem' }}><User size={20} /></div>
-                      <div>
+                  <div key={r._id} style={{ padding: '1.5rem', border: '1px solid #eee', borderRadius: '16px', backgroundColor: '#fff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1rem' }}>
+                      <div style={avatarSmallStyle}>{r.userId.avatar ? <img src={r.userId.avatar} style={{ width: '100%', height: '100%', borderRadius: '50%' }} /> : <User size={20} />}</div>
+                      <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 'bold' }}>{r.userId.name}</div>
-                        <div style={{ color: '#717171', fontSize: '0.8rem' }}><Star size={12} fill="#000" /> {r.rating}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem' }}><Star size={12} fill="#000" /> {r.rating} · {new Date(r.createdAt).toLocaleDateString()}</div>
                       </div>
-                      {/* --- NEW: Delete Review Button --- */}
                       {(user?._id === r.userId._id || user?.id === r.userId._id) && (
-                        <button onClick={() => handleDeleteReview(r._id)} style={deleteReviewBtnStyle} title="Delete your review"><Trash2 size={16} /></button>
+                        <button onClick={() => handleDeleteReview(r._id)} style={deleteReviewBtnStyle}><Trash2 size={16} /></button>
                       )}
                     </div>
-                    <p style={{ fontSize: '0.9rem' }}>{r.comment || <em>Rated only</em>}</p>
+                    <p style={{ fontSize: '0.95rem', lineHeight: '1.5', margin: '0 0 1rem 0' }}>{r.comment || <em>Rated only</em>}</p>
+                    {/* RENDER REVIEW IMAGES */}
+                    {r.images?.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {r.images.map((img, i) => (
+                          <img key={i} src={img} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover', cursor: 'zoom-in' }} onClick={() => { setActiveImage(listing.images.indexOf(img) === -1 ? 0 : listing.images.indexOf(img)); setIsLightboxOpen(true); }} />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -267,6 +288,7 @@ const ListingDetail = ({ userRole, user }) => {
   );
 };
 
+// --- STYLES ---
 const galleryBtnStyle = (side) => ({ position: 'absolute', top: '50%', [side]: '1rem', transform: 'translateY(-50%)', backgroundColor: 'rgba(255,255,255,0.9)', border: '1px solid #ddd', borderRadius: '50%', padding: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 });
 const bookingBtnStyle = { width: '100%', padding: '1rem', backgroundColor: '#ff385c', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
 const maximizeBtnStyle = { position: 'absolute', bottom: '1.5rem', right: '1.5rem', padding: '0.6rem 1rem', backgroundColor: '#fff', border: '1px solid #222', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' };
@@ -275,6 +297,9 @@ const lightboxImgStyle = { maxWidth: '90%', maxHeight: '85vh', objectFit: 'conta
 const closeLightboxBtnStyle = { position: 'absolute', top: '2rem', left: '2rem', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' };
 const lightboxNavBtnStyle = (side) => ({ position: 'absolute', top: '50%', [side]: '2rem', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#fff', cursor: 'pointer' });
 const lightboxCounterStyle = { position: 'absolute', bottom: '2rem', color: '#fff', fontSize: '1rem' };
-const deleteReviewBtnStyle = { background: 'none', border: 'none', color: '#717171', cursor: 'pointer', padding: '4px', marginLeft: 'auto', borderRadius: '4px', transition: 'all 0.2s' };
+const deleteReviewBtnStyle = { background: 'none', border: 'none', color: '#717171', cursor: 'pointer', padding: '4px', marginLeft: 'auto' };
+const cameraReviewBtnStyle = { position: 'absolute', right: '1rem', top: '1rem', color: '#717171', cursor: 'pointer' };
+const removeImgBadgeStyle = { position: 'absolute', top: -5, right: -5, backgroundColor: '#ff385c', color: 'white', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px', cursor: 'pointer' };
+const avatarSmallStyle = { width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' };
 
 export default ListingDetail;

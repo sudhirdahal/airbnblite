@@ -17,7 +17,7 @@ Established a secure, decoupled architecture using a monorepo structure.
 Advanced features with production-grade edge-case handling.
 - **Chat Hydration:** Resolving data gaps in Socket.IO broadcasts via `.populate()`.
 - **Search Logic:** High-precision discovery using MongoDB `$nin` for availability and `$all` for multi-amenity filtering.
-- **Personalization:** Integrated an avatar upload pipeline streaming directly to **AWS S3**.
+- **Visual Feedback:** Integrated an avatar and review-photo pipeline streaming directly to **AWS S3**.
 
 ---
 
@@ -34,16 +34,16 @@ Traced the journey from blind database saves to a proactive, conflict-aware engi
 
 Industry-standard visual patterns for a "Premium" SaaS experience.
 - **Visual Feedback:** CSS-animated Skeleton loaders and React Hot Toasts.
+- **Content Enrichment:** Implemented a **Cinematic Lightbox** and **Visual Reviews** (User-uploaded photos in feedback).
 - **Motion Design:** Framer Motion for cinematic page transitions and interactive action cards.
-- **Responsive Design:** Overhauled the UI for mobile devices, including a Slide-out Hamburger menu and vertical search transformations.
 
 ---
 
 ## ☁️ Phase 5: Cloud Migration & Production Readiness
 
 Transitioned from `localhost` to a distributed cloud environment.
-- **Cloud Storage:** Migration from Multer `diskStorage` to **AWS S3** for permanent media hosting.
-- **Deployment:** Zero-cost production hosting using Render (Backend) and Vercel (Frontend).
+- **Cloud Storage:** Migration from Multer `diskStorage` to **Amazon S3** for permanent media hosting across Listings, Avatars, and Reviews.
+- **Deployment:** Production hosting using Render (Backend) and Vercel (Frontend).
 
 ## 🚀 Pro-Grade Evolution Summary
 
@@ -51,9 +51,9 @@ Transitioned from `localhost` to a distributed cloud environment.
 | :--- | :--- | :--- |
 | **Booking** | From Basic Entry to Proactive Calendar Blocking | Prevents conflicts & improves UX |
 | **UI State** | From "Loading" Text to Skeleton Pulse Loaders | Improves perceived speed & performance |
-| **Feedback** | From Browser Alerts to Themed Toast Notifications | Modern, non-blocking communication |
 | **Hosting** | From Listing CRUD to Data-Driven Analytics | Professional tools for Host management |
 | **Storage** | From Local uploads/ to Permanent AWS S3 | Prepares app for cloud deployment |
+| **Reviews** | From Plain Text to Visual Photo Reviews | Content richness and social proof |
 | **Profile** | From Basic Name Edit to S3-Powered Avatars | Gamification and user retention |
 | **Layout** | From Desktop-Only to Mobile-Responsive | Accessible UX across all device types |
 
