@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../services/socket';
-import { Send, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react';
+import { ArrowUp, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react'; // --- CHANGED: ArrowUp ---
 import { formatDistanceToNow } from 'date-fns'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
 /**
- * ChatWindow Component: Updated with a reinforced, high-fidelity Send button.
+ * ChatWindow Component: Final UX Overhaul for the Send Button.
+ * Switched to 'ArrowUp' for a cleaner, modern look similar to premium messaging apps.
  */
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -142,14 +143,14 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
             placeholder="Write a message..." 
             style={inputStyle} 
           />
-          {/* --- REINFORCED SEND BUTTON --- */}
+          {/* --- ULTIMATE SEND BUTTON --- */}
           <motion.button 
             type="submit" 
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05, backgroundColor: isHost ? '#310e5d' : '#e31c5f' }}
+            whileTap={{ scale: 0.95 }}
             style={sendBtnStyle(themeColor)}
           >
-            <Send size={20} color="white" style={{ marginLeft: '2px' }} />
+            <ArrowUp size={22} color="white" strokeWidth={3} />
           </motion.button>
         </form>
       </div>
@@ -159,19 +160,19 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
 // --- STYLES ---
 const floatingBtnStyle = (color) => ({ position: 'fixed', bottom: '30px', right: '30px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: color, color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 });
-const chatContainerStyle = { position: 'fixed', bottom: '100px', right: '30px', width: '380px', maxWidth: 'calc(100vw - 60px)', height: '520px', maxHeight: 'calc(100vh - 150px)', backgroundColor: 'white', borderRadius: '16px', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000, border: '1px solid #eee' };
-const headerStyle = (color) => ({ padding: '1rem', backgroundColor: color, color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
+const chatContainerStyle = { position: 'fixed', bottom: '100px', right: '30px', width: '380px', maxWidth: 'calc(100vw - 60px)', height: '540px', maxHeight: 'calc(100vh - 150px)', backgroundColor: 'white', borderRadius: '16px', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000, border: '1px solid #eee' };
+const headerStyle = (color) => ({ padding: '1.2rem', backgroundColor: color, color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
 const messageListStyle = { flexGrow: 1, padding: '1.2rem', overflowY: 'auto', backgroundColor: '#fcfcfc', display: 'flex', flexDirection: 'column' };
-const bubbleStyle = (isMe, color) => ({ padding: '0.75rem 1.1rem', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', backgroundColor: isMe ? color : '#fff', color: isMe ? 'white' : '#222', fontSize: '0.92rem', border: isMe ? 'none' : '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' });
-const timeStyle = (isMe) => ({ fontSize: '0.68rem', color: '#888', marginTop: '0.35rem', textAlign: isMe ? 'right' : 'left', marginRight: isMe ? '0.4rem' : 0, marginLeft: isMe ? 0 : '0.4rem', fontWeight: '500' });
-const senderNameStyle = { fontSize: '0.72rem', color: '#717171', marginLeft: '0.4rem', marginBottom: '0.2rem', fontWeight: '700' };
+const bubbleStyle = (isMe, color) => ({ padding: '0.8rem 1.2rem', borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px', backgroundColor: isMe ? color : '#fff', color: isMe ? 'white' : '#222', fontSize: '0.95rem', border: isMe ? 'none' : '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' });
+const timeStyle = (isMe) => ({ fontSize: '0.68rem', color: '#888', marginTop: '0.35rem', textAlign: isMe ? 'right' : 'left', marginRight: '0.4rem', marginLeft: '0.4rem', fontWeight: '500' });
+const senderNameStyle = { fontSize: '0.72rem', color: '#717171', marginLeft: '0.4rem', marginBottom: '0.3rem', fontWeight: '700' };
 const formStyle = { padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.8rem', backgroundColor: 'white', alignItems: 'center' };
 
 const inputStyle = { 
   flexGrow: 1, 
-  padding: '0.75rem 1.2rem', 
-  borderRadius: '24px', 
-  border: '1px solid #eee', 
+  padding: '0.8rem 1.4rem', 
+  borderRadius: '28px', 
+  border: '1.5px solid #eee', 
   outline: 'none', 
   fontSize: '1rem', 
   backgroundColor: '#f9f9f9',
@@ -179,19 +180,20 @@ const inputStyle = {
   WebkitAppearance: 'none'
 };
 
-// FIXED: Improved Centering and Size
+// REINFORCED DESIGN: Large, high-contrast action button
 const sendBtnStyle = (color) => ({ 
   backgroundColor: color, 
   border: 'none', 
   borderRadius: '50%', 
-  width: '46px', 
-  height: '46px', 
+  width: '48px', 
+  height: '48px', 
   display: 'flex', 
   alignItems: 'center', 
   justifyContent: 'center', 
   cursor: 'pointer',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  flexShrink: 0
+  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  flexShrink: 0,
+  transition: 'background-color 0.2s'
 });
 
 const unreadBadgeStyle = { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#222', color: 'white', borderRadius: '50%', width: '24px', height: '24px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' };
