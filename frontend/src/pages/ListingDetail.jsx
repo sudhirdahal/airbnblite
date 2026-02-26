@@ -11,15 +11,6 @@ import toast from 'react-hot-toast';
 import API from '../services/api'; 
 import ChatWindow from '../components/chat/ChatWindow'; 
 
-/**
- * ============================================================================
- * SMART AMENITY ICON MAPPER
- * ============================================================================
- * Early versions of the app just displayed standard checkmarks for every amenity.
- * To increase visual fidelity, we implemented this keyword-matching engine. 
- * It scans the text string from the database (e.g., "High-speed WiFi") and 
- * dynamically assigns a professional Lucide SVG icon.
- */
 const getAmenityIcon = (name) => {
   const n = name.toLowerCase();
   if (n.includes('wifi')) return <Wifi size={20} />;
@@ -34,11 +25,6 @@ const getAmenityIcon = (name) => {
   return <CheckCircle size={20} />;
 };
 
-/**
- * CUSTOM CALENDAR OVERRIDES
- * We inject CSS directly to override the default 'react-calendar' styles, 
- * giving it the "AirBnB Pink" branding and larger, touch-friendly tiles.
- */
 const calendarStyles = `
   .react-calendar { width: 100% !important; border: none !important; font-family: inherit !important; padding: 10px; }
   .react-calendar__tile--active { background: #ff385c !important; color: white !important; border-radius: 50%; }
@@ -54,46 +40,33 @@ const ListingDetail = ({ userRole, user }) => {
   const { id } = useParams(); 
   const navigate = useNavigate(); 
 
-  // --- CORE DATA STATES ---
   const [listing, setListing] = useState(null);       
   const [reviews, setReviews] = useState([]);         
   const [takenDates, setTakenDates] = useState([]);   
+  const [chatHistory, setChatHistory] = useState([]); // Array of previous messages
   const [loading, setLoading] = useState(true);       
-  
-  // --- UI STATES ---
   const [activeImage, setActiveImage] = useState(0);  
   const [showSticky, setShowSticky] = useState(false); 
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   
   const placeholderImage = "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80";
 
-  // --- REVIEW FORM STATES ---
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState('');
-  const [reviewImages, setReviewImages] = useState([]); // S3 photo URLs attached to a review
+  const [reviewImages, setReviewImages] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  // --- BOOKING ENGINE STATES ---
   const [dateRange, setDateRange] = useState([null, null]); 
   const [pricing, setPricing] = useState({ nights: 0, subtotal: 0, serviceFee: 0, total: 0 });
 
-  /**
-   * ============================================================================
-   * REAL-TIME PRICING ENGINE
-   * ============================================================================
-   * This effect runs every time the user clicks the calendar. It calculates
-   * the exact number of nights by finding the millisecond difference between
-   * the Check-In and Check-Out dates, then updates the UI immediately.
-   */
   useEffect(() => {
     if (dateRange[0] && dateRange[1] && listing) {
       const diffTime = Math.abs(dateRange[1] - dateRange[0]);
       const diffNights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
       if (diffNights > 0) {
         const subtotal = diffNights * listing.rate;
-        const serviceFee = Math.round(subtotal * 0.14); // 14% Service Fee
+        const serviceFee = Math.round(subtotal * 0.14);
         setPricing({ nights: diffNights, subtotal, serviceFee, total: subtotal + serviceFee });
       }
     } else {
@@ -102,33 +75,47 @@ const ListingDetail = ({ userRole, user }) => {
   }, [dateRange, listing]);
 
   /**
-   * DATA FETCHING PIPELINE
-   * Resolves three critical API calls simultaneously to minimize loading time.
+   * ============================================================================
+   * DATA FETCHING PIPELINE (V4)
+   * ============================================================================
+   * UPDATED: Now fetches chatHistory alongside listing data.
+   * This prevents "Chat Amnesia" where messages disappeared after refresh.
    */
   const fetchListingAndReviews = async () => {
     try {
-      const [listingRes, reviewsRes, takenRes] = await Promise.all([
+      const [listingRes, reviewsRes, takenRes, chatRes] = await Promise.all([
         API.get(`/listings/${id}`),
         API.get(`/reviews/${id}`),
-        API.get(`/bookings/listing/${id}/taken`) // Fetches blocked dates for the calendar
+        API.get(`/bookings/listing/${id}/taken`),
+        API.get(`/auth/chat-history/${id}`) // Fetch previous chat messages
       ]);
       
       setListing(listingRes.data);
       setReviews(reviewsRes.data);
       setTakenDates(takenRes.data);
-      
-      // Auto-populate the user's existing rating if they've reviewed this property before
+      setChatHistory(chatRes.data);
+
       if (user) {
         const existing = reviewsRes.data.find(r => r.userId._id === user._id || r.userId === user._id);
-        if (existing) {
-          setUserRating(existing.rating);
-          // NOTE: We intentionally DO NOT auto-populate `userComment` here.
-          // Early versions of the app did, which caused the text area to "stick" 
-          // after a user hit publish, confusing them.
-        }
+        if (existing) setUserRating(existing.rating);
       }
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
+
+  /* --- OLD CODE: PIPELINE (V3) ---
+  const fetchListingAndReviews = async () => {
+    try {
+      const [listingRes, reviewsRes, takenRes] = await Promise.all([
+        API.get(`/listings/${id}`),
+        API.get(`/reviews/${id}`),
+        API.get(`/bookings/listing/${id}/taken`)
+      ]);
+      setListing(listingRes.data);
+      setReviews(reviewsRes.data);
+      setTakenDates(takenRes.data);
+    } catch (err) {}
+  };
+  */
 
   useEffect(() => {
     fetchListingAndReviews();
@@ -137,16 +124,11 @@ const ListingDetail = ({ userRole, user }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [id, user]);
 
-  /**
-   * VISUAL REVIEW: PHOTO UPLOAD
-   * Streams a file to S3 and returns a permanent cloud URL to attach to the review.
-   */
   const handleReviewPhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const data = new FormData();
     data.append('image', file);
-    
     setIsUploading(true);
     const uploadToast = toast.loading('Uploading photo...');
     try {
@@ -161,7 +143,7 @@ const ListingDetail = ({ userRole, user }) => {
     try {
       await API.delete(`/reviews/${reviewId}`);
       toast.success("Review deleted");
-      fetchListingAndReviews(); // Re-fetch recalculates the average rating immediately
+      fetchListingAndReviews();
     } catch (err) { toast.error("Failed"); }
   };
 
@@ -170,7 +152,6 @@ const ListingDetail = ({ userRole, user }) => {
     setSubmittingReview(true);
     try {
       await API.post('/reviews', { listingId: id, comment: userComment, images: reviewImages });
-      // Reset form on success for visual confirmation
       setUserComment('');
       setReviewImages([]);
       fetchListingAndReviews();
@@ -179,24 +160,10 @@ const ListingDetail = ({ userRole, user }) => {
     finally { setSubmittingReview(false); }
   };
 
-  /**
-   * ============================================================================
-   * PROACTIVE CALENDAR BLOCKING
-   * ============================================================================
-   * This function runs for every single tile in the `react-calendar`.
-   * It checks if the current 'date' tile falls inside any of the 'takenDates'
-   * fetched from the database. If it returns `true`, the UI grays out the tile.
-   */
   const isDateTaken = ({ date, view }) => {
     if (view !== 'month') return false;
-    
-    // 1. Block the past
     const today = new Date(); today.setHours(0,0,0,0);
     if (date < today) return true;
-    
-    // 2. Block reserved ranges
-    // 'date < end' is used instead of '<=' to allow a new guest to check in 
-    // on the exact same morning the previous guest checks out.
     return takenDates.some(booking => {
       const start = new Date(booking.checkIn);
       const end = new Date(booking.checkOut);
@@ -206,8 +173,6 @@ const ListingDetail = ({ userRole, user }) => {
 
   const handleReserve = async () => {
     if (!dateRange[0] || !dateRange[1]) return toast.error("Please select your dates on the calendar.");
-    
-    // Pass booking data to the mock payment gateway via Router State
     navigate('/pay', { state: { 
       listingId: id, 
       bookingDetails: { checkIn: dateRange[0].toISOString(), checkOut: dateRange[1].toISOString(), total: pricing.total, nights: pricing.nights },
@@ -230,13 +195,6 @@ const ListingDetail = ({ userRole, user }) => {
 
   return (
     <div style={{ position: 'relative' }}>
-      
-      {/* ========================================================================
-          CINEMATIC LIGHTBOX
-          ========================================================================
-          Replaced a static image grid with this framer-motion powered modal.
-          It covers the entire screen (z-index: 5000) for an immersive gallery. 
-      */}
       <AnimatePresence>
         {isLightboxOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={lightboxOverlayStyle}>
@@ -250,8 +208,6 @@ const ListingDetail = ({ userRole, user }) => {
       </AnimatePresence>
 
       <style>{calendarStyles}</style>
-
-      {/* Sticky Header (Appears on scroll) */}
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, backgroundColor: 'white', borderBottom: '1px solid #ddd', padding: '1rem 0', zIndex: 1000,
         transform: showSticky ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.3s ease-in-out', boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
@@ -263,8 +219,6 @@ const ListingDetail = ({ userRole, user }) => {
       </div>
 
       <div style={{ maxWidth: '100%', width: '100%', margin: '2rem auto', padding: '0 2rem' }}>
-        
-        {/* Basic Info */}
         <h1>{listing.title}</h1>
         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           <div style={{ fontWeight: 'bold' }}><Star size={16} fill="#ff385c" color="#ff385c" /> {listing.rating}</div>
@@ -272,7 +226,6 @@ const ListingDetail = ({ userRole, user }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><MapPin size={16} /> {listing.location}</div>
         </div>
 
-        {/* Primary Hero Image */}
         <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', maxHeight: '700px', borderRadius: '12px', overflow: 'hidden', marginBottom: '2rem', backgroundColor: '#f0f0f0' }}>
           <img src={listing.images[activeImage]} alt={listing.title} onClick={() => setIsLightboxOpen(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'zoom-in' }} />
           <button onClick={() => setIsLightboxOpen(true)} style={maximizeBtnStyle}><Maximize size={18} /> Show all photos</button>
@@ -282,9 +235,7 @@ const ListingDetail = ({ userRole, user }) => {
         </div>
 
         <div style={{ display: 'flex', gap: '4rem', marginTop: '2rem' }}>
-          
           <div style={{ flex: 2 }}>
-            {/* Interactive Host Info */}
             <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
               <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <motion.div whileHover={{ backgroundColor: '#f9f9f9' }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderRadius: '12px', cursor: 'pointer' }}>
@@ -294,7 +245,6 @@ const ListingDetail = ({ userRole, user }) => {
               </Link>
             </div>
             
-            {/* Calendar Widget */}
             <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '2.5rem', marginBottom: '1.5rem' }}>
               <h3 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Availability</h3>
               <div style={{ padding: '1.5rem', border: '1px solid #ddd', borderRadius: '16px', boxShadow: '0 6px 20px rgba(0,0,0,0.05)', backgroundColor: 'white' }}>
@@ -314,11 +264,8 @@ const ListingDetail = ({ userRole, user }) => {
               </div>
             </div>
 
-            {/* Visual Reviews System */}
             <div style={{ marginTop: '2rem' }}>
               <h3><Star size={20} fill="#ff385c" color="#ff385c" /> {listing.rating} · {listing.reviewsCount} reviews</h3>
-              
-              {/* Form to leave a review */}
               {userRole === 'registered' && (
                 <div style={{ margin: '1.5rem 0', padding: '1.5rem', border: '1px solid #ddd', borderRadius: '12px', backgroundColor: '#f9f9f9' }}>
                   <h4>How was your stay?</h4>
@@ -328,8 +275,6 @@ const ListingDetail = ({ userRole, user }) => {
                   <form onSubmit={handleCommentSubmit}>
                     <div style={{ position: 'relative' }}>
                       <textarea placeholder="Tell us about your stay..." value={userComment} onChange={(e) => setUserComment(e.target.value)} style={{ width: '100%', padding: '1rem', paddingRight: '3rem', borderRadius: '12px', border: '1px solid #ddd', minHeight: '100px', marginBottom: '1rem' }} />
-                      
-                      {/* S3 Photo Uploader for Reviews */}
                       <label style={cameraReviewBtnStyle}><Camera size={20} /><input type="file" onChange={handleReviewPhotoUpload} style={{ display: 'none' }} accept="image/*" /></label>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -344,8 +289,6 @@ const ListingDetail = ({ userRole, user }) => {
                   </form>
                 </div>
               )}
-
-              {/* Rendering existing reviews */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1rem' }}>
                 {reviews.map(r => (
                   <div key={r._id} style={{ padding: '1.5rem', border: '1px solid #eee', borderRadius: '16px', backgroundColor: '#fff' }}>
@@ -373,51 +316,25 @@ const ListingDetail = ({ userRole, user }) => {
             </div>
           </div>
 
-          {/* ========================================================================
-              SIDEBAR BOOKING WIDGET
-              ======================================================================== */}
           <div style={{ flex: 1 }}>
             <div style={{ border: '1px solid #ddd', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 6px 16px rgba(0,0,0,0.12)', position: 'sticky', top: '100px' }}>
               <div style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>${listing.rate} / night</div>
-              
-              {/* --- HISTORICAL CODE: STAGE 1 & 2 HTML DATE INPUTS ---
-                  Before we implemented the interactive react-calendar, users had to 
-                  manually type or pick dates using basic HTML5 inputs. This led to a bad UX 
-                  where they could select taken dates and only find out it failed upon submission.
-                  
-                  <div style={{ border: '1px solid #ddd', borderRadius: '8px', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', borderBottom: '1px solid #ddd' }}>
-                      <div style={{ flex: 1, padding: '0.6rem', borderRight: '1px solid #ddd' }}>
-                        <label style={{ fontSize: '0.6rem', fontWeight: 'bold' }}>Check-in</label>
-                        <input type="date" onChange={(e) => setCheckIn(e.target.value)} />
-                      </div>
-                      <div style={{ flex: 1, padding: '0.6rem' }}>
-                        <label style={{ fontSize: '0.6rem', fontWeight: 'bold' }}>Checkout</label>
-                        <input type="date" onChange={(e) => setCheckOut(e.target.value)} />
-                      </div>
-                    </div>
-                  </div>
-              */}
-
-              {/* CURRENT STAGE 3: Calendar Range Display */}
               <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem', color: '#717171' }}>Reservation Details</div>
-                <div style={{ fontSize: '1rem', fontWeight: '500' }}>{dateRange[0] ? dateRange[0].toLocaleDateString() : 'Select dates on calendar'} - {dateRange[1] ? dateRange[1].toLocaleDateString() : ''}</div>
+                <div style={{ fontSize: '1rem', fontWeight: '500' }}>{dateRange[0] ? dateRange[0].toLocaleDateString() : 'Select dates'} - {dateRange[1] ? dateRange[1].toLocaleDateString() : ''}</div>
               </div>
-
-              {/* Dynamic Price Breakdown */}
               {pricing.nights > 0 && (<div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>${listing.rate} x {pricing.nights} nights</span><span>${pricing.subtotal}</span></div><div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #eee', paddingTop: '0.5rem', fontSize: '1.1rem' }}><span>Total</span><span>${pricing.total}</span></div></div>)}
               {userRole === 'registered' ? <button onClick={handleReserve} style={bookingBtnStyle}>Reserve</button> : <Link to="/login" style={{ textDecoration: 'none' }}><button style={bookingBtnStyle}>Login to Reserve</button></Link>}
             </div>
           </div>
         </div>
       </div>
-      <ChatWindow listingId={id} currentUser={user} isHost={isHost} />
+      {/* Passing chat history to window */}
+      <ChatWindow listingId={id} currentUser={user} isHost={isHost} history={chatHistory} />
     </div>
   );
 };
 
-// --- STYLES ---
 const galleryBtnStyle = (side) => ({ position: 'absolute', top: '50%', [side]: '1rem', transform: 'translateY(-50%)', backgroundColor: 'rgba(255,255,255,0.9)', border: '1px solid #ddd', borderRadius: '50%', padding: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 });
 const bookingBtnStyle = { width: '100%', padding: '1rem', backgroundColor: '#ff385c', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
 const maximizeBtnStyle = { position: 'absolute', bottom: '1.5rem', right: '1.5rem', padding: '0.6rem 1rem', backgroundColor: '#fff', border: '1px solid #222', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' };

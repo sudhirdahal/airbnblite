@@ -14,15 +14,13 @@ const saveMessage = async (senderId, listingId, content) => {
 };
 
 /**
- * Fetches unique conversations for the current user.
+ * @desc Fetch unique conversations for the current user (Inbox)
  */
 exports.getInbox = async (req, res) => {
   try {
-    // 1. Find all listings owned by the user (if they are a host)
     const myListings = await Listing.find({ adminId: req.user.id }).select('_id');
     const myListingIds = myListings.map(l => l._id);
 
-    // 2. Find all messages involving the user (as sender OR related to their listings)
     const messages = await Message.find({
       $or: [
         { sender: req.user.id },
@@ -33,18 +31,12 @@ exports.getInbox = async (req, res) => {
     .populate('listingId', 'title images')
     .sort({ timestamp: -1 });
 
-    // 3. Group by listingId to create "threads"
     const threads = {};
     messages.forEach(msg => {
       const lid = msg.listingId._id.toString();
       if (!threads[lid]) {
-        threads[lid] = {
-          listing: msg.listingId,
-          lastMessage: msg,
-          unreadCount: 0
-        };
+        threads[lid] = { listing: msg.listingId, lastMessage: msg, unreadCount: 0 };
       }
-      // Count unread if the user is NOT the sender
       if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
         threads[lid].unreadCount++;
       }
@@ -58,7 +50,7 @@ exports.getInbox = async (req, res) => {
 };
 
 /**
- * Marks all messages in a thread as read for the current recipient.
+ * @desc Mark messages as read in a thread
  */
 exports.markAsRead = async (req, res) => {
   try {
@@ -68,13 +60,11 @@ exports.markAsRead = async (req, res) => {
       { $set: { isRead: true } }
     );
     res.json({ success: true });
-  } catch (err) {
-    res.status(500).send('Server Error');
-  }
+  } catch (err) { res.status(500).send('Server Error'); }
 };
 
 /**
- * Fetches message history for a specific listing.
+ * @desc Fetch full chat history for a listing
  */
 exports.getMessageHistory = async (req, res) => {
   try {
@@ -82,27 +72,39 @@ exports.getMessageHistory = async (req, res) => {
       .populate('sender', 'name avatar')
       .sort({ timestamp: 1 });
     res.json(messages);
-  } catch (err) {
-    res.status(500).send('Server Error');
-  }
+  } catch (err) { res.status(500).send('Server Error'); }
 };
 
 exports.handleJoinRoom = (io, socket, listingId) => {
   socket.join(listingId);
 };
 
+/**
+ * @desc Real-time chat handler
+ * UPDATED: Now broadcasts 'listingId' to ensure frontend filtering works perfectly.
+ */
 exports.handleChatMessage = async (io, socket, msg) => {
   try {
     const savedMessage = await saveMessage(msg.senderId, msg.listingId, msg.content);
     await savedMessage.populate('sender', 'name avatar');
     
+    // --- NEW: COMPREHENSIVE PAYLOAD ---
     const payload = {
       _id: savedMessage._id,
+      listingId: msg.listingId, // Explicitly added for frontend route matching
       sender: { _id: savedMessage.sender._id, name: savedMessage.sender.name, avatar: savedMessage.sender.avatar },
       content: savedMessage.content,
       timestamp: savedMessage.timestamp,
       isRead: false
     };
+
+    /* --- OLD CODE: SIMPLE PAYLOAD ---
+    const payload = {
+      _id: savedMessage._id,
+      sender: { _id: savedMessage.sender._id, name: savedMessage.sender.name },
+      content: savedMessage.content
+    };
+    */
 
     io.to(msg.listingId).emit('chat message', payload);
   } catch (err) {
