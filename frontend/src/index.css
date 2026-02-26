@@ -1,38 +1,64 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* Global Responsive Overrides */
 
-  color-scheme: light;
-  color: #333;
-  background-color: #ffffff;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* --- NAVBAR RESPONSIVENESS --- */
+@media (max-width: 768px) {
+  .desktop-menu {
+    display: none !important;
+  }
+  .mobile-trigger {
+    display: block !important;
+  }
+  .navbar-inner {
+    padding: 0 1.5rem !important;
+  }
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  width: 100%;
+/* --- HERO RESPONSIVENESS --- */
+@media (max-width: 768px) {
+  .hero-container {
+    padding: 2rem 1.5rem !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1.5rem !important;
+  }
+  .hero-heading {
+    font-size: 1.6rem !important;
+  }
+  .profile-card {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
 }
 
-* {
-  box-sizing: border-box;
+/* --- GRID RESPONSIVENESS --- */
+@media (max-width: 768px) {
+  .listing-grid {
+    justify-content: center !important;
+  }
+  .listing-card {
+    width: 100% !important;
+    max-width: 400px !important;
+    margin: 1rem 0 !important;
+  }
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* --- SEARCHBAR RESPONSIVENESS --- */
+@media (max-width: 768px) {
+  .search-wrapper {
+    flex-direction: column !important;
+    border-radius: 20px !important;
+    padding: 1rem !important;
+    width: 95% !important;
+  }
+  .search-divider {
+    display: none !important;
+  }
+  .search-input-group {
+    width: 100% !important;
+    border-bottom: 1px solid #eee !important;
+    padding: 0.8rem 0 !important;
+  }
+  .search-input {
+    width: 100% !important;
   }
 }

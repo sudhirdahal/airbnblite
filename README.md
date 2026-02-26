@@ -35,7 +35,7 @@ Traced the journey from blind database saves to a proactive, conflict-aware engi
 Industry-standard visual patterns for a "Premium" SaaS experience.
 - **Visual Feedback:** CSS-animated Skeleton loaders and React Hot Toasts.
 - **Motion Design:** Framer Motion for cinematic page transitions and interactive action cards.
-- **Data Insights:** Revenue visualization for hosts via Chart.js.
+- **Responsive Design:** Overhauled the UI for mobile devices, including a Slide-out Hamburger menu and vertical search transformations.
 
 ---
 
@@ -55,6 +55,7 @@ Transitioned from `localhost` to a distributed cloud environment.
 | **Hosting** | From Listing CRUD to Data-Driven Analytics | Professional tools for Host management |
 | **Storage** | From Local uploads/ to Permanent AWS S3 | Prepares app for cloud deployment |
 | **Profile** | From Basic Name Edit to S3-Powered Avatars | Gamification and user retention |
+| **Layout** | From Desktop-Only to Mobile-Responsive | Accessible UX across all device types |
 
 ---
 **Designed and built to showcase the journey from concept to cloud.** 🚀🌐

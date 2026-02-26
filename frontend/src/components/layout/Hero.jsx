@@ -19,24 +19,24 @@ const Hero = ({ user }) => {
   };
 
   return (
-    <div style={bannerContainerStyle}>
+    // ADDED CLASS: hero-container
+    <div className="hero-container" style={bannerContainerStyle}>
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={contentWrapperStyle}>
         <div style={topRowStyle}>
           <div style={iconBadgeStyle}>{userRole === 'admin' ? <Home size={16} /> : <Sparkles size={16} />}</div>
           <Link to="/" style={{ textDecoration: 'none' }}><span style={breadcrumbStyle}>AirBnB Lite / {userRole}</span></Link>
         </div>
-        <h1 style={modernHeadingStyle}>{getHeading()}</h1>
+        {/* ADDED CLASS: hero-heading */}
+        <h1 className="hero-heading" style={modernHeadingStyle}>{getHeading()}</h1>
         <p style={modernSubheadingStyle}>{getSubheading()}</p>
       </motion.div>
 
       {user && (
         <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02, backgroundColor: '#fcfcfc', borderColor: '#ff385c' }} whileTap={{ scale: 0.98 }} transition={{ delay: 0.2 }} style={profileCardStyle}>
-            {/* UPDATED: Show Avatar Image if it exists */}
+          {/* ADDED CLASS: profile-card */}
+          <motion.div className="profile-card" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} whileHover={{ scale: 1.02, backgroundColor: '#fcfcfc', borderColor: '#ff385c' }} whileTap={{ scale: 0.98 }} transition={{ delay: 0.2 }} style={profileCardStyle}>
             <div style={avatarCircleStyle}>
-              {user.avatar ? (
-                <img src={user.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} alt="Avatar" />
-              ) : user.name.charAt(0)}
+              {user.avatar ? <img src={user.avatar} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} alt="Avatar" /> : user.name.charAt(0)}
             </div>
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{user.name}</div>
