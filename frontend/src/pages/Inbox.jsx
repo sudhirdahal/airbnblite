@@ -3,7 +3,7 @@ import { Mail, MessageCircle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import API from '../services/api';
-import socket from '../services/socket'; // --- IMPORT SOCKET ---
+import socket from '../services/socket';
 import PageHeader from '../components/layout/PageHeader';
 
 const Inbox = ({ user, onThreadOpened }) => {
@@ -21,15 +21,22 @@ const Inbox = ({ user, onThreadOpened }) => {
   useEffect(() => {
     fetchInbox();
 
-    // --- NEW: LISTEN FOR MESSAGES IN REAL-TIME ---
+    /**
+     * ========================================================================
+     * INSTANT INBOX SYNC
+     * ========================================================================
+     * BUG FIX: Switched from 'chat message' to 'new_message_alert'.
+     * Why: On this page, we aren't in any property rooms. We only hear
+     * events pushed to our PRIVATE USER ROOM.
+     */
     const handleNewMessageInbox = (message) => {
-      // Re-fetch the whole list to ensure correct sorting and unread counts
+      console.log("Inbox Socket: Refreshing list for new message...");
       fetchInbox();
     };
 
-    socket.on('chat message', handleNewMessageInbox);
+    socket.on('new_message_alert', handleNewMessageInbox);
     return () => {
-      socket.off('chat message', handleNewMessageInbox);
+      socket.off('new_message_alert', handleNewMessageInbox);
     };
   }, []);
 
@@ -50,13 +57,7 @@ const Inbox = ({ user, onThreadOpened }) => {
         <div style={emptyStateStyle}><Mail size={48} color="#ddd" /><h2>No messages yet</h2></div>
       ) : (
         <div style={{ display: 'grid', gap: '1rem' }}>
-          {threads.map(thread => (
-            <ThreadCard 
-              key={thread.listing._id} 
-              thread={thread} 
-              onOpen={() => handleOpenThread(thread.listing._id)} 
-            />
-          ))}
+          {threads.map(thread => (<ThreadCard key={thread.listing._id} thread={thread} onOpen={() => handleOpenThread(thread.listing._id)} />))}
         </div>
       )}
     </div>
@@ -70,14 +71,8 @@ const ThreadCard = ({ thread, onOpen }) => {
       <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', width: '100%' }}>
         <img src={listing.images[0]} style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover' }} alt="Thumb" />
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0 }}>{listing.title}</h3>
-            <span style={{ fontSize: '0.75rem' }}>{new Date(lastMessage.timestamp).toLocaleDateString()}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
-            <div style={{ fontWeight: 'bold' }}>{lastMessage.sender.name}:</div>
-            <p style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>{lastMessage.content}</p>
-          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3 style={{ margin: 0 }}>{listing.title}</h3><span style={{ fontSize: '0.75rem' }}>{new Date(lastMessage.timestamp).toLocaleDateString()}</span></div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}><div style={{ fontWeight: 'bold' }}>{lastMessage.sender.name}:</div><p style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>{lastMessage.content}</p></div>
         </div>
         {unreadCount > 0 && <div style={badgeStyle}>{unreadCount}</div>}
         <button style={actionLinkStyle}>View Chat <ArrowRight size={16} /></button>
