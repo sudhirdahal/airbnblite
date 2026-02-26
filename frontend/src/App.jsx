@@ -57,46 +57,54 @@ const App = () => {
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
   /**
-   * ============================================================================
-   * SCALABILITY FIX: EVENT-DRIVEN SYNC
-   * ============================================================================
-   * We've removed 'setInterval'. The app now only syncs:
-   * 1. On Initial Load.
-   * 2. When a Socket event 'new_notification' or 'new_message_alert' is pushed.
+   * CENTRALIZED SYNC ENGINE
+   * Fetches latest unread counts and notifications from the DB.
    */
   const syncUpdates = async () => {
-    if (!user) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
     try {
       const [inboxRes, notifRes] = await Promise.all([
         API.get('/auth/inbox'),
         API.get('/auth/notifications')
       ]);
-      setUnreadCount(inboxRes.data.reduce((acc, curr) => acc + curr.unreadCount, 0));
+      const totalUnread = inboxRes.data.reduce((acc, curr) => acc + curr.unreadCount, 0);
+      setUnreadCount(totalUnread);
       setNotifications(notifRes.data);
-    } catch (err) {}
+    } catch (err) {
+      console.error('Sync Error:', err);
+    }
   };
 
   useEffect(() => {
     if (!user) return;
     
     // Join private room for alerts
-    socket.emit('identify', user._id || user.id);
+    const myId = user._id || user.id;
+    socket.emit('identify', myId);
     
-    // Initial sync
+    // Initial sync on mount
     syncUpdates();
 
-    // Listen for pushes
-    const handleInstantUpdate = () => {
-      console.log("Socket: Received instant alert. Syncing UI...");
-      syncUpdates();
+    /**
+     * INSTANT SOCKET HANDLERS
+     * These fire the MOMENT the server pushes an event.
+     */
+    const handleInstantUpdate = (data) => {
+      console.log("Socket: Instant alert received. Refreshing global badges...");
+      syncUpdates(); // Re-fetch counts from DB immediately
     };
 
     socket.on('new_notification', handleInstantUpdate);
     socket.on('new_message_alert', handleInstantUpdate);
     
+    // Fallback polling (Reduced to 30s for safety)
+    const interval = setInterval(syncUpdates, 30000); 
+    
     return () => {
       socket.off('new_notification', handleInstantUpdate);
       socket.off('new_message_alert', handleInstantUpdate);
+      clearInterval(interval);
     };
   }, [user]);
 
@@ -129,6 +137,11 @@ const App = () => {
   const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
 
+  const ProtectedAdminRoute = ({ children }) => {
+    if (isAuthLoading) return null;
+    return user?.role === 'admin' ? children : <Navigate to="/" replace />;
+  };
+
   return (
     <Router>
       <div className="app" style={{ fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
@@ -156,7 +169,7 @@ const App = () => {
             <Route path="/inbox" element={<Inbox user={user} onThreadOpened={syncUpdates} />} />
             <Route path="/pay" element={<MockPayment />} />
             <Route path="/bookings" element={user ? <Bookings /> : <Navigate to="/login" replace />} />
-            <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard user={user} refreshListings={fetchListings} /> : <Navigate to="/" replace />} />
+            <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard user={user} refreshListings={fetchListings} /></ProtectedAdminRoute>} />
           </Routes>
         </main>
         <Footer />
