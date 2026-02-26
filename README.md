@@ -12,7 +12,7 @@ The initiation phase focused on building a secure, decoupled, and scalable "Head
 We adopted a unified structure to keep the full-stack logic tightly coupled during development while allowing for independent deployment pipelines.
 
 ### 2. Schema-Driven Data Integrity
-Using Mongoose, we enforced strict data structures to support advanced features like nested map coordinates and relational user features.
+Using Mongoose, we enforced strict data structures to support advanced features like nested map coordinates and capacity metadata (`maxGuests`, `bedrooms`).
 
 ---
 
@@ -29,8 +29,8 @@ Added defensive initialization in the controller: `if (!user.wishlist) user.wish
 ### 3. Advanced Search Logic (Availability & Capacity)
 Updated the `getListings` controller to perform a multi-collection exclusion query using the MongoDB `$nin` operator to hide properties with confirmed booking conflicts.
 
-### 4. Secure Review Deletion & Data Sync
-Implemented a deletion pipeline that verifies ownership and automatically triggers a recalculation of the Listing's `averageRating` and `reviewsCount` to maintain data accuracy.
+### 4. Advanced Amenity Filtering
+Implemented a multi-select filter engine using the MongoDB **`$all`** operator. This ensures that search results strictly contain *every* selected feature (e.g., WiFi + Pool), providing high-precision discovery.
 
 ---
 
@@ -92,6 +92,7 @@ Added a `vercel.json` rewrite rule to ensure the production server correctly rou
 | **Search** | From Manual Forms to One-Click Location Tags | Accelerated discovery & UX |
 | **Map** | From Static Pins to Interactive Mini-Card Popups | Visual discovery and deep-linking |
 | **Gallery** | From Static Grid to Cinematic Lightbox | Immersive property exploration |
+| **Filtering** | From Keyword Search to Multi-Amenity `$all` Logic | High-precision search results |
 
 ---
 **Happy coding and exploring AirBnB Lite!** 🚀🏠
