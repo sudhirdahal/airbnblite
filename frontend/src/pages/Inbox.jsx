@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, MessageCircle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns'; // --- NEW ---
 import API from '../services/api';
 import socket from '../services/socket';
 import PageHeader from '../components/layout/PageHeader';
@@ -12,8 +13,6 @@ const Inbox = ({ user, onThreadOpened }) => {
   const navigate = useNavigate();
 
   const fetchInbox = async () => {
-    // Note: We don't set 'loading' to true here to avoid the jarring full-page Loading screen
-    // during real-time background refreshes.
     try {
       const response = await API.get('/auth/inbox');
       setThreads(response.data);
@@ -22,16 +21,9 @@ const Inbox = ({ user, onThreadOpened }) => {
 
   useEffect(() => {
     fetchInbox();
-
-    const handleNewMessageInbox = (message) => {
-      // Direct silent refresh
-      fetchInbox();
-    };
-
+    const handleNewMessageInbox = (message) => fetchInbox();
     socket.on('new_message_alert', handleNewMessageInbox);
-    return () => {
-      socket.off('new_message_alert', handleNewMessageInbox);
-    };
+    return () => socket.off('new_message_alert', handleNewMessageInbox);
   }, []);
 
   const handleOpenThread = async (listingId) => {
@@ -42,7 +34,6 @@ const Inbox = ({ user, onThreadOpened }) => {
     } catch (err) { navigate(`/listing/${listingId}`); }
   };
 
-  // Only show the big loading spinner on the VERY FIRST load
   if (loading && threads.length === 0) return <div style={{ textAlign: 'center', padding: '4rem' }}>Connecting to messages...</div>;
 
   return (
@@ -66,8 +57,15 @@ const ThreadCard = ({ thread, onOpen }) => {
       <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', width: '100%' }}>
         <img src={listing.images[0]} style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover' }} alt="Thumb" />
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3 style={{ margin: 0 }}>{listing.title}</h3><span style={{ fontSize: '0.75rem' }}>{new Date(lastMessage.timestamp).toLocaleDateString()}</span></div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}><div style={{ fontWeight: 'bold' }}>{lastMessage.sender.name}:</div><p style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>{lastMessage.content}</p></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>{listing.title}</h3>
+            {/* --- NEW: RELATIVE TIME --- */}
+            <span style={{ fontSize: '0.75rem', color: '#717171' }}>{formatDistanceToNow(new Date(lastMessage.timestamp), { addSuffix: true })}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+            <div style={{ fontWeight: 'bold' }}>{lastMessage.sender.name}:</div>
+            <p style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '400px' }}>{lastMessage.content}</p>
+          </div>
         </div>
         {unreadCount > 0 && <div style={badgeStyle}>{unreadCount}</div>}
         <button style={actionLinkStyle}>View Chat <ArrowRight size={16} /></button>
