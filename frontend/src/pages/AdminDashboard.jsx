@@ -177,6 +177,10 @@ const AdminDashboard = ({ user, refreshListings }) => {
                   <input type="text" name="title" placeholder="Listing Title" value={formData.title} onChange={handleChange} style={inputStyle} required />
                   <input type="text" name="location" placeholder="Location (City, Country)" value={formData.location} onChange={handleChange} style={inputStyle} required />
                   <input type="number" name="rate" placeholder="Nightly Rate ($)" value={formData.rate} onChange={handleChange} style={inputStyle} required />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input type="number" name="maxGuests" placeholder="Guests" value={formData.maxGuests} onChange={handleChange} style={{ ...inputStyle, flex: 1 }} required />
+                    <input type="number" name="bedrooms" placeholder="Beds" value={formData.bedrooms} onChange={handleChange} style={{ ...inputStyle, flex: 1 }} required />
+                  </div>
                   <select name="category" value={formData.category} onChange={handleChange} style={inputStyle}>
                     <option value="pools">Amazing Pools</option><option value="beach">Beachfront</option><option value="cabins">Cabins</option><option value="arctic">Arctic</option>
                   </select>

@@ -186,7 +186,9 @@ const ListingDetail = ({ userRole, user }) => {
                 >
                   <div>
                     <h2 style={{ margin: 0 }}>Entire home hosted by {listing.host.name}</h2>
-                    <p style={{ margin: '0.5rem 0 0', color: '#717171' }}>Joined in 2026 · Superhost</p>
+                    <p style={{ margin: '0.5rem 0 0', color: '#717171' }}>
+                      {listing.maxGuests} guests · {listing.bedrooms} bedroom · {listing.beds} bed
+                    </p>
                   </div>
                   <img src={listing.host.avatar} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} alt={listing.host.name} />
                 </motion.div>
