@@ -1,33 +1,37 @@
 const Review = require('../models/Review');
 const Listing = require('../models/Listing');
+const { createNotification } = require('./notificationController'); // --- NEW: Trigger Notifications ---
 
 const updateListingRating = async (listingId) => {
   const reviews = await Review.find({ listingId });
   const listing = await Listing.findById(listingId);
-  if (reviews.length === 0) {
-    listing.reviewsCount = 0;
-    listing.rating = 4.5;
-  } else {
-    listing.reviewsCount = reviews.length;
-    const totalRating = reviews.reduce((acc, item) => item.rating + acc, 0);
-    listing.rating = Number((totalRating / reviews.length).toFixed(1));
-  }
+  if (reviews.length === 0) { listing.reviewsCount = 0; listing.rating = 4.5; } 
+  else { listing.reviewsCount = reviews.length; const totalRating = reviews.reduce((acc, item) => item.rating + acc, 0); listing.rating = Number((totalRating / reviews.length).toFixed(1)); }
   await listing.save();
 };
 
-// @desc Create or Update a review/rating (Including Images)
 exports.createReview = async (req, res) => {
-  const { listingId, rating, comment, images } = req.body; // --- UPDATED: images added ---
+  const { listingId, rating, comment, images } = req.body;
   try {
     let review = await Review.findOne({ listingId, userId: req.user.id });
     if (review) {
       if (rating !== undefined) review.rating = rating;
       if (comment !== undefined) review.comment = comment;
-      if (images !== undefined) review.images = images; // Save new photo set
+      if (images !== undefined) review.images = images;
       await review.save();
     } else {
       review = new Review({ listingId, userId: req.user.id, rating: rating || 5, comment: comment || '', images: images || [] });
       await review.save();
+      
+      // --- NEW: Notify the Host of a new review ---
+      const listing = await Listing.findById(listingId);
+      await createNotification({
+        recipient: listing.adminId,
+        type: 'review',
+        title: 'New Review!',
+        message: `A guest left a ${rating}-star review for ${listing.title}.`,
+        link: `/listing/${listingId}`
+      });
     }
     await updateListingRating(listingId);
     res.status(201).json(review);

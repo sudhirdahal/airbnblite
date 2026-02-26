@@ -17,7 +17,7 @@ Established a secure, decoupled architecture using a monorepo structure.
 Advanced features with production-grade edge-case handling.
 - **Search Logic:** High-precision discovery using MongoDB `$nin` for availability and `$all` for multi-amenity filtering.
 - **Personalization:** Integrated an avatar upload pipeline streaming directly to **AWS S3**.
-- **Pricing Engine:** Implemented a multi-guest-type pricing model (Adults/Children/Infants) with real-time occupancy validation.
+- **Integrated Alerts:** A centralized **Notification Center** that tracks bookings, reviews, and messages in real-time.
 
 ---
 
@@ -34,8 +34,8 @@ Traced the journey from blind database saves to a proactive, conflict-aware engi
 
 Industry-standard visual patterns for a "Premium" SaaS experience.
 - **Visual Feedback:** CSS-animated Skeleton loaders and React Hot Toasts.
-- **Interactive Map:** Marker pins with mini-card popups and deep linking.
-- **Responsive Design:** Overhauled the UI for mobile devices with a Slide-out Hamburger menu.
+- **Interactive Visuals:** Marker pin mini-cards, smart amenity icons, and cinematic lightboxes.
+- **Responsive Design:** Overhauled UI for mobile devices with animated slide-out navigation.
 
 ---
 
@@ -43,24 +43,25 @@ Industry-standard visual patterns for a "Premium" SaaS experience.
 
 Advanced messaging architecture to handle guest-host interactions.
 - **Thread Aggregation:** Backend logic to group messages into unique listing-based threads.
-- **Unread Tracking:** Global polling engine with real-time notification badges in the Navbar.
+- **Centralized Inbox:** Dedicated page for managing multi-property communications.
 
 ---
 
 ## ☁️ Phase 6: Cloud Migration & Production Readiness
 
 Transitioned from `localhost` to a distributed cloud environment.
-- **Cloud Storage:** Migration from Multer `diskStorage` to **AWS S3** for permanent hosting.
-- **Deployment:** Zero-cost production hosting using Render (Backend) and Vercel (Frontend).
+- **Cloud Storage:** Migration from Multer `diskStorage` to **Amazon S3** for permanent hosting.
+- **Deployment:** Production hosting using Render (Backend) and Vercel (Frontend).
 
 ## 🚀 Pro-Grade Evolution Summary
 
 | Feature | Evolutionary Step | Value Add |
 | :--- | :--- | :--- |
 | **Booking** | From Basic Entry to Proactive Calendar Blocking | Prevents conflicts & improves UX |
-| **Pricing** | From Single Rate to Multi-Guest Type Math | Professional, accurate billing |
 | **Messaging**| From Static Chat to Global Inbox + Unread Badges | High-end real-time communication |
+| **Alerts** | From Emails-only to In-App Notification Center | Real-time user engagement |
 | **Hosting** | From Listing CRUD to Data-Driven Analytics | Professional tools for Host management |
+| **Interactivity**| From Informative Text to Clickable Action Cards | High-fidelity "SaaS" feel |
 | **Storage** | From Local uploads/ to Permanent AWS S3 | Prepares app for cloud deployment |
 | **Layout** | From Desktop-Only to Mobile-Responsive | Accessible UX across all device types |
 
