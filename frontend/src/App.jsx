@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast'; 
 import Navbar from './components/layout/Navbar';
@@ -23,12 +23,6 @@ import Inbox from './pages/Inbox';
 import API from './services/api';
 import socket from './services/socket';
 
-/**
- * ============================================================================
- * HOME COMPONENT (The Interactive Discovery Layer)
- * ============================================================================
- * Manages the transition between Map and Grid view, and handles sorting.
- */
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
   const userRole = user ? user.role : 'guest';
   return (
@@ -50,13 +44,6 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
   );
 };
 
-/**
- * ============================================================================
- * MAIN APP COMPONENT (The Global State Authority)
- * ============================================================================
- * Initially just a routing container. It has evolved into the central 
- * synchronization hub for Auth, Real-time Alerts, and Global Search.
- */
 const App = () => {
   const [user, setUser] = useState(null);
   const [listings, setListings] = useState([]);
@@ -70,10 +57,12 @@ const App = () => {
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
   /**
-   * CENTRALIZED SYNC ENGINE (Phase 8 Scalability)
-   * Fetches the latest global alerts from the database.
+   * ============================================================================
+   * OPTIMIZED SYNC ENGINE (High-Fidelity Interaction)
+   * ============================================================================
+   * We use 'useCallback' to prevent unnecessary re-renders of the sync function.
    */
-  const syncUpdates = async () => {
+  const syncUpdates = useCallback(async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
@@ -84,20 +73,35 @@ const App = () => {
       const totalUnread = inboxRes.data.reduce((acc, curr) => acc + curr.unreadCount, 0);
       setUnreadCount(totalUnread);
       setNotifications(notifRes.data);
-    } catch (err) {}
-  };
+    } catch (err) {
+      console.error('Sync Error:', err);
+    }
+  }, [token => !!token]); // Dependencies ensure sync only happens when authorized
 
-  /**
-   * SOCKET NOTIFICATION LISTENER
-   * Listen for 'Push' events from the server to avoid high-overhead polling.
-   */
   useEffect(() => {
     if (!user) return;
-    socket.emit('identify', user._id || user.id);
-    syncUpdates(); // Initial sync
+    
+    const myId = user._id || user.id;
+    socket.emit('identify', myId);
+    
+    // Initial sync
+    syncUpdates();
 
-    const handleInstantUpdate = () => {
-      syncUpdates(); // Re-sync on every server push
+    /**
+     * ========================================================================
+     * ZERO-LAG SOCKET LISTENERS
+     * ========================================================================
+     * Instead of waiting for the HTTP round-trip, we update the local state 
+     * IMMEDIATELY (optimistic) and then fetch the official data from the DB.
+     */
+    const handleInstantUpdate = (payload) => {
+      console.log("Socket: Push received. Optimistically updating badge...");
+      
+      // 1. Instant local increment
+      setUnreadCount(prev => prev + 1);
+      
+      // 2. Official DB Sync (happens in background)
+      syncUpdates(); 
     };
 
     socket.on('new_notification', handleInstantUpdate);
@@ -107,9 +111,8 @@ const App = () => {
       socket.off('new_notification', handleInstantUpdate);
       socket.off('new_message_alert', handleInstantUpdate);
     };
-  }, [user]);
+  }, [user, syncUpdates]);
 
-  // Auth Initialization logic
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
@@ -119,10 +122,6 @@ const App = () => {
     fetchListings();
   }, []);
 
-  /**
-   * GLOBAL API DISPATCHER
-   * Formats complex search and sort queries into a unified backend request.
-   */
   const fetchListings = async (p = searchParams, c = activeCategory, s = sort) => {
     setLoading(true);
     try {
@@ -143,22 +142,10 @@ const App = () => {
   const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
 
-  /**
-   * ============================================================================
-   * PROTECTED ROUTE ARCHITECTURE (The 404/Redirect Fix)
-   * ============================================================================
-   * HISTORICAL CONTEXT: Initially, routes were unprotected or used naive checks
-   * like `user?.role === 'admin' ? ...`. This caused immediate redirects to "/" 
-   * on page refreshes because 'user' was null for 100ms during API boot.
-   */
   const ProtectedAdminRoute = ({ children }) => {
-    if (isAuthLoading) return null; // Wait for the API to confirm user status
+    if (isAuthLoading) return null;
     return user?.role === 'admin' ? children : <Navigate to="/" replace />;
   };
-
-  /* --- STAGE 1: PRIMITIVE ROUTING ---
-   * <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
-   */
 
   return (
     <Router>
