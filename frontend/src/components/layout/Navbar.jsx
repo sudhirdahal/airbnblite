@@ -23,30 +23,32 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
     <>
       {userRole === 'guest' ? (
         <>
-          <Link to="/login" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}>Log in</Link>
-          <Link to="/signup" style={{ ...navLinkStyle, ...signupBtnStyle }} onClick={() => setIsMobileMenuOpen(false)}>Sign up</Link>
+          <Link to="/login" style={navLinkStyle}>Log in</Link>
+          <Link to="/signup" style={{ ...navLinkStyle, ...signupBtnStyle }}>Sign up</Link>
         </>
       ) : (
         <>
-          {userRole === 'admin' && <Link to="/admin" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><LayoutDashboard size={18} /> Dashboard</Link>}
-          
-          <Link 
-            to="/inbox" 
-            style={navLinkStyle} 
-            onClick={() => {
-              setIsMobileMenuOpen(false);
-              if (onInboxClick) onInboxClick(); // Trigger immediate sync
-            }}
-          >
+          {userRole === 'admin' && <Link to="/admin" style={navLinkStyle}><LayoutDashboard size={18} /> Dashboard</Link>}
+          <Link to="/inbox" style={navLinkStyle} onClick={() => onInboxClick && onInboxClick()}>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <MessageSquare size={18} /> Inbox {unreadCount > 0 && <span style={badgeStyle}>{unreadCount}</span>}
+              <MessageSquare size={18} /> Inbox 
+              {/* NEW: ANIMATED PULSING BADGE */}
+              {unreadCount > 0 && (
+                <motion.span 
+                  initial={{ scale: 0.5 }}
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  style={badgeStyle}
+                >
+                  {unreadCount}
+                </motion.span>
+              )}
             </div>
           </Link>
-
-          <Link to="/wishlist" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><Heart size={18} /> Wishlist</Link>
-          <Link to="/bookings" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><Briefcase size={18} /> Trips</Link>
-          <Link to="/profile" style={navLinkStyle} onClick={() => setIsMobileMenuOpen(false)}><User size={18} /> Profile</Link>
-          <button onClick={() => { onLogout(); setIsMobileMenuOpen(false); }} style={logoutBtnStyle}><LogOut size={18} /> Logout</button>
+          <Link to="/wishlist" style={navLinkStyle}><Heart size={18} /> Wishlist</Link>
+          <Link to="/bookings" style={navLinkStyle}><Briefcase size={18} /> Trips</Link>
+          <Link to="/profile" style={navLinkStyle}><User size={18} /> Profile</Link>
+          <button onClick={onLogout} style={logoutBtnStyle}><LogOut size={18} /> Logout</button>
         </>
       )}
     </>
@@ -65,7 +67,14 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
             <div style={{ position: 'relative' }}>
               <button onClick={handleNotifClick} style={iconBtnStyle}>
                 <Bell size={22} />
-                {notifications.some(n => !n.isRead) && <div style={dotStyle} />}
+                {notifications.some(n => !n.isRead) && (
+                  /* NEW: PULSING ALERT DOT */
+                  <motion.div 
+                    animate={{ opacity: [1, 0.4, 1] }}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    style={dotStyle} 
+                  />
+                )}
               </button>
               <AnimatePresence>
                 {isNotifOpen && (
@@ -88,11 +97,11 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
           <button className="mobile-trigger" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} style={mobileTriggerStyle}>{isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}</button>
         </div>
       </div>
-      <AnimatePresence>{isMobileMenuOpen && (<motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} style={mobileDrawerStyle}><div style={mobileMenuContentStyle}><NavLinks /></div></motion.div>)}</AnimatePresence>
     </nav>
   );
 };
 
+// --- STYLES ---
 const navbarContainerStyle = { height: '80px', borderBottom: '1px solid #f0f0f0', backgroundColor: '#fff', position: 'sticky', top: 0, zIndex: 1000, width: '100%' };
 const navbarInnerStyle = { maxWidth: '2560px', margin: '0 auto', height: '100%', padding: '0 4rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
 const logoStyle = { display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' };
@@ -103,8 +112,6 @@ const navLinkStyle = { textDecoration: 'none', color: '#222', fontSize: '0.9rem'
 const signupBtnStyle = { backgroundColor: '#ff385c', color: '#fff' };
 const logoutBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: '#ff385c', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' };
 const mobileTriggerStyle = { display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' };
-const mobileDrawerStyle = { position: 'fixed', top: '80px', right: 0, bottom: 0, width: '280px', backgroundColor: '#fff', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)', zIndex: 999, borderLeft: '1px solid #f0f0f0' };
-const mobileMenuContentStyle = { display: 'flex', flexDirection: 'column', padding: '2rem', gap: '1.5rem' };
 const badgeStyle = { backgroundColor: '#ff385c', color: 'white', fontSize: '0.6rem', fontWeight: 'bold', minWidth: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' };
 const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: '#222', display: 'flex', position: 'relative' };
 const dotStyle = { position: 'absolute', top: '2px', right: '2px', width: '8px', height: '8px', backgroundColor: '#ff385c', borderRadius: '50%', border: '2px solid white' };
