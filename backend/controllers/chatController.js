@@ -33,18 +33,25 @@ exports.getInbox = async (req, res) => {
 
     const threads = {};
     messages.forEach(msg => {
+      // --- BUG FIX: DEFENSIVE CHECK ---
+      // If a property was deleted but messages remain, msg.listingId will be null.
+      // We skip these to prevent the "Cannot read properties of undefined (_id)" crash.
+      if (!msg.listingId || !msg.sender) return;
+
       const lid = msg.listingId._id.toString();
       if (!threads[lid]) {
         threads[lid] = { listing: msg.listingId, lastMessage: msg, unreadCount: 0 };
       }
-      if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
+      
+      // Safety check for sender ID before reading toString()
+      if (!msg.isRead && msg.sender._id && msg.sender._id.toString() !== req.user.id) {
         threads[lid].unreadCount++;
       }
     });
 
     res.json(Object.values(threads));
   } catch (err) {
-    console.error(err);
+    console.error('Inbox Error:', err.message);
     res.status(500).send('Server Error');
   }
 };
@@ -81,30 +88,20 @@ exports.handleJoinRoom = (io, socket, listingId) => {
 
 /**
  * @desc Real-time chat handler
- * UPDATED: Now broadcasts 'listingId' to ensure frontend filtering works perfectly.
  */
 exports.handleChatMessage = async (io, socket, msg) => {
   try {
     const savedMessage = await saveMessage(msg.senderId, msg.listingId, msg.content);
     await savedMessage.populate('sender', 'name avatar');
     
-    // --- NEW: COMPREHENSIVE PAYLOAD ---
     const payload = {
       _id: savedMessage._id,
-      listingId: msg.listingId, // Explicitly added for frontend route matching
+      listingId: msg.listingId,
       sender: { _id: savedMessage.sender._id, name: savedMessage.sender.name, avatar: savedMessage.sender.avatar },
       content: savedMessage.content,
       timestamp: savedMessage.timestamp,
       isRead: false
     };
-
-    /* --- OLD CODE: SIMPLE PAYLOAD ---
-    const payload = {
-      _id: savedMessage._id,
-      sender: { _id: savedMessage.sender._id, name: savedMessage.sender.name },
-      content: savedMessage.content
-    };
-    */
 
     io.to(msg.listingId).emit('chat message', payload);
   } catch (err) {
