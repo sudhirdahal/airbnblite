@@ -1,12 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User } from 'lucide-react';
-import { motion } from 'framer-motion'; // --- NEW: Animation Import ---
+import { 
+  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User,
+  Wifi, Coffee, Tv, Wind, Utensils, Waves, Car, Shield, Dumbbell // --- NEW: Amenity Icons ---
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import Calendar from 'react-calendar'; 
 import 'react-calendar/dist/Calendar.css'; 
 import toast from 'react-hot-toast';
 import API from '../services/api'; 
 import ChatWindow from '../components/chat/ChatWindow'; 
+
+// --- NEW: Amenity Icon Mapper ---
+const getAmenityIcon = (name) => {
+  const n = name.toLowerCase();
+  if (n.includes('wifi')) return <Wifi size={20} />;
+  if (n.includes('kitchen') || n.includes('cook')) return <Utensils size={20} />;
+  if (n.includes('pool')) return <Waves size={20} />;
+  if (n.includes('ac') || n.includes('air')) return <Wind size={20} />;
+  if (n.includes('tv') || n.includes('screen')) return <Tv size={20} />;
+  if (n.includes('breakfast')) return <Coffee size={20} />;
+  if (n.includes('park') || n.includes('garage')) return <Car size={20} />;
+  if (n.includes('gym') || n.includes('fit')) return <Dumbbell size={20} />;
+  if (n.includes('security') || n.includes('safe')) return <Shield size={20} />;
+  return <CheckCircle size={20} />; // Fallback
+};
 
 const calendarStyles = `
   .react-calendar { width: 100% !important; border: none !important; font-family: inherit !important; padding: 10px; }
@@ -112,18 +130,13 @@ const ListingDetail = ({ userRole, user }) => {
   const [submittingReview, setSubmittingReview] = useState(false);
 
   const handleRatingSubmit = async (rating) => {
-    if (!user) {
-      toast.error("Please log in to rate");
-      return;
-    }
+    if (!user) return toast.error("Please log in to rate");
     setUserRating(rating);
     try { 
       await API.post('/reviews', { listingId: id, rating }); 
       fetchListingAndReviews(); 
       toast.success(`You rated this ${rating} stars!`);
-    } catch (err) {
-      toast.error("Failed to save rating");
-    }
+    } catch (err) {}
   };
 
   const handleCommentSubmit = async (e) => {
@@ -134,9 +147,7 @@ const ListingDetail = ({ userRole, user }) => {
       setUserComment('');
       fetchListingAndReviews();
       toast.success('Review posted successfully!');
-    } catch (err) {
-      toast.error("Failed to post review");
-    }
+    } catch (err) {}
     finally { setSubmittingReview(false); }
   };
 
@@ -177,7 +188,6 @@ const ListingDetail = ({ userRole, user }) => {
 
         <div style={{ display: 'flex', gap: '4rem', marginTop: '2rem' }}>
           <div style={{ flex: 2 }}>
-            {/* NEW: Interactive Host Section */}
             <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
               <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <motion.div 
@@ -186,21 +196,12 @@ const ListingDetail = ({ userRole, user }) => {
                 >
                   <div>
                     <h2 style={{ margin: 0 }}>Entire home hosted by {listing.host.name}</h2>
-                    <p style={{ margin: '0.5rem 0 0', color: '#717171' }}>
-                      {listing.maxGuests} guests · {listing.bedrooms} bedroom · {listing.beds} bed
-                    </p>
+                    <p style={{ margin: '0.5rem 0 0', color: '#717171' }}>{listing.maxGuests} guests · {listing.bedrooms} bedroom · {listing.beds} bed</p>
                   </div>
                   <img src={listing.host.avatar} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} alt={listing.host.name} />
                 </motion.div>
               </Link>
             </div>
-
-            {/* --- OLD CODE (Non-interactive host section) ---
-            <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between' }}>
-              <div><h2>Entire home hosted by {listing.host.name}</h2><p>2 guests · 1 bedroom · 1 bed · 1 bath</p></div>
-              <img src={listing.host.avatar} style={{ width: '56px', height: '56px', borderRadius: '50%' }} alt={listing.host.name} />
-            </div>
-            */}
             
             <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '2.5rem', marginBottom: '1.5rem' }}>
               <h3 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Availability</h3>
@@ -212,6 +213,19 @@ const ListingDetail = ({ userRole, user }) => {
             <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
               <h3>About this space</h3>
               <p style={{ lineHeight: '1.6' }}>{listing.fullDescription}</p>
+            </div>
+
+            {/* UPDATED: AMENITIES WITH ICONS */}
+            <div style={{ borderBottom: '1px solid #ddd', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
+              <h3>What this place offers</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginTop: '1rem' }}>
+                {listing.amenities.map((a, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#222', fontSize: '1.05rem' }}>
+                    <div style={{ color: '#717171' }}>{getAmenityIcon(a)}</div>
+                    {a}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div style={{ marginTop: '2rem' }}>
@@ -239,22 +253,9 @@ const ListingDetail = ({ userRole, user }) => {
               <div style={{ marginBottom: '1rem', fontSize: '1.2rem', fontWeight: 'bold' }}>${listing.rate} / night</div>
               <div style={{ border: '1px solid #ddd', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem', color: '#717171' }}>Reservation Details</div>
-                <div style={{ fontSize: '1rem', fontWeight: '500' }}>
-                  {dateRange[0] ? dateRange[0].toLocaleDateString() : 'Select dates'} - {dateRange[1] ? dateRange[1].toLocaleDateString() : ''}
-                </div>
+                <div style={{ fontSize: '1rem', fontWeight: '500' }}>{dateRange[0] ? dateRange[0].toLocaleDateString() : 'Select dates'} - {dateRange[1] ? dateRange[1].toLocaleDateString() : ''}</div>
               </div>
-              {pricing.nights > 0 && (
-                <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span>${listing.rate} x {pricing.nights} nights</span>
-                    <span>${pricing.subtotal}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #eee', paddingTop: '0.5rem', fontSize: '1.1rem' }}>
-                    <span>Total</span>
-                    <span>${pricing.total}</span>
-                  </div>
-                </div>
-              )}
+              {pricing.nights > 0 && (<div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}><div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}><span>${listing.rate} x {pricing.nights} nights</span><span>${pricing.subtotal}</span></div><div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #eee', paddingTop: '0.5rem', fontSize: '1.1rem' }}><span>Total</span><span>${pricing.total}</span></div></div>)}
               {userRole === 'registered' ? <button onClick={handleReserve} style={bookingBtnStyle}>Reserve</button> : <Link to="/login" style={{ textDecoration: 'none' }}><button style={bookingBtnStyle}>Login to Reserve</button></Link>}
               <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#717171', marginTop: '1rem' }}>You won't be charged yet</p>
             </div>
