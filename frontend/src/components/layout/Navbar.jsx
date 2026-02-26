@@ -4,6 +4,16 @@ import { User, LogOut, Menu, X, Heart, Briefcase, LayoutDashboard, MessageSquare
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
+/**
+ * ============================================================================
+ * NAVBAR COMPONENT (The Global Navigation & Alert Hub)
+ * ============================================================================
+ * Initially a simple set of links, the Navbar has evolved into a 
+ * role-aware synchronization layer that manages:
+ * 1. Role-Based Access Control (RBAC) visibility.
+ * 2. Real-time Unread Message counters (Inbox).
+ * 3. System-level activity alerts (Bell).
+ */
 const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications = [], onNotificationRead, onInboxClick }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -11,13 +21,27 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
 
   const handleBrandClick = () => { resetHomeView(); navigate('/'); };
 
+  /**
+   * NOTIFICATION READ LOGIC
+   * When the user opens the bell dropdown, we assume they have seen 
+   * the alerts and proactively mark them as read on the backend.
+   */
   const handleNotifClick = async () => {
     setIsNotifOpen(!isNotifOpen);
     if (!isNotifOpen && notifications.some(n => !n.isRead)) {
       await API.put('/auth/notifications/read');
-      onNotificationRead(); 
+      onNotificationRead(); // Trigger parent state refresh
     }
   };
+
+  /* --- HISTORICAL STAGE 1: PRIMITIVE LINKS ---
+   * const NavLinks = () => (
+   *   <>
+   *     <Link to="/login">Login</Link>
+   *     <Link to="/signup">Signup</Link>
+   *   </>
+   * );
+   */
 
   const NavLinks = () => (
     <>
@@ -28,7 +52,9 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
         </>
       ) : (
         <>
+          {/* Admin Dashboard access only for 'admin' role */}
           {userRole === 'admin' && <Link to="/admin" style={navLinkStyle}>Dashboard</Link>}
+          
           <Link 
             to="/inbox" 
             style={navLinkStyle} 
@@ -38,12 +64,12 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
           >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <MessageSquare size={18} /> Inbox 
-              {/* --- FIXED: Removed Bobbing Animation --- */}
               {unreadCount > 0 && (
                 <span style={badgeStyle}>{unreadCount}</span>
               )}
             </div>
           </Link>
+
           <Link to="/wishlist" style={navLinkStyle}><Heart size={18} /> Wishlist</Link>
           <Link to="/bookings" style={navLinkStyle}><Briefcase size={18} /> Trips</Link>
           <Link to="/profile" style={navLinkStyle}><User size={18} /> Profile</Link>
@@ -67,7 +93,6 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
               <button onClick={handleNotifClick} style={iconBtnStyle}>
                 <Bell size={22} />
                 {notifications.some(n => !n.isRead) && (
-                  /* --- FIXED: Removed Pulsing from alert dot --- */
                   <div style={dotStyle} />
                 )}
               </button>
@@ -76,12 +101,16 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={notifDropdownStyle}>
                     <div style={{ padding: '1rem', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>Notifications</div>
                     <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                      {notifications.length === 0 ? <div style={{ padding: '2rem', textAlign: 'center' }}>No alerts</div> : notifications.map(n => (
-                        <div key={n._id} onClick={() => { setIsNotifOpen(false); navigate(n.link || '/'); }} style={notifCardStyle(n.isRead)}>
-                          <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{n.title}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#717171' }}>{n.message}</div>
-                        </div>
-                      ))}
+                      {notifications.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#717171' }}>No new alerts</div>
+                      ) : (
+                        notifications.map(n => (
+                          <div key={n._id} onClick={() => { setIsNotifOpen(false); navigate(n.link || '/'); }} style={notifCardStyle(n.isRead)}>
+                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{n.title}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#717171' }}>{n.message}</div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </motion.div>
                 )}

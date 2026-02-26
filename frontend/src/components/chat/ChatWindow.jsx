@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
 /**
- * ChatWindow Component: Updated with high-contrast mobile input fix.
+ * ChatWindow Component: Updated with a reinforced, high-fidelity Send button.
  */
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -135,7 +135,6 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
         </div>
 
         <form onSubmit={handleSendMessage} style={formStyle}>
-          {/* --- FIXED: Added explicit color and background for high-fidelity contrast on mobile --- */}
           <input 
             type="text" 
             value={newMessage} 
@@ -143,9 +142,15 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
             placeholder="Write a message..." 
             style={inputStyle} 
           />
-          <button type="submit" style={sendBtnStyle(themeColor)}>
-            <Send size={18} color="white" />
-          </button>
+          {/* --- REINFORCED SEND BUTTON --- */}
+          <motion.button 
+            type="submit" 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            style={sendBtnStyle(themeColor)}
+          >
+            <Send size={20} color="white" style={{ marginLeft: '2px' }} />
+          </motion.button>
         </form>
       </div>
     </>
@@ -160,9 +165,8 @@ const messageListStyle = { flexGrow: 1, padding: '1.2rem', overflowY: 'auto', ba
 const bubbleStyle = (isMe, color) => ({ padding: '0.75rem 1.1rem', borderRadius: isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', backgroundColor: isMe ? color : '#fff', color: isMe ? 'white' : '#222', fontSize: '0.92rem', border: isMe ? 'none' : '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' });
 const timeStyle = (isMe) => ({ fontSize: '0.68rem', color: '#888', marginTop: '0.35rem', textAlign: isMe ? 'right' : 'left', marginRight: isMe ? '0.4rem' : 0, marginLeft: isMe ? 0 : '0.4rem', fontWeight: '500' });
 const senderNameStyle = { fontSize: '0.72rem', color: '#717171', marginLeft: '0.4rem', marginBottom: '0.2rem', fontWeight: '700' };
-const formStyle = { padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.5rem', backgroundColor: 'white' };
+const formStyle = { padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.8rem', backgroundColor: 'white', alignItems: 'center' };
 
-// --- REFINED INPUT STYLE FOR MOBILE ---
 const inputStyle = { 
   flexGrow: 1, 
   padding: '0.75rem 1.2rem', 
@@ -171,11 +175,25 @@ const inputStyle = {
   outline: 'none', 
   fontSize: '1rem', 
   backgroundColor: '#f9f9f9',
-  color: '#222', // FIXED: Explicit dark text color
-  WebkitAppearance: 'none' // Prevent iOS styling interference
+  color: '#222',
+  WebkitAppearance: 'none'
 };
 
-const sendBtnStyle = (color) => ({ backgroundColor: color, border: 'none', borderRadius: '50%', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' });
+// FIXED: Improved Centering and Size
+const sendBtnStyle = (color) => ({ 
+  backgroundColor: color, 
+  border: 'none', 
+  borderRadius: '50%', 
+  width: '46px', 
+  height: '46px', 
+  display: 'flex', 
+  alignItems: 'center', 
+  justifyContent: 'center', 
+  cursor: 'pointer',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+  flexShrink: 0
+});
+
 const unreadBadgeStyle = { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#222', color: 'white', borderRadius: '50%', width: '24px', height: '24px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' };
 const typingIndicatorStyle = { fontSize: '0.8rem', color: '#717171', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.5rem' };
 const dotPulseStyle = (color) => ({ width: '8px', height: '8px', backgroundColor: color, borderRadius: '50%' });
