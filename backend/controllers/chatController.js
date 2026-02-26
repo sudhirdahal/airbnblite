@@ -15,33 +15,48 @@ const saveMessage = async (senderId, listingId, content) => {
 
 /**
  * @desc Fetch unique conversations for the current user (Inbox)
+ * REFACTORED: Now finds all threads where the user is involved, 
+ * regardless of whether they are Guest or Host.
  */
 exports.getInbox = async (req, res) => {
   try {
+    // 1. Get properties I own
     const myListings = await Listing.find({ adminId: req.user.id }).select('_id');
     const myListingIds = myListings.map(l => l._id);
 
-    const messages = await Message.find({
+    // 2. FIND ALL THREADS:
+    // We need to find every listingId that the user has EVER messaged about.
+    const allUserMessages = await Message.find({
       $or: [
-        { sender: req.user.id },
-        { listingId: { $in: myListingIds } }
+        { sender: req.user.id }, // I sent it
+        { listingId: { $in: myListingIds } } // It's my property
       ]
+    }).distinct('listingId'); // Get unique property IDs
+
+    // 3. GET FULL MESSAGE DATA for those threads
+    const messages = await Message.find({
+      listingId: { $in: allUserMessages }
     })
     .populate('sender', 'name avatar')
-    .populate('listingId', 'title images')
+    .populate('listingId', 'title images adminId')
     .sort({ timestamp: -1 });
 
     const threads = {};
     messages.forEach(msg => {
-      // Defensive check for deleted properties or users
       if (!msg.listingId || !msg.sender) return;
 
       const lid = msg.listingId._id.toString();
+      
+      // If this is the first time we see this listing in the loop (it's the latest message)
       if (!threads[lid]) {
-        threads[lid] = { listing: msg.listingId, lastMessage: msg, unreadCount: 0 };
+        threads[lid] = {
+          listing: msg.listingId,
+          lastMessage: msg,
+          unreadCount: 0
+        };
       }
       
-      // Count as unread if the current user is the recipient
+      // LOGIC FIX: Increment unread if I am NOT the sender AND it's marked as unread.
       if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
         threads[lid].unreadCount++;
       }
@@ -55,7 +70,7 @@ exports.getInbox = async (req, res) => {
 };
 
 /**
- * @desc Mark messages as read
+ * @desc Mark messages as read in a thread
  */
 exports.markAsRead = async (req, res) => {
   try {
@@ -69,7 +84,7 @@ exports.markAsRead = async (req, res) => {
 };
 
 /**
- * @desc Fetch chat history
+ * @desc Fetch full chat history for a listing
  */
 exports.getMessageHistory = async (req, res) => {
   try {
@@ -86,14 +101,10 @@ exports.handleJoinRoom = (io, socket, listingId) => {
 
 /**
  * @desc Real-time chat handler
- * REPAIRED: Added deep defensive checks for recipient ID logic.
  */
 exports.handleChatMessage = async (io, socket, msg) => {
   try {
-    // 1. Persist the message
     const savedMessage = await saveMessage(msg.senderId, msg.listingId, msg.content);
-    
-    // 2. Hydrate data for the UI
     await savedMessage.populate('sender', 'name avatar');
     await savedMessage.populate('listingId', 'adminId title');
 
@@ -110,30 +121,17 @@ exports.handleChatMessage = async (io, socket, msg) => {
       isRead: false
     };
 
-    // 3. BROADCAST to the property-specific room (The current chat window)
     io.to(msg.listingId).emit('chat message', payload);
 
-    // 4. PRIVATE PUSH: Notify the other party instantly
     const listing = savedMessage.listingId;
-    
-    // Safety check: Ensure listing and host exist
     if (listing && listing.adminId) {
       const hostId = listing.adminId.toString();
-      
-      // If sender is NOT the host, notify the host.
-      // If sender IS the host, we'd ideally notify the specific guest 
-      // (Simplified for Lite: we push to both rooms, frontend filters it)
       const guestId = savedMessage.sender._id.toString();
       
-      // Push to Host room
+      // Notify both private rooms - the recipient's frontend will catch it
       io.to(hostId).emit('new_message_alert', payload);
-      // Push to Guest room (If they are not the sender)
-      if (msg.senderId !== guestId) {
-        io.to(guestId).emit('new_message_alert', payload);
-      }
+      io.to(guestId).emit('new_message_alert', payload);
     }
 
-  } catch (err) {
-    console.error('CRITICAL CHAT ERROR:', err.message);
-  }
+  } catch (err) { console.error('Socket Error:', err); }
 };
