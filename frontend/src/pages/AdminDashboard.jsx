@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { PlusCircle, Trash, Edit, Calendar, User as UserIcon, X, Upload, BarChart3, TrendingUp, DollarSign, LayoutDashboard, ListChecks } from 'lucide-react';
+import { PlusCircle, Trash, Edit, Calendar, User as UserIcon, X, Upload, BarChart3, TrendingUp, DollarSign, LayoutDashboard, ListChecks, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bar } from 'react-chartjs-2'; 
@@ -19,7 +19,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
   
   const [formData, setFormData] = useState({
     _id: null, title: '', location: '', description: '', fullDescription: '', 
-    rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '' 
+    rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
+    maxGuests: 2, bedrooms: 1, beds: 1
   });
   const [isUploading, setIsUploading] = useState(false);
 
@@ -40,18 +41,30 @@ const AdminDashboard = ({ user, refreshListings }) => {
     } finally { setLoading(false); }
   };
 
+  const handleCancelBooking = async (id) => {
+    if (!window.confirm("As a host, are you sure you want to cancel this reservation?")) return;
+    const cancelToast = toast.loading('Cancelling booking...');
+    try {
+      await API.put(`/bookings/${id}/cancel`);
+      toast.success('Reservation cancelled and guest notified.', { id: cancelToast });
+      fetchAdminData();
+    } catch (err) {
+      toast.error('Failed to cancel.', { id: cancelToast });
+    }
+  };
+
   const getChartData = () => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const revenueByMonth = new Array(12).fill(0);
-    bookings.forEach(booking => {
+    bookings.filter(b => b.status === 'confirmed').forEach(booking => {
       const date = new Date(booking.createdAt);
       revenueByMonth[date.getMonth()] += booking.totalPrice;
     });
-    return { labels: months, datasets: [{ label: 'Revenue ($)', data: revenueByMonth, backgroundColor: '#ff385c', borderRadius: 8 }] };
+    return { labels: months, datasets: [{ label: 'Confirmed Revenue ($)', data: revenueByMonth, backgroundColor: '#ff385c', borderRadius: 8 }] };
   };
 
-  const totalRevenue = bookings.reduce((acc, curr) => acc + curr.totalPrice, 0);
-  const totalBookings = bookings.length;
+  const totalRevenue = bookings.filter(b => b.status === 'confirmed').reduce((acc, curr) => acc + curr.totalPrice, 0);
+  const totalBookings = bookings.filter(b => b.status === 'confirmed').length;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -77,25 +90,13 @@ const AdminDashboard = ({ user, refreshListings }) => {
 
   const toggleForm = () => {
     setShowForm(prev => {
-      if (prev) setFormData({ _id: null, title: '', location: '', description: '', fullDescription: '', rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '' });
+      if (prev) setFormData({ _id: null, title: '', location: '', description: '', fullDescription: '', rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '', maxGuests: 2, bedrooms: 1, beds: 1 });
       return !prev;
     });
   };
 
   const handleEditClick = (listing) => {
-    setFormData({ 
-      _id: listing._id, 
-      title: listing.title, 
-      location: listing.location, 
-      description: listing.description, 
-      fullDescription: listing.fullDescription, 
-      rate: listing.rate, 
-      category: listing.category, 
-      images: listing.images, 
-      lat: listing.coordinates?.lat || '', 
-      lng: listing.coordinates?.lng || '', 
-      imageUrlInput: '' 
-    });
+    setFormData({ _id: listing._id, title: listing.title, location: listing.location, description: listing.description, fullDescription: listing.fullDescription, rate: listing.rate, category: listing.category, images: listing.images, lat: listing.coordinates?.lat || '', lng: listing.coordinates?.lng || '', imageUrlInput: '', maxGuests: listing.maxGuests, bedrooms: listing.bedrooms, beds: listing.beds });
     setShowForm(true); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -105,20 +106,11 @@ const AdminDashboard = ({ user, refreshListings }) => {
     const finalImages = [...formData.images];
     if (formData.imageUrlInput) finalImages.push(...formData.imageUrlInput.split(',').map(url => url.trim()).filter(url => url));
     if (finalImages.length === 0) return toast.error('Please add at least one image');
-    
     const saveToast = toast.loading('Saving listing...');
     try {
-      const payload = { 
-        ...formData, 
-        images: finalImages, 
-        rate: Number(formData.rate), 
-        coordinates: { lat: Number(formData.lat || 0), lng: Number(formData.lng || 0) }, 
-        host: { name: user.name, avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&q=80' } 
-      };
-      
+      const payload = { ...formData, images: finalImages, rate: Number(formData.rate), coordinates: { lat: Number(formData.lat || 0), lng: Number(formData.lng || 0) }, host: { name: user.name, avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&q=80' } };
       if (formData._id) await API.put(`/listings/${formData._id}`, payload);
       else await API.post('/listings', payload);
-      
       toast.success('Successfully saved!', { id: saveToast });
       toggleForm(); fetchAdminData(); refreshListings();   
     } catch (err) { toast.error('Failed to save', { id: saveToast }); }
@@ -138,164 +130,88 @@ const AdminDashboard = ({ user, refreshListings }) => {
 
   return (
     <div style={{ maxWidth: '2560px', width: '98%', margin: '2rem auto', padding: '0 2rem' }}>
-      <PageHeader 
-        title="Admin Dashboard" 
-        subtitle={`Welcome, ${user.name}. Control center for your ${adminListings.length} properties.`} 
-        icon={LayoutDashboard}
-      />
+      <PageHeader title="Admin Dashboard" subtitle={`Welcome, ${user.name}. Control center for your ${adminListings.length} properties.`} icon={LayoutDashboard} />
       
       <div style={{ display: 'flex', gap: '2rem', borderBottom: '1px solid #ddd', marginBottom: '2rem' }}>
         <button onClick={() => setActiveTab('listings')} style={tabButtonStyle(activeTab === 'listings')}>My Listings</button>
         <button onClick={() => setActiveTab('bookings')} style={tabButtonStyle(activeTab === 'bookings')}>Manage Bookings</button>
-        <button onClick={() => setActiveTab('insights')} style={tabButtonStyle(activeTab === 'insights')}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={18} /> Revenue Insights</div>
-        </button>
+        <button onClick={() => setActiveTab('insights')} style={tabButtonStyle(activeTab === 'insights')}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={18} /> Revenue Insights</div></button>
       </div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'insights' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+          <motion.div key="insights" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-              <div style={statCardStyle}><DollarSign color="#4f46e5" /><div><p style={statLabelStyle}>Total Revenue</p><h3 style={statValueStyle}>${totalRevenue.toLocaleString()}</h3></div></div>
-              <div style={statCardStyle}><Calendar color="#ff385c" /><div><p style={statLabelStyle}>Bookings</p><h3 style={statValueStyle}>{totalBookings}</h3></div></div>
+              <div style={statCardStyle}><DollarSign color="#4f46e5" /><div><p style={statLabelStyle}>Confirmed Revenue</p><h3 style={statValueStyle}>${totalRevenue.toLocaleString()}</h3></div></div>
+              <div style={statCardStyle}><Calendar color="#ff385c" /><div><p style={statLabelStyle}>Confirmed Bookings</p><h3 style={statValueStyle}>{totalBookings}</h3></div></div>
             </div>
-            <div style={chartBoxStyle}><h3>Monthly Performance</h3><div style={{ height: '350px' }}><Bar data={getChartData()} options={{ maintainAspectRatio: false }} /></div></div>
+            <div style={chartBoxStyle}><h3>Revenue Performance (Confirmed Only)</h3><div style={{ height: '350px' }}><Bar data={getChartData()} options={{ maintainAspectRatio: false }} /></div></div>
           </motion.div>
         )}
 
         {activeTab === 'listings' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+          <motion.div key="listings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h3 style={{ margin: 0 }}>Active Properties</h3>
               <button onClick={toggleForm} style={primaryButtonStyle}>{showForm ? <><X size={18} /> Cancel</> : <><PlusCircle size={18} /> Add New Listing</>}</button>
             </div>
-            
             {showForm && (
               <div style={formContainerStyle}>
-                <h3 style={{ marginBottom: '1.5rem' }}>{formData._id ? 'Edit Listing Details' : 'Listing Information'}</h3>
                 <form onSubmit={handleCreateOrUpdateListing} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
-                  <input type="text" name="title" placeholder="Listing Title" value={formData.title} onChange={handleChange} style={inputStyle} required />
-                  <input type="text" name="location" placeholder="Location (City, Country)" value={formData.location} onChange={handleChange} style={inputStyle} required />
-                  <input type="number" name="rate" placeholder="Nightly Rate ($)" value={formData.rate} onChange={handleChange} style={inputStyle} required />
+                  <input type="text" name="title" placeholder="Title" value={formData.title} onChange={handleChange} style={inputStyle} required />
+                  <input type="text" name="location" placeholder="Location" value={formData.location} onChange={handleChange} style={inputStyle} required />
+                  <input type="number" name="rate" placeholder="Rate ($)" value={formData.rate} onChange={handleChange} style={inputStyle} required />
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <input type="number" name="maxGuests" placeholder="Guests" value={formData.maxGuests} onChange={handleChange} style={{ ...inputStyle, flex: 1 }} required />
-                    <input type="number" name="bedrooms" placeholder="Beds" value={formData.bedrooms} onChange={handleChange} style={{ ...inputStyle, flex: 1 }} required />
+                    <input type="number" name="beds" placeholder="Beds" value={formData.beds} onChange={handleChange} style={{ ...inputStyle, flex: 1 }} required />
                   </div>
                   <select name="category" value={formData.category} onChange={handleChange} style={inputStyle}>
                     <option value="pools">Amazing Pools</option><option value="beach">Beachfront</option><option value="cabins">Cabins</option><option value="arctic">Arctic</option>
                   </select>
-                  <input type="number" step="any" name="lat" placeholder="Latitude" value={formData.lat} onChange={handleChange} style={inputStyle} required />
-                  <input type="number" step="any" name="lng" placeholder="Longitude" value={formData.lng} onChange={handleChange} style={inputStyle} required />
-                  
-                  {/* FULL IMAGE MANAGEMENT SECTION */}
-                  <div style={{ gridColumn: 'span 2', padding: '1.5rem', border: '2px dashed #ddd', borderRadius: '16px', textAlign: 'center', backgroundColor: 'white' }}>
-                    <label style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                      <Upload size={32} color="#717171" />
-                      <span style={{ fontWeight: 'bold' }}>{isUploading ? 'Streaming to S3...' : 'Upload Image from Computer'}</span>
-                      <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} accept="image/*" />
-                    </label>
-                    <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '1.5rem', justifyContent: 'center' }}>
-                      {formData.images.map((url, i) => (
-                        <div key={i} style={{ position: 'relative' }}>
-                          <img src={url} alt="preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '12px', border: '1px solid #eee' }} />
-                          <button type="button" onClick={() => handleRemoveImage(i)} style={removeImgBtnStyle}>X</button>
-                        </div>
-                      ))}
+                  <div style={{ gridColumn: 'span 2', padding: '1.5rem', border: '2px dashed #ddd', borderRadius: '16px', textAlign: 'center' }}>
+                    <label style={{ cursor: 'pointer' }}><Upload size={32} /><div>{isUploading ? 'Streaming...' : 'Upload Image'}</div><input type="file" onChange={handleFileUpload} style={{ display: 'none' }} /></label>
+                    <div style={{ display: 'flex', gap: '0.8rem', marginTop: '1rem', justifyContent: 'center' }}>
+                      {formData.images.map((url, i) => (<div key={i} style={{ position: 'relative' }}><img src={url} style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }} /><button type="button" onClick={() => handleRemoveImage(i)} style={removeImgBtnStyle}>X</button></div>))}
                     </div>
                   </div>
-
-                  <input type="text" name="imageUrlInput" placeholder="Or paste comma-separated image URLs" value={formData.imageUrlInput} onChange={handleChange} style={{ ...inputStyle, gridColumn: 'span 2' }} />
-                  <textarea name="description" placeholder="Brief Summary (shows on card)" value={formData.description} onChange={handleChange} style={{ ...inputStyle, gridColumn: 'span 2', height: '60px' }} required />
-                  <textarea name="fullDescription" placeholder="Detailed Description (shows on listing page)" value={formData.fullDescription} onChange={handleChange} style={{ ...inputStyle, gridColumn: 'span 2', height: '120px' }} required />
-                  
-                  <button type="submit" style={{ ...primaryButtonStyle, gridColumn: 'span 2', padding: '1rem' }}>{formData._id ? 'Save Changes' : 'Publish Listing'}</button>
+                  <textarea name="fullDescription" placeholder="Description" value={formData.fullDescription} onChange={handleChange} style={{ ...inputStyle, gridColumn: 'span 2', height: '100px' }} required />
+                  <button type="submit" style={{ ...primaryButtonStyle, gridColumn: 'span 2' }}>Save Property</button>
                 </form>
               </div>
             )}
-
-            <div style={tableWrapperStyle}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={tableHeaderRowStyle}>
-                    <th style={thStyle}>Listing Details</th>
-                    <th style={thStyle}>Category</th>
-                    <th style={thStyle}>Nightly Rate</th>
-                    <th style={thStyle}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminListings.map(l => (
-                    <motion.tr key={l._id} whileHover={{ backgroundColor: '#fafafa' }} style={tableRowStyle}>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-                          <Link to={`/listing/${l._id}`}>
-                            <img src={l.images[0]} alt={l.title} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #eee' }} />
-                          </Link>
-                          <div>
-                            <Link to={`/listing/${l._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                              <div style={{ fontWeight: '700', color: '#222' }}>{l.title}</div>
-                            </Link>
-                            <div style={{ fontSize: '0.8rem', color: '#717171' }}>{l.location}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={tdStyle}><span style={categoryBadgeStyle}>{l.category}</span></td>
-                      <td style={tdStyle}><span style={{ fontWeight: '700' }}>${l.rate}</span></td>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button onClick={() => handleEditClick(l)} style={actionButtonStyle}><Edit size={16} /></button>
-                          <button onClick={() => handleDeleteListing(l._id)} style={{ ...actionButtonStyle, color: '#ff385c' }}><Trash size={16} /></button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <div style={tableWrapperStyle}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr style={tableHeaderRowStyle}><th style={thStyle}>Listing</th><th style={thStyle}>Rate</th><th style={thStyle}>Actions</th></tr></thead>
+              <tbody>{adminListings.map(l => (
+                <tr key={l._id} style={tableRowStyle}>
+                  <td style={tdStyle}><div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}><Link to={`/listing/${l._id}`}><img src={l.images[0]} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover' }} /></Link><div><Link to={`/listing/${l._id}`} style={{ textDecoration: 'none', color: 'inherit', fontWeight: '700' }}>{l.title}</Link><div style={{ fontSize: '0.8rem', color: '#717171' }}>{l.location}</div></div></div></td>
+                  <td style={tdStyle}><span style={{ fontWeight: '700' }}>${l.rate}</span></td>
+                  <td style={tdStyle}><div style={{ display: 'flex', gap: '0.5rem' }}><button onClick={() => handleEditClick(l)} style={actionButtonStyle}><Edit size={16} /></button><button onClick={() => handleDeleteListing(l._id)} style={{ ...actionButtonStyle, color: '#ff385c' }}><Trash size={16} /></button></div></td>
+                </tr>
+              ))}</tbody>
+            </table></div>
           </motion.div>
         )}
 
         {activeTab === 'bookings' && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-            <h3 style={{ marginBottom: '1.5rem' }}>Upcoming Reservations</h3>
-            <div style={tableWrapperStyle}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={tableHeaderRowStyle}>
-                    <th style={thStyle}>Guest</th>
-                    <th style={thStyle}>Reserved Stay</th>
-                    <th style={thStyle}>Check-In/Out</th>
-                    <th style={thStyle}>Revenue</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map(b => (
-                    <tr key={b._id} style={tableRowStyle}>
-                      <td style={tdStyle}>
-                        <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                            <div style={avatarCircleStyle}>{b.userId?.name.charAt(0)}</div>
-                            <div><div style={{ fontWeight: '700' }}>{b.userId?.name}</div><div style={{ fontSize: '0.75rem', color: '#717171' }}>{b.userId?.email}</div></div>
-                          </div>
-                        </Link>
-                      </td>
-                      <td style={tdStyle}>
-                        <Link to={`/listing/${b.listingId?._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                            <img src={b.listingId?.images?.[0]} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} alt="Listing" />
-                            <span style={{ fontWeight: '500' }}>{b.listingId?.title}</span>
-                          </div>
-                        </Link>
-                      </td>
-                      <td style={tdStyle}>
-                        <div style={{ fontSize: '0.85rem' }}>{new Date(b.checkIn).toLocaleDateString()} - {new Date(b.checkOut).toLocaleDateString()}</div>
-                      </td>
-                      <td style={tdStyle}><span style={{ color: '#1d7044', fontWeight: '700' }}>+${b.totalPrice}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <motion.div key="bookings" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <h3 style={{ marginBottom: '1.5rem' }}>Guest Reservations</h3>
+            <div style={tableWrapperStyle}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><tr style={tableHeaderRowStyle}><th style={thStyle}>Guest</th><th style={thStyle}>Stay</th><th style={thStyle}>Revenue</th><th style={thStyle}>Actions</th></tr></thead>
+              <tbody>{bookings.map(b => (
+                <tr key={b._id} style={{ ...tableRowStyle, opacity: b.status === 'cancelled' ? 0.6 : 1 }}>
+                  <td style={tdStyle}><Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}><div style={avatarCircleStyle}>{b.userId?.name.charAt(0)}</div><div><div style={{ fontWeight: '700' }}>{b.userId?.name}</div></div></div></Link></td>
+                  <td style={tdStyle}><Link to={`/listing/${b.listingId?._id}`} style={{ textDecoration: 'none', color: 'inherit' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}><img src={b.listingId?.images?.[0]} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} /><span style={{ fontWeight: '500' }}>{b.listingId?.title}</span></div></Link></td>
+                  <td style={tdStyle}><span style={{ fontWeight: '700' }}>${b.totalPrice}</span><div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: b.status === 'confirmed' ? 'green' : 'red' }}>{b.status}</div></td>
+                  <td style={tdStyle}>
+                    {b.status === 'confirmed' && (
+                      <button onClick={() => handleCancelBooking(b._id)} style={{ ...actionButtonStyle, color: '#ff385c' }} title="Cancel Booking">
+                        <XCircle size={18} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table></div>
           </motion.div>
         )}
       </AnimatePresence>
