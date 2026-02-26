@@ -108,7 +108,7 @@ const cardContainerStyle = { cursor: 'pointer', display: 'flex', flexDirection: 
 const imageWrapperStyle = { position: 'relative', width: '100%', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#f7f7f7' };
 const imageStyle = (hovered) => ({ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.2, 1, 0.3, 1)', transform: hovered ? 'scale(1.05)' : 'scale(1)' });
 const heartBtnStyle = { position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', zIndex: 10, padding: 0 };
-const adminOverlayStyle = { position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '0.5rem', z;Index: 10 };
+const adminOverlayStyle = { position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '0.5rem', zIndex: 10 };
 const adminBtnStyle = { backgroundColor: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' };
 const contentAreaStyle = { display: 'flex', flexDirection: 'column', gap: '0.2rem' };
 const titleStyle = { margin: 0, fontSize: '1rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
