@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../services/socket';
 import { Send, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react';
-import API from '../../services/api'; 
+import API from '../../services/api';
 
 /**
- * ChatWindow Component: Context-aware floating messenger.
- * Features:
- * - Persistent history loading via pre-loaded props.
- * - Real-time Socket.IO communication.
- * - Automatic "Mark as Read" triggers when opening the window.
- * - Unread message counters and audio alerts.
+ * ChatWindow Component: Now triggers parent sync on open.
  */
-const ChatWindow = ({ listingId, currentUser, isHost, history = [] }) => {
+const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -21,86 +16,47 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [] }) => {
   const isOpenRef = useRef(isOpen);
   const audioRef = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'));
 
-  /**
-   * HISTORY SYNC
-   * When the parent (ListingDetail) fetches the message history from the REST API,
-   * we inject it here to ensure the user sees their previous conversations.
-   */
-  useEffect(() => {
-    if (history.length > 0) setMessages(history);
-  }, [history]);
+  useEffect(() => { if (history.length > 0) setMessages(history); }, [history]);
 
-  /**
-   * READ STATUS ENGINE
-   * When the window is opened, we trigger an API call to mark all messages 
-   * in this specific thread as read. This clears the red dots in the Navbar.
-   */
   useEffect(() => {
     isOpenRef.current = isOpen;
     if (isOpen) {
       setUnreadCount(0);
-      // Mark as read on the backend database
-      API.put(`/auth/chat-read/${listingId}`).catch(() => {});
-      // Auto-scroll to the latest message
+      // 1. Mark as read on the backend
+      API.put(`/auth/chat-read/${listingId}`)
+        .then(() => {
+          // 2. Trigger parent sync to clear global badges instantly
+          if (onChatOpened) onChatOpened();
+        })
+        .catch(() => {});
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [isOpen, listingId]);
+  }, [isOpen, listingId, onChatOpened]);
 
   const getUserId = (user) => user?._id || user?.id;
 
-  /**
-   * SOCKET LISTENER
-   * Listens for incoming messages broadcasted by the server.
-   */
   useEffect(() => {
     if (!currentUser || !listingId) return; 
-
     socket.emit('join room', listingId);
-
     const handleNewMessage = (message) => {
-      /**
-       * FILTERING LOGIC
-       * We verify that the incoming message actually belongs to the 
-       * property currently being viewed.
-       */
       if (message.listingId === listingId) {
         setMessages(prev => [...prev, message]);
-        
-        // If the chat is closed, increment unread count and play sound
         if (!isOpenRef.current) {
           setUnreadCount(prev => prev + 1);
           audioRef.current.play().catch(() => {});
         }
       }
-
-      /* --- OLD CODE: Fragile Filter ---
-      if (message.listing === listingId) { // Fails because backend sends 'listingId'
-        setMessages(prev => [...prev, message]);
-      }
-      */
     };
-
     socket.on('chat message', handleNewMessage);
-    return () => {
-      socket.off('chat message', handleNewMessage);
-    };
+    return () => { socket.off('chat message', handleNewMessage); };
   }, [listingId, currentUser]);
 
-  useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, isOpen]);
+  useEffect(() => { if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim() === '') return;
-
-    socket.emit('chat message', {
-      senderId: getUserId(currentUser),
-      listingId: listingId,
-      content: newMessage
-    });
+    socket.emit('chat message', { senderId: getUserId(currentUser), listingId: listingId, content: newMessage });
     setNewMessage('');
   };
 

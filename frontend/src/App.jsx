@@ -49,13 +49,13 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState([]); // --- NEW: Notif State ---
+  const [notifications, setNotifications] = useState([]);
   const [showMap, setShowMap] = useState(false);
   const [activeCategory, setActiveCategory] = useState('');
   const [sort, setSort] = useState('newest');
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
-  // --- REFINED SYNC ENGINE (Messages + Notifications) ---
+  // --- NEW: Centralized Sync Dispatcher ---
   const syncUpdates = async () => {
     if (!user) return;
     try {
@@ -70,7 +70,7 @@ const App = () => {
 
   useEffect(() => {
     syncUpdates();
-    const interval = setInterval(syncUpdates, 60000);
+    const interval = setInterval(syncUpdates, 15000); // Poll every 15s for "Real-time" feel
     return () => clearInterval(interval);
   }, [user]);
 
@@ -118,7 +118,10 @@ const App = () => {
         <main style={{ flex: 1, width: '100%' }}>
           <Routes>
             <Route path="/" element={<Home user={user} listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} />} />
-            <Route path="/listing/:id" element={<ListingDetail userRole={user ? user.role : 'guest'} user={user} />} />
+            
+            {/* PASS SYNC LOGIC TO DETAIL (For Chat) */}
+            <Route path="/listing/:id" element={<ListingDetail userRole={user ? user.role : 'guest'} user={user} onChatOpened={syncUpdates} />} />
+            
             <Route path="/login" element={<Login setUser={setUser} />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify/:token" element={<VerifyEmail setUser={setUser} />} />
@@ -126,7 +129,10 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
             <Route path="/wishlist" element={<Wishlist user={user} />} />
-            <Route path="/inbox" element={<Inbox />} />
+            
+            {/* PASS SYNC LOGIC TO INBOX */}
+            <Route path="/inbox" element={<Inbox onThreadOpened={syncUpdates} />} />
+            
             <Route path="/pay" element={<MockPayment />} />
             <Route path="/bookings" element={user ? <Bookings /> : <Navigate to="/login" replace />} />
             <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard user={user} refreshListings={fetchListings} /> : <Navigate to="/" replace />} />

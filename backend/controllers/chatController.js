@@ -33,9 +33,6 @@ exports.getInbox = async (req, res) => {
 
     const threads = {};
     messages.forEach(msg => {
-      // --- BUG FIX: DEFENSIVE CHECK ---
-      // If a property was deleted but messages remain, msg.listingId will be null.
-      // We skip these to prevent the "Cannot read properties of undefined (_id)" crash.
       if (!msg.listingId || !msg.sender) return;
 
       const lid = msg.listingId._id.toString();
@@ -43,8 +40,12 @@ exports.getInbox = async (req, res) => {
         threads[lid] = { listing: msg.listingId, lastMessage: msg, unreadCount: 0 };
       }
       
-      // Safety check for sender ID before reading toString()
-      if (!msg.isRead && msg.sender._id && msg.sender._id.toString() !== req.user.id) {
+      /**
+       * --- LOGIC FIX: UNIVERSAL UNREAD CALCULATION ---
+       * If I am the recipient (I did NOT send this message) and it is unread, 
+       * increment the count. This now works for both Hosts and Guests.
+       */
+      if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
         threads[lid].unreadCount++;
       }
     });
@@ -62,6 +63,9 @@ exports.getInbox = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const { listingId } = req.params;
+    
+    // --- LOGIC FIX: SECURITY-AWARE READ ---
+    // Mark messages as read only if the current user was the RECIPIENT
     await Message.updateMany(
       { listingId, sender: { $ne: req.user.id }, isRead: false },
       { $set: { isRead: true } }
