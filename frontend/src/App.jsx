@@ -55,7 +55,6 @@ const App = () => {
   const [sort, setSort] = useState('newest');
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
-  // --- NEW: Centralized Sync Dispatcher ---
   const syncUpdates = async () => {
     if (!user) return;
     try {
@@ -70,7 +69,7 @@ const App = () => {
 
   useEffect(() => {
     syncUpdates();
-    const interval = setInterval(syncUpdates, 15000); // Poll every 15s for "Real-time" feel
+    const interval = setInterval(syncUpdates, 15000); 
     return () => clearInterval(interval);
   }, [user]);
 
@@ -114,14 +113,12 @@ const App = () => {
           unreadCount={unreadCount}
           notifications={notifications}
           onNotificationRead={syncUpdates}
+          onInboxClick={syncUpdates} // --- NEW: Trigger sync when clicking Inbox ---
         />
         <main style={{ flex: 1, width: '100%' }}>
           <Routes>
             <Route path="/" element={<Home user={user} listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} />} />
-            
-            {/* PASS SYNC LOGIC TO DETAIL (For Chat) */}
             <Route path="/listing/:id" element={<ListingDetail userRole={user ? user.role : 'guest'} user={user} onChatOpened={syncUpdates} />} />
-            
             <Route path="/login" element={<Login setUser={setUser} />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify/:token" element={<VerifyEmail setUser={setUser} />} />
@@ -129,10 +126,7 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
             <Route path="/wishlist" element={<Wishlist user={user} />} />
-            
-            {/* PASS SYNC LOGIC TO INBOX */}
             <Route path="/inbox" element={<Inbox onThreadOpened={syncUpdates} />} />
-            
             <Route path="/pay" element={<MockPayment />} />
             <Route path="/bookings" element={user ? <Bookings /> : <Navigate to="/login" replace />} />
             <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard user={user} refreshListings={fetchListings} /> : <Navigate to="/" replace />} />

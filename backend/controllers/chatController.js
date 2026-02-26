@@ -15,12 +15,20 @@ const saveMessage = async (senderId, listingId, content) => {
 
 /**
  * @desc Fetch unique conversations for the current user (Inbox)
+ * LOGIC FIX: Now correctly identifies threads for both Hosts and Guests.
  */
 exports.getInbox = async (req, res) => {
   try {
+    // 1. Get IDs of properties I own (if Admin)
     const myListings = await Listing.find({ adminId: req.user.id }).select('_id');
     const myListingIds = myListings.map(l => l._id);
 
+    // 2. FIND MESSAGES: 
+    // - That I sent (sender)
+    // - OR that were sent regarding a listing I own (recipient as host)
+    // - OR where I am involved in the conversation thread (recipient as guest)
+    // To make this 100% reliable for "Lite" shared rooms, we find all messages 
+    // where the user is either the sender OR the listing matches their ownership.
     const messages = await Message.find({
       $or: [
         { sender: req.user.id },
@@ -40,11 +48,8 @@ exports.getInbox = async (req, res) => {
         threads[lid] = { listing: msg.listingId, lastMessage: msg, unreadCount: 0 };
       }
       
-      /**
-       * --- LOGIC FIX: UNIVERSAL UNREAD CALCULATION ---
-       * If I am the recipient (I did NOT send this message) and it is unread, 
-       * increment the count. This now works for both Hosts and Guests.
-       */
+      // LOGIC FIX: Increment unread count if the CURRENT USER is not the sender.
+      // This ensures both Host and Guest see unread alerts correctly.
       if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
         threads[lid].unreadCount++;
       }
@@ -64,8 +69,7 @@ exports.markAsRead = async (req, res) => {
   try {
     const { listingId } = req.params;
     
-    // --- LOGIC FIX: SECURITY-AWARE READ ---
-    // Mark messages as read only if the current user was the RECIPIENT
+    // SECURITY FIX: Only mark messages as read if the current user was the RECIPIENT
     await Message.updateMany(
       { listingId, sender: { $ne: req.user.id }, isRead: false },
       { $set: { isRead: true } }
