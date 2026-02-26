@@ -23,6 +23,12 @@ import Inbox from './pages/Inbox';
 import API from './services/api';
 import socket from './services/socket';
 
+/**
+ * ============================================================================
+ * HOME COMPONENT (The Interactive Discovery Layer)
+ * ============================================================================
+ * Manages the transition between Map and Grid view, and handles sorting.
+ */
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
   const userRole = user ? user.role : 'guest';
   return (
@@ -44,6 +50,13 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
   );
 };
 
+/**
+ * ============================================================================
+ * MAIN APP COMPONENT (The Global State Authority)
+ * ============================================================================
+ * Initially just a routing container. It has evolved into the central 
+ * synchronization hub for Auth, Real-time Alerts, and Global Search.
+ */
 const App = () => {
   const [user, setUser] = useState(null);
   const [listings, setListings] = useState([]);
@@ -57,8 +70,8 @@ const App = () => {
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
   /**
-   * CENTRALIZED SYNC ENGINE
-   * Fetches latest unread counts and notifications from the DB.
+   * CENTRALIZED SYNC ENGINE (Phase 8 Scalability)
+   * Fetches the latest global alerts from the database.
    */
   const syncUpdates = async () => {
     const token = localStorage.getItem('token');
@@ -71,43 +84,32 @@ const App = () => {
       const totalUnread = inboxRes.data.reduce((acc, curr) => acc + curr.unreadCount, 0);
       setUnreadCount(totalUnread);
       setNotifications(notifRes.data);
-    } catch (err) {
-      console.error('Sync Error:', err);
-    }
+    } catch (err) {}
   };
 
+  /**
+   * SOCKET NOTIFICATION LISTENER
+   * Listen for 'Push' events from the server to avoid high-overhead polling.
+   */
   useEffect(() => {
     if (!user) return;
-    
-    // Join private room for alerts
-    const myId = user._id || user.id;
-    socket.emit('identify', myId);
-    
-    // Initial sync on mount
-    syncUpdates();
+    socket.emit('identify', user._id || user.id);
+    syncUpdates(); // Initial sync
 
-    /**
-     * INSTANT SOCKET HANDLERS
-     * These fire the MOMENT the server pushes an event.
-     */
-    const handleInstantUpdate = (data) => {
-      console.log("Socket: Instant alert received. Refreshing global badges...");
-      syncUpdates(); // Re-fetch counts from DB immediately
+    const handleInstantUpdate = () => {
+      syncUpdates(); // Re-sync on every server push
     };
 
     socket.on('new_notification', handleInstantUpdate);
     socket.on('new_message_alert', handleInstantUpdate);
     
-    // Fallback polling (Reduced to 30s for safety)
-    const interval = setInterval(syncUpdates, 30000); 
-    
     return () => {
       socket.off('new_notification', handleInstantUpdate);
       socket.off('new_message_alert', handleInstantUpdate);
-      clearInterval(interval);
     };
   }, [user]);
 
+  // Auth Initialization logic
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
@@ -117,6 +119,10 @@ const App = () => {
     fetchListings();
   }, []);
 
+  /**
+   * GLOBAL API DISPATCHER
+   * Formats complex search and sort queries into a unified backend request.
+   */
   const fetchListings = async (p = searchParams, c = activeCategory, s = sort) => {
     setLoading(true);
     try {
@@ -137,10 +143,22 @@ const App = () => {
   const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
 
+  /**
+   * ============================================================================
+   * PROTECTED ROUTE ARCHITECTURE (The 404/Redirect Fix)
+   * ============================================================================
+   * HISTORICAL CONTEXT: Initially, routes were unprotected or used naive checks
+   * like `user?.role === 'admin' ? ...`. This caused immediate redirects to "/" 
+   * on page refreshes because 'user' was null for 100ms during API boot.
+   */
   const ProtectedAdminRoute = ({ children }) => {
-    if (isAuthLoading) return null;
+    if (isAuthLoading) return null; // Wait for the API to confirm user status
     return user?.role === 'admin' ? children : <Navigate to="/" replace />;
   };
+
+  /* --- STAGE 1: PRIMITIVE ROUTING ---
+   * <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
+   */
 
   return (
     <Router>
