@@ -1,64 +1,93 @@
-/* Global Responsive Overrides */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-/* --- NAVBAR RESPONSIVENESS --- */
-@media (max-width: 768px) {
-  .desktop-menu {
-    display: none !important;
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
   }
-  .mobile-trigger {
-    display: block !important;
+  a:hover {
+    color: #747bff;
   }
-  .navbar-inner {
-    padding: 0 1.5rem !important;
+  button {
+    background-color: #f9f9f9;
   }
 }
 
-/* --- HERO RESPONSIVENESS --- */
-@media (max-width: 768px) {
-  .hero-container {
-    padding: 2rem 1.5rem !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 1.5rem !important;
-  }
-  .hero-heading {
-    font-size: 1.6rem !important;
-  }
-  .profile-card {
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
+/* --- NEW: HIGH-FIDELITY ANIMATIONS --- */
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
 }
 
-/* --- GRID RESPONSIVENESS --- */
-@media (max-width: 768px) {
-  .listing-grid {
-    justify-content: center !important;
-  }
-  .listing-card {
-    width: 100% !important;
-    max-width: 400px !important;
-    margin: 1rem 0 !important;
-  }
+.pulse-dot {
+  animation: pulse 1.5s infinite ease-in-out;
 }
 
-/* --- SEARCHBAR RESPONSIVENESS --- */
-@media (max-width: 768px) {
-  .search-wrapper {
-    flex-direction: column !important;
-    border-radius: 20px !important;
-    padding: 1rem !important;
-    width: 95% !important;
-  }
-  .search-divider {
-    display: none !important;
-  }
-  .search-input-group {
-    width: 100% !important;
-    border-bottom: 1px solid #eee !important;
-    padding: 0.8rem 0 !important;
-  }
-  .search-input {
-    width: 100% !important;
-  }
+/* Custom scrollbar for a premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
 }

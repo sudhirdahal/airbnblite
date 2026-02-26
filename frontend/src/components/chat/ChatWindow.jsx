@@ -126,7 +126,7 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
           <AnimatePresence>
             {isOtherTyping && (
               <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} style={typingIndicatorStyle}>
-                <div style={dotPulseStyle} />
+                <div className="pulse-dot" style={dotPulseStyle} />
                 <span style={{ fontWeight: '600' }}>{isHost ? 'Guest' : 'Host'}</span> is typing...
               </motion.div>
             )}
