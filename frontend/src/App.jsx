@@ -56,60 +56,31 @@ const App = () => {
   const [sort, setSort] = useState('newest');
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
-  /**
-   * ============================================================================
-   * OPTIMIZED SYNC ENGINE (High-Fidelity Interaction)
-   * ============================================================================
-   * We use 'useCallback' to prevent unnecessary re-renders of the sync function.
-   */
   const syncUpdates = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!localStorage.getItem('token')) return;
     try {
       const [inboxRes, notifRes] = await Promise.all([
         API.get('/auth/inbox'),
         API.get('/auth/notifications')
       ]);
-      const totalUnread = inboxRes.data.reduce((acc, curr) => acc + curr.unreadCount, 0);
-      setUnreadCount(totalUnread);
+      setUnreadCount(inboxRes.data.reduce((acc, curr) => acc + curr.unreadCount, 0));
       setNotifications(notifRes.data);
-    } catch (err) {
-      console.error('Sync Error:', err);
-    }
-  }, [token => !!token]); // Dependencies ensure sync only happens when authorized
+    } catch (err) {}
+  }, []);
 
   useEffect(() => {
     if (!user) return;
-    
-    const myId = user._id || user.id;
-    socket.emit('identify', myId);
-    
-    // Initial sync
+    socket.emit('identify', user._id || user.id);
     syncUpdates();
-
-    /**
-     * ========================================================================
-     * ZERO-LAG SOCKET LISTENERS
-     * ========================================================================
-     * Instead of waiting for the HTTP round-trip, we update the local state 
-     * IMMEDIATELY (optimistic) and then fetch the official data from the DB.
-     */
-    const handleInstantUpdate = (payload) => {
-      console.log("Socket: Push received. Optimistically updating badge...");
-      
-      // 1. Instant local increment
+    const handleInstantAlert = () => {
       setUnreadCount(prev => prev + 1);
-      
-      // 2. Official DB Sync (happens in background)
-      syncUpdates(); 
+      syncUpdates();
     };
-
-    socket.on('new_notification', handleInstantUpdate);
-    socket.on('new_message_alert', handleInstantUpdate);
-    
+    socket.on('new_notification', handleInstantAlert);
+    socket.on('new_message_alert', handleInstantAlert);
     return () => {
-      socket.off('new_notification', handleInstantUpdate);
-      socket.off('new_message_alert', handleInstantUpdate);
+      socket.off('new_notification', handleInstantAlert);
+      socket.off('new_message_alert', handleInstantAlert);
     };
   }, [user, syncUpdates]);
 
@@ -134,7 +105,10 @@ const App = () => {
       if (p.amenities) url += `amenities=${p.amenities}&`;
       const response = await API.get(url);
       setListings(response.data);
-    } catch (err) {} finally { setTimeout(() => setLoading(false), 600); }
+    } catch (err) {} finally { 
+      // --- FIXED: Removed artificial delay ---
+      setLoading(false); 
+    }
   };
 
   const handleSearch = (np) => { setSearchParams(p => ({...p, ...np})); fetchListings({...searchParams, ...np}, activeCategory, sort); };

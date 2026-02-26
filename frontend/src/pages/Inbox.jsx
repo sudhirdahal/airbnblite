@@ -12,6 +12,8 @@ const Inbox = ({ user, onThreadOpened }) => {
   const navigate = useNavigate();
 
   const fetchInbox = async () => {
+    // Note: We don't set 'loading' to true here to avoid the jarring full-page Loading screen
+    // during real-time background refreshes.
     try {
       const response = await API.get('/auth/inbox');
       setThreads(response.data);
@@ -21,16 +23,8 @@ const Inbox = ({ user, onThreadOpened }) => {
   useEffect(() => {
     fetchInbox();
 
-    /**
-     * ========================================================================
-     * INSTANT INBOX SYNC
-     * ========================================================================
-     * BUG FIX: Switched from 'chat message' to 'new_message_alert'.
-     * Why: On this page, we aren't in any property rooms. We only hear
-     * events pushed to our PRIVATE USER ROOM.
-     */
     const handleNewMessageInbox = (message) => {
-      console.log("Inbox Socket: Refreshing list for new message...");
+      // Direct silent refresh
       fetchInbox();
     };
 
@@ -48,7 +42,8 @@ const Inbox = ({ user, onThreadOpened }) => {
     } catch (err) { navigate(`/listing/${listingId}`); }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '4rem' }}>Loading messages...</div>;
+  // Only show the big loading spinner on the VERY FIRST load
+  if (loading && threads.length === 0) return <div style={{ textAlign: 'center', padding: '4rem' }}>Connecting to messages...</div>;
 
   return (
     <div style={{ maxWidth: '2560px', width: '98%', margin: '3rem auto', padding: '0 2rem' }}>

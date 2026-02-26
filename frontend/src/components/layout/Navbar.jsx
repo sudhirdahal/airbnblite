@@ -28,20 +28,19 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
         </>
       ) : (
         <>
-          {userRole === 'admin' && <Link to="/admin" style={navLinkStyle}><LayoutDashboard size={18} /> Dashboard</Link>}
-          <Link to="/inbox" style={navLinkStyle} onClick={() => onInboxClick && onInboxClick()}>
+          {userRole === 'admin' && <Link to="/admin" style={navLinkStyle}>Dashboard</Link>}
+          <Link 
+            to="/inbox" 
+            style={navLinkStyle} 
+            onClick={() => {
+              if (onInboxClick) onInboxClick();
+            }}
+          >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <MessageSquare size={18} /> Inbox 
-              {/* NEW: ANIMATED PULSING BADGE */}
+              {/* --- FIXED: Removed Bobbing Animation --- */}
               {unreadCount > 0 && (
-                <motion.span 
-                  initial={{ scale: 0.5 }}
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  style={badgeStyle}
-                >
-                  {unreadCount}
-                </motion.span>
+                <span style={badgeStyle}>{unreadCount}</span>
               )}
             </div>
           </Link>
@@ -68,12 +67,8 @@ const Navbar = ({ userRole, onLogout, resetHomeView, unreadCount, notifications 
               <button onClick={handleNotifClick} style={iconBtnStyle}>
                 <Bell size={22} />
                 {notifications.some(n => !n.isRead) && (
-                  /* NEW: PULSING ALERT DOT */
-                  <motion.div 
-                    animate={{ opacity: [1, 0.4, 1] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
-                    style={dotStyle} 
-                  />
+                  /* --- FIXED: Removed Pulsing from alert dot --- */
+                  <div style={dotStyle} />
                 )}
               </button>
               <AnimatePresence>
@@ -112,7 +107,7 @@ const navLinkStyle = { textDecoration: 'none', color: '#222', fontSize: '0.9rem'
 const signupBtnStyle = { backgroundColor: '#ff385c', color: '#fff' };
 const logoutBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: '#ff385c', fontSize: '0.9rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' };
 const mobileTriggerStyle = { display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' };
-const badgeStyle = { backgroundColor: '#ff385c', color: 'white', fontSize: '0.6rem', fontWeight: 'bold', minWidth: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' };
+const badgeStyle = { backgroundColor: '#ff385c', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' };
 const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: '#222', display: 'flex', position: 'relative' };
 const dotStyle = { position: 'absolute', top: '2px', right: '2px', width: '8px', height: '8px', backgroundColor: '#ff385c', borderRadius: '50%', border: '2px solid white' };
 const notifDropdownStyle = { position: 'absolute', top: '100%', right: 0, marginTop: '1rem', width: '320px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', zIndex: 1001, overflow: 'hidden' };

@@ -74,7 +74,7 @@ exports.handleJoinRoom = (io, socket, listingId) => {
 
 /**
  * @desc Real-time chat handler
- * REFACTORED: Now correctly notifies the OTHER party in the conversation.
+ * REPAIRED: Correctly identifies the recipient for private pushes.
  */
 exports.handleChatMessage = async (io, socket, msg) => {
   try {
@@ -95,19 +95,18 @@ exports.handleChatMessage = async (io, socket, msg) => {
       isRead: false
     };
 
-    // 1. BROADCAST to the active room
+    // 1. BROADCAST to the active room (anyone currently looking at this listing)
     io.to(msg.listingId).emit('chat message', payload);
 
-    // 2. TARGETED PUSH: Notify the recipient's private room
+    // 2. TARGETED PUSH: Send to the OTHER person's private room for Navbar badges
     const listing = savedMessage.listingId;
     
-    // Logic: If sender is NOT the host, notify the host.
-    // If sender IS the host, notify all guests who have messaged about this listing.
     if (msg.senderId !== listing.adminId.toString()) {
-      // Sender is Guest -> Notify Host
+      // SENDER IS GUEST -> Push to Host
       io.to(listing.adminId.toString()).emit('new_message_alert', payload);
     } else {
-      // Sender is Host -> Notify all guests involved in this property thread
+      // SENDER IS HOST -> Push to all Guests who have messaged about this listing
+      // In a 'Lite' app, we find everyone who has sent a message in this thread
       const participants = await Message.find({ listingId: msg.listingId }).distinct('sender');
       participants.forEach(pId => {
         if (pId.toString() !== msg.senderId) {
