@@ -9,11 +9,14 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css'; 
 import API from '../services/api'; 
 import ChatWindow from '../components/chat/ChatWindow'; 
+import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
 
 /**
  * ============================================================================
  * RATING BREAKDOWN COMPONENT
  * ============================================================================
+ * Logic: Calculates the distribution of star ratings.
+ * UPDATED: Consumes theme tokens for bar colors and spacing.
  */
 const RatingBreakdown = ({ reviews = [] }) => {
   const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -36,8 +39,11 @@ const RatingBreakdown = ({ reviews = [] }) => {
 
 /**
  * ============================================================================
- * LISTING DETAIL PAGE (V18 - THE FINAL RESTORATION)
+ * LISTING DETAIL PAGE (V19 - THE DESIGN TOKEN UPDATE)
  * ============================================================================
+ * OVERHAUL: Migrated the entire detail view to the centralized Design System.
+ * Ensures that the high-fidelity Cinematic Grid and Sidebar are visually 
+ * synchronized with the Discovery grid and Navbar.
  */
 const ListingDetail = ({ user, onChatOpened }) => { 
   const { id } = useParams(); 
@@ -68,19 +74,13 @@ const ListingDetail = ({ user, onChatOpened }) => {
       const res = await API.get(`/listings/${id}`);
       if (!res.data) throw new Error("Listing Context Unavailable.");
       setListing(res.data);
-      
       const reviewRes = await API.get(`/reviews/${id}`).catch(() => ({ data: [] }));
       setReviews(reviewRes.data || []);
-
       if (localStorage.getItem('token')) {
         const chatRes = await API.get(`/auth/chat-history/${id}`).catch(() => ({ data: [] }));
         setChatHistory(chatRes.data || []);
       }
-    } catch (err) {
-      setError("Unable to sync with property server.");
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError("Unable to sync with property server."); } finally { setLoading(false); }
   };
 
   useEffect(() => { if (id) loadPageData(); }, [id, user]);
@@ -95,13 +95,13 @@ const ListingDetail = ({ user, onChatOpened }) => {
     }
   }, [dateRange, listing]);
 
-  if (loading) return <div style={centerStyle}><Loader2 size={48} className="spin" color="#ff385c" /><h2 style={{ marginTop: '1rem' }}>Synchronizing stay details...</h2></div>;
-  if (error || !listing) return <div style={centerStyle}><h2>Property Unavailable</h2><Link to="/" style={{ color: '#ff385c', fontWeight: 'bold' }}>Return Home</Link></div>;
+  if (loading) return <div style={centerStyle}><Loader2 size={48} className="spin" color={theme.colors.brand} /><h2 style={{ marginTop: '1rem' }}>Synchronizing stay details...</h2></div>;
+  if (error || !listing) return <div style={centerStyle}><h2>Property Unavailable</h2><Link to="/" style={{ color: theme.colors.brand, fontWeight: 'bold' }}>Return Home</Link></div>;
 
   const images = listing.images?.length > 0 ? listing.images : ['https://via.placeholder.com/1200x800'];
 
   return (
-    <div style={{ minHeight: '100vh', width: '100%', backgroundColor: '#fff' }}>
+    <div style={{ minHeight: '100vh', width: '100%', backgroundColor: theme.colors.white }}>
       
       {/* LIGHTBOX */}
       <AnimatePresence>
@@ -125,8 +125,6 @@ const ListingDetail = ({ user, onChatOpened }) => {
         
         <div style={layoutGrid(isMobile)}>
           <div style={{ flex: 2 }}>
-            
-            {/* GRID GALLERY */}
             {!isMobile ? (
               <div style={galleryGrid}>
                 <div onClick={() => setIsLightboxOpen(true)} style={mainImage}><img src={images[0]} style={fullFit} /></div>
@@ -142,9 +140,9 @@ const ListingDetail = ({ user, onChatOpened }) => {
             )}
 
             <div style={{ padding: isMobile ? '1.5rem' : '2.5rem 0' }}>
-              {isMobile && <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>{listing.title}</h1>}
+              {isMobile && <h1 style={{ fontSize: '1.8rem', fontWeight: theme.typography.weights.extraBold }}>{listing.title}</h1>}
               <div style={ratingSummary}>
-                <Star size={18} fill="black" /> {listing.rating || '4.5'} · {listing.reviewsCount || 0} reviews · {listing.location}
+                <Star size={18} fill={theme.colors.charcoal} /> {listing.rating || '4.5'} · {listing.reviewsCount || 0} reviews · {listing.location}
               </div>
 
               <div style={dividerSection}>
@@ -155,7 +153,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
               <div style={dividerSection}>
                 <h3 style={sectionLabel}>What this place offers</h3>
                 <div style={amenityGrid}>
-                  {(listing.amenities || []).map((a, i) => (<div key={i} style={amenityItem}><CheckCircle size={22} color="#ff385c" /> {a}</div>))}
+                  {(listing.amenities || []).map((a, i) => (<div key={i} style={amenityItem}><CheckCircle size={22} color={theme.colors.brand} /> {a}</div>))}
                 </div>
               </div>
 
@@ -168,7 +166,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
               <div style={{ marginTop: '4rem' }}>
                 <div style={reviewHeader(isMobile)}>
-                  <div><h2 style={largeRating}><Star size={32} fill="#000" /> {listing.rating || '4.5'}</h2><p style={reviewsCountText}>{listing.reviewsCount || 0} reviews</p></div>
+                  <div><h2 style={largeRating}><Star size={32} fill={theme.colors.charcoal} /> {listing.rating || '4.5'}</h2><p style={reviewsCountText}>{listing.reviewsCount || 0} reviews</p></div>
                   <RatingBreakdown reviews={reviews} />
                 </div>
                 <div style={reviewGrid(isMobile)}>
@@ -176,7 +174,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
                     <div key={r._id} style={{ marginBottom: '1.5rem' }}>
                       <div style={userRow}>
                         <div style={avatarCircle}>{r.userId?.name?.charAt(0) || 'U'}</div>
-                        <div><div style={{ fontWeight: 'bold' }}>{r.userId?.name || 'Traveler'}</div><div style={reviewDate}>{r.createdAt ? formatDistanceToNow(new Date(r.createdAt), { addSuffix: true }) : 'Recently'}</div></div>
+                        <div><div style={{ fontWeight: theme.typography.weights.bold }}>{r.userId?.name || 'Traveler'}</div><div style={reviewDate}>{r.createdAt ? formatDistanceToNow(new Date(r.createdAt), { addSuffix: true }) : 'Recently'}</div></div>
                       </div>
                       <p style={reviewText}>{r.comment}</p>
                     </div>
@@ -189,7 +187,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
           {!isMobile && (
             <div style={{ flex: 1 }}>
               <div style={sidebarCard}>
-                <div style={sidebarPrice}>${listing.rate} <span style={{ fontSize: '1rem', fontWeight: 'normal' }}>night</span></div>
+                <div style={sidebarPrice}>${listing.rate} <span style={{ fontSize: '1rem', fontWeight: theme.typography.weights.normal }}>night</span></div>
                 {pricing.nights > 0 && (
                   <div style={{ marginBottom: '1.5rem' }}>
                      <div style={priceRow}><span>${listing.rate} x {pricing.nights} nights</span><span>${listing.rate * pricing.nights}</span></div>
@@ -205,7 +203,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
       {isMobile && (
         <div style={mobileBar}>
-          <div><div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>${listing.rate} night</div><div style={{ fontSize: '0.8rem', textDecoration: 'underline' }}>{pricing.nights > 0 ? `${pricing.nights} nights` : 'Select dates'}</div></div>
+          <div><div style={{ fontWeight: theme.typography.weights.bold, fontSize: '1.2rem' }}>${listing.rate} night</div><div style={{ fontSize: '0.8rem', textDecoration: 'underline' }}>{pricing.nights > 0 ? `${pricing.nights} nights` : 'Select dates'}</div></div>
           <button onClick={() => navigate('/pay', { state: { listingId: id, bookingDetails: { checkIn: dateRange[0], checkOut: dateRange[1], total: pricing.total, nights: pricing.nights }, listing }})} style={mobileBtn}>Reserve</button>
         </div>
       )}
@@ -216,50 +214,50 @@ const ListingDetail = ({ user, onChatOpened }) => {
 };
 
 // --- STYLES ---
-const centerStyle = { height: '80vh', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' };
+const centerStyle = { height: '80vh', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white };
 const containerStyle = (isMobile) => ({ maxWidth: '2560px', width: '100%', margin: isMobile ? '0' : '2rem auto', padding: isMobile ? '0' : '0 4rem' });
-const titleText = { marginBottom: '1.5rem', fontSize: '2rem', fontWeight: '800', color: '#222' };
+const titleText = { marginBottom: '1.5rem', fontSize: theme.typography.sizes.xxl, fontWeight: theme.typography.weights.extraBold, color: theme.colors.charcoal };
 const layoutGrid = (isMobile) => ({ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '0' : '4rem' });
 const mobileImg = { width: '100%', height: '300px', objectFit: 'cover' };
-const galleryGrid = { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.8rem', height: '520px', borderRadius: '16px', overflow: 'hidden', cursor: 'pointer' };
+const galleryGrid = { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.8rem', height: '520px', borderRadius: theme.radius.md, overflow: 'hidden', cursor: 'pointer' };
 const mainImage = { width: '100%', height: '100%', overflow: 'hidden' };
 const sideGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '0.8rem', position: 'relative' };
 const sideImage = { width: '100%', height: '100%', overflow: 'hidden' };
 const fullFit = { width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' };
-const showBtn = { position: 'absolute', bottom: '24px', right: '24px', backgroundColor: '#fff', border: '1px solid #222', borderRadius: '8px', padding: '0.6rem 1.2rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.9rem', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' };
-const ratingSummary = { display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#222', fontWeight: '700', fontSize: '1rem' };
-const dividerSection = { marginTop: '2.5rem', borderTop: '1px solid #eee', paddingTop: '2.5rem' };
-const hostTitle = { fontSize: '1.5rem', fontWeight: '700' };
-const descText = { color: '#444', fontSize: '1.1rem', lineHeight: '1.6', marginTop: '1rem' };
-const sectionLabel = { fontSize: '1.3rem', fontWeight: '700' };
+const showBtn = { position: 'absolute', bottom: '24px', right: '24px', backgroundColor: theme.colors.white, border: `1px solid ${theme.colors.charcoal}`, borderRadius: theme.radius.sm, padding: '0.6rem 1.2rem', fontWeight: theme.typography.weights.extraBold, display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.9rem', boxShadow: theme.shadows.sm };
+const ratingSummary = { display: 'flex', alignItems: 'center', gap: '0.5rem', color: theme.colors.charcoal, fontWeight: theme.typography.weights.bold, fontSize: '1rem' };
+const dividerSection = { marginTop: '2.5rem', borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '2.5rem' };
+const hostTitle = { fontSize: '1.5rem', fontWeight: theme.typography.weights.bold };
+const descText = { color: theme.colors.charcoal, fontSize: '1.1rem', lineHeight: '1.6', marginTop: '1rem' };
+const sectionLabel = { fontSize: '1.3rem', fontWeight: theme.typography.weights.bold };
 const amenityGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' };
-const amenityItem = { display: 'flex', alignItems: 'center', gap: '0.8rem', color: '#444' };
+const amenityItem = { display: 'flex', alignItems: 'center', gap: '0.8rem', color: theme.colors.charcoal };
 const reviewHeader = (isMobile) => ({ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '4rem', alignItems: 'flex-start', marginBottom: '3rem' });
-const largeRating = { fontSize: '2.5rem', margin: 0, fontWeight: '800' };
-const reviewsCountText = { color: '#717171', fontWeight: '600' };
+const largeRating = { fontSize: '2.5rem', margin: 0, fontWeight: theme.typography.weights.extraBold };
+const reviewsCountText = { color: theme.colors.slate, fontWeight: theme.typography.weights.semibold };
 const reviewGrid = (isMobile) => ({ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '3rem' });
 const userRow = { display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.8rem' };
-const avatarCircle = { width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem' };
-const reviewDate = { fontSize: '0.8rem', color: '#888' };
-const reviewText = { color: '#444', lineHeight: '1.6', fontSize: '1rem' };
-const sidebarCard = { border: '1px solid #ddd', borderRadius: '24px', padding: '2rem', position: 'sticky', top: '120px', boxShadow: '0 12px 32px rgba(0,0,0,0.1)', backgroundColor: '#fff' };
-const sidebarPrice = { fontSize: '1.6rem', fontWeight: '800', marginBottom: '1.5rem' };
-const priceRow = { display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginBottom: '0.8rem', color: '#444' };
-const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #eee', paddingTop: '1rem', color: '#000', fontSize: '1.2rem' };
-const reserveBtn = { width: '100%', marginTop: '2rem', padding: '1.1rem', backgroundColor: '#ff385c', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', fontSize: '1.1rem', cursor: 'pointer' };
-const mobileBar = { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTop: '1px solid #eee', padding: '1.2rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1000, boxShadow: '0 -8px 24px rgba(0,0,0,0.08)' };
-const mobileBtn = { backgroundColor: '#ff385c', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', fontSize: '1.1rem', cursor: 'pointer', padding: '0.8rem 2.5rem' };
+const avatarCircle = { width: '48px', height: '48px', borderRadius: theme.radius.full, backgroundColor: theme.colors.charcoal, color: theme.colors.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: theme.typography.weights.bold, fontSize: '1.2rem' };
+const reviewDate = { fontSize: '0.8rem', color: theme.colors.slate };
+const reviewText = { color: theme.colors.charcoal, lineHeight: '1.6', fontSize: '1rem' };
+const sidebarCard = { border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.lg, padding: '2rem', position: 'sticky', top: '120px', boxShadow: theme.shadows.lg, backgroundColor: theme.colors.white };
+const sidebarPrice = { fontSize: '1.6rem', fontWeight: theme.typography.weights.extraBold, marginBottom: '1.5rem' };
+const priceRow = { display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginBottom: '0.8rem', color: theme.colors.charcoal };
+const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: theme.typography.weights.bold, borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '1rem', color: theme.colors.charcoal, fontSize: '1.2rem' };
+const reserveBtn = { width: '100%', marginTop: '2rem', padding: '1.1rem', backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.md, fontWeight: theme.typography.weights.extraBold, fontSize: '1.1rem', cursor: 'pointer', boxShadow: `0 4px 15px rgba(255, 56, 92, 0.3)` };
+const mobileBar = { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: theme.colors.white, borderTop: `1px solid ${theme.colors.divider}`, padding: '1.2rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1000, boxShadow: '0 -8px 24px rgba(0,0,0,0.08)' };
+const mobileBtn = { backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.md, fontWeight: theme.typography.weights.extraBold, fontSize: '1.1rem', cursor: 'pointer', padding: '0.8rem 2.5rem' };
 const lightboxOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const closeBtnStyle = { position: 'absolute', top: '40px', right: '40px', background: 'none', border: 'none', color: 'white', cursor: 'pointer' };
+const closeBtnStyle = { position: 'absolute', top: '40px', right: '40px', background: 'none', border: 'none', color: theme.colors.white, cursor: 'pointer' };
 const lightboxContent = { textAlign: 'center', maxWidth: '90vw' };
-const lightboxImg = { maxHeight: '80vh', maxWidth: '100%', borderRadius: '16px', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' };
-const lightboxNav = { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '3rem', marginTop: '2.5rem', color: 'white', fontWeight: 'bold', fontSize: '1.1rem' };
-const navBtn = { background: 'white', color: 'black', border: 'none', borderRadius: '50%', padding: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' };
+const lightboxImg = { maxHeight: '80vh', maxWidth: '100%', borderRadius: theme.radius.md, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' };
+const lightboxNav = { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '3rem', marginTop: '2.5rem', color: theme.colors.white, fontWeight: 'bold', fontSize: '1.1rem' };
+const navBtn = { background: theme.colors.white, color: theme.colors.charcoal, border: 'none', borderRadius: theme.radius.full, padding: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', boxShadow: theme.shadows.sm };
 const breakdownContainerStyle = { flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' };
 const breakdownRowStyle = { display: 'flex', alignItems: 'center', gap: '1.2rem' };
-const starLabelStyle = { fontSize: '0.9rem', width: '70px', fontWeight: '600' };
-const barBgStyle = { flex: 1, height: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' };
-const barFillStyle = { height: '100%', backgroundColor: '#222', borderRadius: '4px' };
-const percentLabelStyle = { fontSize: '0.9rem', width: '50px', textAlign: 'right', color: '#717171' };
+const starLabelStyle = { fontSize: '0.9rem', width: '70px', fontWeight: theme.typography.weights.semibold };
+const barBgStyle = { flex: 1, height: '8px', backgroundColor: theme.colors.lightGrey, borderRadius: '4px', overflow: 'hidden' };
+const barFillStyle = { height: '100%', backgroundColor: theme.colors.charcoal, borderRadius: '4px' };
+const percentLabelStyle = { fontSize: '0.9rem', width: '50px', textAlign: 'right', color: theme.colors.slate };
 
 export default ListingDetail;
