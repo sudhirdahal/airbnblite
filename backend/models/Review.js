@@ -1,8 +1,13 @@
 const mongoose = require('mongoose');
 
 /**
- * Review Schema: Stores user ratings and textual feedback.
- * UPDATED: Added 'images' array to support visual reviews (Photos of the stay).
+ * ============================================================================
+ * REVIEW SCHEMA (The Reputation Ledger)
+ * ============================================================================
+ * Stores guest feedback and ratings for specific listings.
+ * 
+ * Logic: Every new review triggers a mathematical recalculation of the 
+ * parent Listing's 'averageRating' and 'reviewsCount' fields.
  */
 const reviewSchema = new mongoose.Schema({
   listingId: { 
@@ -15,24 +20,39 @@ const reviewSchema = new mongoose.Schema({
     ref: 'User', 
     required: true 
   },
+  
   rating: { 
     type: Number, 
     required: true, 
     min: 1, 
     max: 5 
   },
+  
   comment: { 
     type: String, 
     required: false 
   },
-  // --- NEW: Visual Review Support ---
+  
+  /**
+   * MEDIA: Review Photos
+   * Phase 10: S3-powered guest image array support.
+   */
   images: [{ 
-    type: String // Stores S3 URLs
+    type: String 
   }],
+  
   createdAt: { 
     type: Date, 
     default: Date.now 
   }
 });
+
+/* --- HISTORICAL STAGE 1: PRIMITIVE REVIEW ---
+ * const reviewSchema = new mongoose.Schema({
+ *   listingId: { type: String, required: true },
+ *   rating: { type: Number, required: true },
+ *   comment: { type: String }
+ * });
+ */
 
 module.exports = mongoose.model('Review', reviewSchema);

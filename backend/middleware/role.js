@@ -1,13 +1,28 @@
-// Middleware function to enforce role-based access control.
-// It ensures that only users with a specific role can access certain routes.
-// Usage: `roleMiddleware('admin')` will only allow 'admin' users.
-module.exports = function(requiredRole) {
+/**
+ * ============================================================================
+ * ROLE MIDDLEWARE (The Permission Shield)
+ * ============================================================================
+ * A higher-order function designed to enforce RBAC (Role-Based Access Control).
+ * 
+ * Usage: roleCheck('admin')
+ * Logic: Compares the role claims in the decoded JWT (from auth.js) 
+ * against the required role for the specific route.
+ */
+const roleCheck = (role) => {
   return (req, res, next) => {
-    // Check if the user (obtained from JWT in authMiddleware) has the required role.
-    if (req.user.role !== requiredRole) {
-      // If not, send a 403 Forbidden response.
-      return res.status(403).json({ message: `Access denied. ${requiredRole} only.` });
+    // We assume 'auth.js' has already executed and populated 'req.user'
+    if (req.user.role !== role) {
+      return res.status(403).json({ 
+        msg: `Access Denied: Required role '${role}' not found.` 
+      });
     }
-    next(); // If role matches, proceed to the next middleware/route handler.
+    next();
   };
 };
+
+/* --- HISTORICAL STAGE 1: ROLE-LESS ---
+ * In Phase 1, all routes were Public or required simple Login.
+ * Admins didn't exist yet!
+ */
+
+module.exports = roleCheck;

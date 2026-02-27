@@ -1,8 +1,14 @@
 const mongoose = require('mongoose');
 
 /**
- * Message Schema: Stores real-time chat data.
- * UPDATED: Added 'isRead' to support unread notifications.
+ * ============================================================================
+ * MESSAGE SCHEMA (The Chat Atomic Unit)
+ * ============================================================================
+ * This model persists individual bidirectional communications.
+ * It has evolved from a flat text log to a synchronized notification unit.
+ * 
+ * Logic: Every message is tied to a 'Listing' context, allowing the 
+ * Inbox to perform unique thread aggregation.
  */
 const messageSchema = new mongoose.Schema({
   sender: { 
@@ -19,15 +25,28 @@ const messageSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
-  // --- NEW: Read Status ---
+  
+  /**
+   * SYNC LOGIC: isRead
+   * Initially absent. Added in Phase 5 to power the global unread 
+   * notification badges in the Navbar.
+   */
   isRead: {
     type: Boolean,
     default: false
   },
+  
   timestamp: { 
     type: Date, 
     default: Date.now 
   }
 });
+
+/* --- HISTORICAL STAGE 1: PRIMITIVE MESSAGE ---
+ * const messageSchema = new mongoose.Schema({
+ *   sender: { type: String, required: true },
+ *   content: { type: String, required: true }
+ * });
+ */
 
 module.exports = mongoose.model('Message', messageSchema);
