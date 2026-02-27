@@ -18,6 +18,7 @@ import API from '../../services/api';
  * - Phase 10: Server-side Metadata Sync (Auto-suggesting valid locations).
  * - Phase 16: Multi-Dimensional Filter Suite (Pill-based UI).
  * - Phase 22: URL Synchronization (useSearchParams integration).
+ * - Phase 27: Multi-Select Toggle Logic for Amenities.
  */
 
 /* ============================================================================
@@ -32,7 +33,8 @@ import API from '../../services/api';
  * ============================================================================ */
 
 const SearchBar = ({ onSearch }) => {
-  const [params, setParams] = useState({ location: '', guests: 1, amenities: '' });
+  // Logic: Amenities is now an array to support multi-selection (Phase 27)
+  const [params, setParams] = useState({ location: '', guests: 1, amenities: [] });
   const [metadata, setMetadata] = useState({ locations: [], amenities: [] });
   
   // UI Disclosure States
@@ -77,7 +79,7 @@ const SearchBar = ({ onSearch }) => {
    */
   const handleLocationChange = (val) => {
     setParams({ ...params, location: val });
-    if (val === '') onSearch({ ...params, location: '' }); 
+    if (val === '') onSearch({ ...params, location: '', amenities: params.amenities.join(',') }); 
     setShowLocationSug(true);
   };
 
@@ -90,12 +92,27 @@ const SearchBar = ({ onSearch }) => {
   const handleSuggestClick = (loc) => {
     setParams({ ...params, location: loc });
     setShowLocationSug(false);
-    onSearch({ ...params, location: loc }); // Trigger search immediately on click
+    onSearch({ ...params, location: loc, amenities: params.amenities.join(',') }); 
+  };
+
+  /**
+   * MULTI-SELECT TOGGLE ENGINE (Phase 27)
+   * Logic: If the item exists in the array, remove it. If not, append it.
+   */
+  const toggleAmenity = (a) => {
+    setParams(prev => ({
+      ...prev,
+      amenities: prev.amenities.includes(a)
+        ? prev.amenities.filter(item => item !== a)
+        : [...prev.amenities, a]
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSearch(params); // Finalize all filters
+    // Handshake: Join the array into a comma-separated string for the API query
+    const submissionParams = { ...params, amenities: params.amenities.join(',') };
+    onSearch(submissionParams); 
     setShowGuestPicker(false); 
     setShowAmenityPicker(false);
   };
@@ -109,7 +126,7 @@ const SearchBar = ({ onSearch }) => {
         style={searchBarInner}
       >
         
-        {/* 🗺️ LOCATION SEGMENT (Auto-Suggest Logic) */}
+        {/* 🗺️ LOCATION SEGMENT */}
         <div style={inputSegment}>
           <label style={labelStyle}>Location</label>
           <div style={fieldWrapper}>
@@ -121,7 +138,6 @@ const SearchBar = ({ onSearch }) => {
               style={inputStyle} 
             />
           </div>
-          
           <AnimatePresence>
             {showLocationSug && params.location && (
               <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={dropdownStyle}>
@@ -138,21 +154,16 @@ const SearchBar = ({ onSearch }) => {
 
         <div style={divider} />
 
-        {/* 👥 GUEST SEGMENT (The Counter UX) */}
+        {/* 👥 GUEST SEGMENT */}
         <div style={inputSegment} onClick={() => setShowGuestPicker(!showGuestPicker)}>
           <label style={labelStyle}>Who</label>
           <div style={fieldWrapper}>
             <Users size={16} color={theme.colors.brand} />
             <div style={{ fontSize: '0.9rem', color: theme.colors.charcoal }}>{params.guests} guests</div>
           </div>
-          
           <AnimatePresence>
             {showGuestPicker && (
-              <motion.div 
-                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} 
-                style={dropdownStyle} 
-                onClick={e => e.stopPropagation()}
-              >
+              <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={dropdownStyle} onClick={e => e.stopPropagation()}>
                 <div style={counterRow}>
                   <span style={{ fontWeight: 'bold' }}>Adults</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -168,16 +179,15 @@ const SearchBar = ({ onSearch }) => {
 
         <div style={divider} />
 
-        {/* 🛁 AMENITIES SEGMENT (Strict Matching) */}
+        {/* 🛁 AMENITIES SEGMENT (Multi-Select Enabled) */}
         <div style={inputSegment} onClick={() => setShowAmenityPicker(!showAmenityPicker)}>
           <label style={labelStyle}>Extras</label>
           <div style={fieldWrapper}>
             <Filter size={16} color={theme.colors.brand} />
             <div style={{ fontSize: '0.9rem', color: theme.colors.charcoal, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100px' }}>
-              {params.amenities || 'WiFi, Pool...'}
+              {params.amenities.length > 0 ? params.amenities.join(', ') : 'WiFi, Pool...'}
             </div>
           </div>
-          
           <AnimatePresence>
             {showAmenityPicker && (
               <motion.div 
@@ -188,20 +198,22 @@ const SearchBar = ({ onSearch }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', padding: '0.5rem' }}>
                   {metadata.amenities.map((a, i) => (
                     <div 
-                      key={i} onClick={() => setParams({ ...params, amenities: a })}
+                      key={i} onClick={() => toggleAmenity(a)}
                       style={{ 
                         ...suggestionItem, 
                         borderRadius: '8px', 
                         fontSize: '0.8rem', 
-                        border: params.amenities === a ? `1px solid ${theme.colors.brand}` : '1px solid transparent',
-                        backgroundColor: params.amenities === a ? '#fff1f2' : 'transparent'
+                        border: params.amenities.includes(a) ? `1px solid ${theme.colors.brand}` : '1px solid transparent',
+                        backgroundColor: params.amenities.includes(a) ? '#fff1f2' : 'transparent',
+                        color: params.amenities.includes(a) ? theme.colors.brand : 'inherit',
+                        fontWeight: params.amenities.includes(a) ? 'bold' : 'normal'
                       }}
                     >
                       {a}
                     </div>
                   ))}
                   <div 
-                    onClick={() => setParams({...params, amenities: ''})} 
+                    onClick={() => setParams({...params, amenities: []})} 
                     style={{ ...suggestionItem, gridColumn: 'span 2', textAlign: 'center', color: theme.colors.brand, fontWeight: 'bold' }}
                   >
                     Clear All
@@ -212,13 +224,7 @@ const SearchBar = ({ onSearch }) => {
           </AnimatePresence>
         </div>
 
-        {/* 🎯 SUBMIT ACTION */}
-        <motion.button 
-          type="submit" 
-          whileHover={{ scale: 1.05 }} 
-          whileTap={{ scale: 0.95 }} 
-          style={searchBtn}
-        >
+        <motion.button type="submit" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={searchBtn}>
           <Search size={18} color={theme.colors.white} strokeWidth={3} />
         </motion.button>
 

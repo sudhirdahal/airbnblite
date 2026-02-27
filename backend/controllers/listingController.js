@@ -17,6 +17,7 @@ const Booking = require('../models/Booking');
  * - Phase 5: Multi-dimensional filtering (Location, Price, Guests).
  * - Phase 10: The Exclusion Query ($nin) for Date Availability.
  * - Phase 16: Strict Amenity Matching ($all).
+ * - Phase 27: Flexible Location Normalization.
  */
 
 /**
@@ -65,10 +66,17 @@ exports.getListings = async (req, res) => {
       guests, checkInDate, checkOutDate, amenities, sort 
     } = req.query; 
     
+    // console.log('Discovery Engine: Incoming Params:', req.query);
+
     let query = {}; 
 
     // 1. Basic String & ID Matches
-    if (location) query.location = { $regex: location, $options: 'i' }; // Case-insensitive
+    if (location) {
+      // Logic: Split by comma and search for the first part (e.g., 'London')
+      // to make the search more resilient to formatting differences (Phase 27).
+      const cityOnly = location.split(',')[0].trim();
+      query.location = { $regex: cityOnly, $options: 'i' }; 
+    }
     if (category) query.category = category;
     if (adminId) query.adminId = adminId;
 
@@ -78,16 +86,20 @@ exports.getListings = async (req, res) => {
       if (minPrice) query.rate.$gte = Number(minPrice);
       if (maxPrice) query.rate.$lte = Number(maxPrice);
     }
-    if (guests && Number(guests) > 0) {
+    
+    // Only apply guest filter if it's greater than 1 (Phase 27 Baseline fix)
+    if (guests && Number(guests) > 1) {
       query.maxGuests = { $gte: Number(guests) };
     }
 
     // 3. Array Intersection ($all)
     // If a user selects "WiFi" and "Pool", the property MUST have both.
-    if (amenities) {
+    if (amenities && amenities.trim() !== '') {
       const amenityList = amenities.split(',').map(a => a.trim());
       query.amenities = { $all: amenityList }; 
     }
+
+    // console.log('Discovery Engine: Final Query Object:', JSON.stringify(query));
 
     // --- 4. THE EXCLUSION QUERY (Phase 10: Availability-Aware Search) ---
     // If dates are provided, we must hide properties that are already booked.
