@@ -59,17 +59,27 @@ export const AuthProvider = ({ children }) => {
   /**
    * REAL-TIME ORCHESTRATION
    * Logic: Manages Socket.IO 'identify' and listens for push alerts.
+   * UPDATED: Added 'connect' listener to handle automatic re-identification
+   * upon socket reconnection (e.g., after laptop sleep or network switch).
    */
   useEffect(() => {
     if (!user) return;
-    socket.emit('identify', user._id || user.id);
-    syncUpdates(); // Force sync on login
+
+    const handleConnect = () => {
+      socket.emit('identify', user._id || user.id);
+    };
+
+    // Immediate identification and listener attachment
+    handleConnect();
+    socket.on('connect', handleConnect);
+    syncUpdates(); 
 
     const handleInstantAlert = () => { syncUpdates(); };
     socket.on('new_notification', handleInstantAlert);
     socket.on('new_message_alert', handleInstantAlert);
     
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('new_notification', handleInstantAlert);
       socket.off('new_message_alert', handleInstantAlert);
     };

@@ -111,31 +111,46 @@ exports.handleJoinRoom = (io, socket, listingId) => {
 exports.handleChatMessage = async (io, socket, msg) => {
   try {
     const savedMessage = await saveMessage(msg.senderId, msg.listingId, msg.content);
-    await savedMessage.populate('sender', 'name avatar');
-    await savedMessage.populate('listingId', 'adminId title');
+    
+    // Explicitly populate for the real-time payload
+    const populated = await Message.findById(savedMessage._id)
+      .populate('sender', 'name avatar')
+      .populate('listingId', 'adminId title');
+
+    if (!populated || !populated.listingId) return;
 
     const payload = {
-      _id: savedMessage._id,
-      listingId: msg.listingId,
-      sender: { _id: savedMessage.sender._id, name: savedMessage.sender.name, avatar: savedMessage.sender.avatar },
-      content: savedMessage.content,
-      timestamp: savedMessage.timestamp,
+      _id: populated._id,
+      listingId: populated.listingId._id,
+      sender: { 
+        _id: populated.sender._id, 
+        name: populated.sender.name, 
+        avatar: populated.sender.avatar 
+      },
+      content: populated.content,
+      timestamp: populated.timestamp,
       isRead: false
     };
 
-    io.to(msg.listingId).emit('chat message', payload);
+    // 1. BROADCAST: Send to the active listing room (for the open chat window)
+    io.to(populated.listingId._id.toString()).emit('chat message', payload);
 
-    // TARGETED RECIPIENT LOGIC
-    const listing = savedMessage.listingId;
-    if (listing && listing.adminId) {
-      if (msg.senderId !== listing.adminId.toString()) {
-        io.to(listing.adminId.toString()).emit('new_message_alert', payload);
-      } else {
-        const participants = await Message.find({ listingId: msg.listingId }).distinct('sender');
-        participants.forEach(pId => {
-          if (pId.toString() !== msg.senderId) io.to(pId.toString()).emit('new_message_alert', payload);
-        });
-      }
+    // 2. TARGETED ALERT: Notify the recipient's private room (for Navbar badges)
+    const hostId = populated.listingId.adminId.toString();
+    const currentSenderId = populated.sender._id.toString();
+
+    if (currentSenderId !== hostId) {
+      // GUEST -> HOST: Alert the Host
+      io.to(hostId).emit('new_message_alert', payload);
+    } else {
+      // HOST -> GUEST: Find the guest(s) in this thread
+      const participants = await Message.find({ listingId: populated.listingId._id }).distinct('sender');
+      participants.forEach(pId => {
+        const participantId = pId.toString();
+        if (participantId !== hostId) {
+          io.to(participantId).emit('new_message_alert', payload);
+        }
+      });
     }
-  } catch (err) { console.error('Socket Crash:', err); }
+  } catch (err) { console.error('Socket Message Sync Failure:', err); }
 };
