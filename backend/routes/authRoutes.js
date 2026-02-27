@@ -1,39 +1,60 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const { S3Client } = require('@aws-sdk/client-s3');
-const multerS3 = require('multer-s3');
-const { register, login, getProfile, updateProfile, verifyEmail, forgotPassword, resetPassword, logoutAll, getWishlist, toggleWishlist } = require('../controllers/authController');
-const { getInbox, markAsRead, getMessageHistory } = require('../controllers/chatController');
-const { getMyNotifications, markAllRead } = require('../controllers/notificationController'); // --- NEW ---
-const authMiddleware = require('../middleware/auth');
+const authController = require('../controllers/authController');
+const chatController = require('../controllers/chatController');
+const notificationController = require('../controllers/notificationController');
+const auth = require('../middleware/auth');
+const upload = require('../config/s3Config'); // Phase 5: S3 Integration
 
-const s3 = new S3Client({ region: process.env.AWS_REGION, credentials: { accessKeyId: process.env.AWS_ACCESS_KEY_ID, secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY } });
-const upload = multer({ storage: multerS3({ s3: s3, bucket: process.env.AWS_BUCKET_NAME, key: (req, file, cb) => { cb(null, `avatars/${Date.now().toString()}-${file.originalname}`); } }) });
+/**
+ * ============================================================================
+ * AUTHENTICATION ROUTES (The Identity Gatekeeper)
+ * ============================================================================
+ * This router manages the lifecycle of a user session.
+ * It has evolved from a simple open router to a strictly guarded system 
+ * featuring Token Versioning and Email Verification triggers.
+ */
 
-router.post('/register', register);
-router.post('/login', login);
-router.get('/verify/:token', verifyEmail);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
+// --- PUBLIC ACCESS: IDENTITY PROVISIONING ---
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.get('/verify/:token', authController.verifyEmail);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
 
-router.use(authMiddleware);
-router.get('/profile', getProfile);
-router.put('/profile', updateProfile);
-router.post('/logout-all', logoutAll);
-router.get('/wishlist', getWishlist);
-router.post('/wishlist/:id', toggleWishlist);
-router.get('/inbox', getInbox);
-router.get('/chat-history/:listingId', getMessageHistory);
-router.put('/chat-read/:listingId', markAsRead);
+// --- PROTECTED ACCESS: IDENTITY MANAGEMENT ---
+// These routes require a valid JWT via the 'auth' middleware.
+router.get('/profile', auth, authController.getProfile);
+router.put('/profile', auth, authController.updateProfile);
+router.post('/logout-all', auth, authController.logoutAll);
 
-// --- NEW: NOTIFICATION ROUTES ---
-router.get('/notifications', getMyNotifications);
-router.put('/notifications/read', markAllRead);
-
-router.post('/avatar', upload.single('avatar'), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+/**
+ * MEDIA PIPELINE: Avatar Upload
+ * Initially used local Multer diskStorage. 
+ * Phase 5 migrated to 'upload.single', which streams files directly to AWS S3.
+ */
+router.post('/avatar', auth, upload.single('avatar'), (req, res) => {
+  if (!req.file) return res.status(400).json({ msg: 'No file uploaded' });
   res.json({ avatarUrl: req.file.location });
 });
+
+// --- PROTECTED ACCESS: WISHLIST & COLLECTIONS ---
+router.post('/wishlist/:id', auth, authController.toggleWishlist);
+router.get('/wishlist', auth, authController.getWishlist);
+
+// --- PROTECTED ACCESS: REAL-TIME HUB ---
+router.get('/inbox', auth, chatController.getInbox);
+router.put('/chat-read/:listingId', auth, chatController.markAsRead);
+router.get('/chat-history/:listingId', auth, chatController.getMessageHistory);
+
+// --- PROTECTED ACCESS: SYSTEM ALERTS ---
+router.get('/notifications', auth, notificationController.getNotifications);
+router.put('/notifications/read', auth, notificationController.markAsRead);
+
+/* --- HISTORICAL STAGE 1: PRIMITIVE ROUTES ---
+ * router.post('/login', (req, res) => { ... });
+ * router.get('/profile', (req, res) => { ... });
+ * // Problem: No authentication middleware was used yet!
+ */
 
 module.exports = router;

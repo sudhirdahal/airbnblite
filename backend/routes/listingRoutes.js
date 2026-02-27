@@ -1,96 +1,45 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const { S3Client } = require('@aws-sdk/client-s3');
-const multerS3 = require('multer-s3');
-const { 
-  getListings, getListingById, createListing, updateListing, deleteListing 
-} = require('../controllers/listingController');
-const authMiddleware = require('../middleware/auth');
-const roleMiddleware = require('../middleware/role');
+const listingController = require('../controllers/listingController');
+const auth = require('../middleware/auth');
+const roleCheck = require('../middleware/role');
+const upload = require('../config/s3Config'); // Phase 5: S3 Streaming
 
 /**
  * ============================================================================
- * THE CLOUD STORAGE MIGRATION (LOCAL DISK -> AWS S3)
+ * LISTING ROUTES (The Discovery Controller)
  * ============================================================================
- * Early in development, we used 'multer.diskStorage' to save images directly 
- * to the 'backend/uploads' folder. However, cloud platforms like Render and AWS EC2 
- * use "Ephemeral File Systems." This means every time the server restarts, 
- * the local disk is wiped, and all user images are lost.
- * 
- * To make this a production-ready SaaS, we migrated to Amazon S3.
- * The code below streams the incoming file from the user's browser directly 
- * to our S3 bucket, bypassing our server's hard drive entirely.
+ * Manages the persistence and retrieval of property data.
+ * It has evolved from a flat CRUD router to a secure management layer 
+ * that validates ownership before allowing destructive actions.
  */
 
-// --- 1. AWS S3 CLIENT CONFIGURATION ---
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
-
-// --- 2. MULTER-S3 STORAGE ENGINE ---
-const upload = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    // Note: We used to use `acl: 'public-read'` here, but modern AWS buckets 
-    // disable ACLs by default. Instead, we applied a Bucket Policy in the AWS Console.
-    metadata: (req, file, cb) => {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: (req, file, cb) => {
-      // Create a unique identifier to prevent naming collisions
-      cb(null, `listings/${Date.now().toString()}-${file.originalname}`);
-    },
-  }),
-});
+// --- PUBLIC ACCESS: THE DISCOVERY LAYER ---
+router.get('/', listingController.getListings);
+router.get('/:id', listingController.getListingById);
 
 /**
- * --- HISTORICAL CODE: LOCAL DISK STORAGE ---
- * Preserved for educational purposes. If you want to run this entirely offline
- * without AWS credentials, comment out the S3 upload block above, and uncomment
- * this block below. (You will also need to change req.file.location to req.file.filename
- * in the /upload route below).
- * 
- * const storage = multer.diskStorage({
- *   destination: (req, file, cb) => {
- *     cb(null, 'uploads/'); // Requires an 'uploads' folder to exist
- *   },
- *   filename: (req, file, cb) => {
- *     cb(null, Date.now() + '-' + file.originalname);
- *   }
- * });
- * const upload = multer({ storage: storage });
+ * MEDIA PIPELINE: Property Image Upload
+ * Logic: Utilizes 'upload.single' to stream property photos to the cloud.
+ * This ensures the server remains stateless and cloud-ready.
  */
-
-// --- PUBLIC ROUTES ---
-router.get('/', getListings);
-router.get('/:id', getListingById);
-
-// --- PROTECTED ADMIN ROUTES ---
-// The following routes require a valid JWT (authMiddleware) AND the 'admin' role.
-router.use(authMiddleware);
-router.use(roleMiddleware('admin'));
-
-/**
- * @desc Upload a single property image
- * @returns {Object} JSON containing the public S3 URL (imageUrl)
- */
-router.post('/upload', upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-  
-  // S3 returns the public URL in `req.file.location`
-  // If using local disk storage, you would construct the URL manually:
-  // res.json({ imageUrl: `http://localhost:5001/uploads/${req.file.filename}` });
+router.post('/upload', auth, roleCheck('admin'), upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).json({ msg: 'No image uploaded' });
   res.json({ imageUrl: req.file.location });
 });
 
-router.post('/', createListing);
-router.put('/:id', updateListing);
-router.delete('/:id', deleteListing);
+// --- PROTECTED ACCESS: HOST MANAGEMENT ---
+// These routes require 'auth' AND the 'admin' role check.
+router.post('/', auth, roleCheck('admin'), listingController.createListing);
+router.put('/:id', auth, roleCheck('admin'), listingController.updateListing);
+router.delete('/:id', auth, roleCheck('admin'), listingController.deleteListing);
+
+/* --- HISTORICAL STAGE 1: LOCAL DISK UPLOADS ---
+ * const multer = require('multer');
+ * const storage = multer.diskStorage({ destination: 'uploads/' });
+ * const upload = multer({ storage });
+ * router.post('/upload', upload.single('image'), ...);
+ * // Problem: Render/Vercel delete local files every 24 hours!
+ */
 
 module.exports = router;
