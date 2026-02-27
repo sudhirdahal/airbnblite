@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react'; // --- UPDATED: Added memo ---
 import { Link } from 'react-router-dom';
 import { Star, Heart, MapPin, Trash2, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,9 +8,13 @@ import { theme } from '../../theme';
 
 /**
  * ============================================================================
- * LISTING CARD (V6 - THE INTERACTIVE SYNC UPDATE)
+ * LISTING CARD (V7 - THE PERFORMANCE MEMOIZATION UPDATE)
  * ============================================================================
- * UPDATED: Added onHover and onLeave callbacks to coordinate with the Map.
+ * OVERHAUL: Component Memoization.
+ * Logic: Wrapped in React.memo to prevent unnecessary re-renders.
+ * Why: In Phase 20, we added 'hoveredListingId' to the parent. Without memo,
+ * EVERY card in the grid would re-render every time the user moved their 
+ * mouse over a card. Now, only the specific card being hovered updates.
  */
 const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, onWishlistUpdate, onHover, onLeave }) => {
   const isWishlisted = user?.wishlist?.includes(listing._id);
@@ -36,7 +40,6 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
 
   return (
     <motion.div 
-      // --- NEW: TRIGGER SPATIAL SYNC ---
       onMouseEnter={() => { setIsHovered(true); onHover && onHover(); }}
       onMouseLeave={() => { setIsHovered(false); onLeave && onLeave(); }}
       initial={{ opacity: 0, y: 15 }}
@@ -69,7 +72,10 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
             <div style={ratingStyle}><Star size={14} fill={theme.colors.charcoal} /> <span style={{ fontWeight: theme.typography.weights.semibold }}>{listing.rating || '4.5'}</span></div>
           </div>
           <p style={locationStyle}>{listing.location}</p>
-          <div style={priceContainerStyle}><span style={priceStyle}>${listing.rate}</span> <span style={nightLabelStyle}>night</span></div>
+          <div style={priceContainerStyle}>
+            <span style={priceStyle}>${listing.rate}</span> 
+            <span style={nightLabelStyle}>night</span>
+          </div>
         </div>
       </Link>
     </motion.div>
@@ -90,4 +96,9 @@ const priceStyle = { fontWeight: theme.typography.weights.extraBold, fontSize: t
 const nightLabelStyle = { fontSize: theme.typography.sizes.sm, color: theme.colors.charcoal, fontWeight: theme.typography.weights.normal };
 const contentAreaStyle = { display: 'flex', flexDirection: 'column', gap: '0.2rem' };
 
-export default ListingCard;
+/* --- HISTORICAL STAGE 1: NON-MEMOIZED CARD ---
+ * const ListingCard = (props) => { ... }
+ * // Problem: Re-rendered 100+ times per second during mouse movement!
+ */
+
+export default memo(ListingCard);

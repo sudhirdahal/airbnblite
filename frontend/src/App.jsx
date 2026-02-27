@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast'; 
 import Navbar from './components/layout/Navbar';
@@ -8,31 +8,51 @@ import CategoryBar from './components/layout/CategoryBar';
 import Footer from './components/layout/Footer';
 import ListingGrid from './components/listings/ListingGrid';
 import ListingMap from './components/listings/ListingMap';
-import ListingDetail from './pages/ListingDetail';
-import AdminDashboard from './pages/AdminDashboard';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Bookings from './pages/Bookings';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import Profile from './pages/Profile';
-import VerifyEmail from './pages/VerifyEmail';
-import Wishlist from './pages/Wishlist';
-import MockPayment from './pages/MockPayment';
-import Inbox from './pages/Inbox';
 import API from './services/api';
-import { AuthProvider, useAuth } from './context/AuthContext'; // --- NEW: CONTEXT IMPORT ---
+import { AuthProvider, useAuth } from './context/AuthContext'; 
 import { AnimatePresence } from 'framer-motion';
+
+/**
+ * ============================================================================
+ * PHASE 24: DYNAMIC IMPORT ORCHESTRATION (Lazy Loading)
+ * ============================================================================
+ * Logic: We utilize React.lazy to split the application into 'Chunks'.
+ * Instead of one massive JS file, the browser now downloads small, 
+ * page-specific files only when needed.
+ */
+const ListingDetail = lazy(() => import('./pages/ListingDetail'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Bookings = lazy(() => import('./pages/Bookings'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Profile = lazy(() => import('./pages/Profile'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const Wishlist = lazy(() => import('./pages/Wishlist'));
+const MockPayment = lazy(() => import('./pages/MockPayment'));
+const Inbox = lazy(() => import('./pages/Inbox'));
+
+/* --- HISTORICAL STAGE 1: STATIC IMPORTS ---
+ * import ListingDetail from './pages/ListingDetail';
+ * import AdminDashboard from './pages/AdminDashboard';
+ * // Problem: The user had to download the Admin code even if they were a Guest!
+ */
 
 const PageWrapper = ({ children }) => (<div style={{ width: '100%' }}>{children}</div>);
 
 /**
- * ============================================================================
- * HOME COMPONENT (The Discovery Layer)
- * ============================================================================
+ * LOADING FALLBACK
+ * A high-fidelity structural placeholder for lazy components.
  */
+const PageLoader = () => (
+  <div style={{ height: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="spin" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #ff385c', borderRadius: '50%' }} />
+  </div>
+);
+
 const Home = ({ listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange, onHoverListing }) => {
-  const { user } = useAuth(); // Consume Global Context
+  const { user } = useAuth();
   return (
     <PageWrapper>
       <div style={{ position: 'relative' }}>
@@ -55,17 +75,10 @@ const Home = ({ listings, loading, onSearch, activeCategory, onCategorySelect, s
   );
 };
 
-/**
- * ============================================================================
- * APP CONTENT (The Route & Sync Orchestrator)
- * ============================================================================
- * UPDATED: Context API Refactor.
- * State for 'user', 'unreadCount', and 'sync' has been lifted to AuthContext.
- */
 const AppContent = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, isAuthLoading, syncUpdates, logout } = useAuth(); // CONSUME CONTEXT
+  const { user, isAuthLoading, syncUpdates, logout } = useAuth();
   
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -98,28 +111,30 @@ const AppContent = () => {
   return (
     <div className="app" style={{ fontFamily: 'Arial, sans-serif', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Toaster position="top-center" reverseOrder={false} />
-      
-      {/* NO MORE PROP DRILLING: Navbar consumes context internally */}
       <Navbar onLogout={logout} resetHomeView={() => setSearchParams({})} />
       
       <main style={{ flex: 1, width: '100%' }}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<Home listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} onHoverListing={setHoveredListingId} />} />
-            <Route path="/listing/:id" element={<PageWrapper><ListingDetail onChatOpened={syncUpdates} /></PageWrapper>} />
-            <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
-            <Route path="/signup" element={<PageWrapper><Signup /></PageWrapper>} />
-            <Route path="/verify/:token" element={<PageWrapper><VerifyEmail /></PageWrapper>} />
-            <Route path="/forgot-password" element={<PageWrapper><ForgotPassword /></PageWrapper>} />
-            <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
-            <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
-            <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />
-            <Route path="/inbox" element={<PageWrapper><Inbox onThreadOpened={syncUpdates} /></PageWrapper>} />
-            <Route path="/pay" element={<PageWrapper><MockPayment /></PageWrapper>} />
-            <Route path="/bookings" element={<PageWrapper><Bookings /></PageWrapper>} />
-            <Route path="/admin" element={<ProtectedAdminRoute><PageWrapper><AdminDashboard refreshListings={fetchListings} /></PageWrapper></ProtectedAdminRoute>} />
-          </Routes>
-        </AnimatePresence>
+        {/* --- SUSPENSE BOUNDARY --- 
+            Wraps lazy components to handle the loading transition. */}
+        <Suspense fallback={<PageLoader />}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<Home listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} onHoverListing={setHoveredListingId} />} />
+              <Route path="/listing/:id" element={<PageWrapper><ListingDetail onChatOpened={syncUpdates} /></PageWrapper>} />
+              <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
+              <Route path="/signup" element={<PageWrapper><Signup /></PageWrapper>} />
+              <Route path="/verify/:token" element={<PageWrapper><VerifyEmail /></PageWrapper>} />
+              <Route path="/forgot-password" element={<PageWrapper><ForgotPassword /></PageWrapper>} />
+              <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
+              <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
+              <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />
+              <Route path="/inbox" element={<PageWrapper><Inbox onThreadOpened={syncUpdates} /></PageWrapper>} />
+              <Route path="/pay" element={<PageWrapper><MockPayment /></PageWrapper>} />
+              <Route path="/bookings" element={<PageWrapper><Bookings /></PageWrapper>} />
+              <Route path="/admin" element={<ProtectedAdminRoute><PageWrapper><AdminDashboard refreshListings={fetchListings} /></PageWrapper></ProtectedAdminRoute>} />
+            </Routes>
+          </AnimatePresence>
+        </Suspense>
       </main>
       <Footer />
     </div>
