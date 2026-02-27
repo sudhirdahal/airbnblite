@@ -23,6 +23,12 @@ import Inbox from './pages/Inbox';
 import API from './services/api';
 import socket from './services/socket';
 
+/**
+ * ============================================================================
+ * HOME COMPONENT (The Interactive Discovery Layer)
+ * ============================================================================
+ * Manages the transition between Map and Grid view, and handles sorting.
+ */
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
   const userRole = user ? user.role : 'guest';
   return (
@@ -44,6 +50,13 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
   );
 };
 
+/**
+ * ============================================================================
+ * MAIN APP COMPONENT (The Global State Authority)
+ * ============================================================================
+ * Initially just a routing container. It has evolved into the central 
+ * synchronization hub for Auth, Real-time Alerts, and Global Search.
+ */
 const App = () => {
   const [user, setUser] = useState(null);
   const [listings, setListings] = useState([]);
@@ -56,6 +69,11 @@ const App = () => {
   const [sort, setSort] = useState('newest');
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
 
+  /**
+   * CENTRALIZED SYNC ENGINE (Phase 8 Scalability)
+   * Fetches the latest global alerts from the database.
+   * Wrapped in useCallback to prevent infinite render loops.
+   */
   const syncUpdates = useCallback(async () => {
     if (!localStorage.getItem('token')) return;
     try {
@@ -68,13 +86,17 @@ const App = () => {
     } catch (err) {}
   }, []);
 
+  /**
+   * EVENT-DRIVEN NOTIFICATION LISTENER
+   * Replaced polling (setInterval) with Socket.IO pushes for zero-latency alerts.
+   */
   useEffect(() => {
     if (!user) return;
     socket.emit('identify', user._id || user.id);
     syncUpdates();
     const handleInstantAlert = () => {
-      setUnreadCount(prev => prev + 1);
-      syncUpdates();
+      setUnreadCount(prev => prev + 1); // Optimistic UI update
+      syncUpdates(); // Background verification
     };
     socket.on('new_notification', handleInstantAlert);
     socket.on('new_message_alert', handleInstantAlert);
@@ -84,6 +106,10 @@ const App = () => {
     };
   }, [user, syncUpdates]);
 
+  /**
+   * AUTHENTICATION HYDRATION
+   * Validates the local token against the backend on app boot.
+   */
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
@@ -93,6 +119,10 @@ const App = () => {
     fetchListings();
   }, []);
 
+  /**
+   * GLOBAL API DISPATCHER
+   * Formats complex search and sort queries into a unified backend request.
+   */
   const fetchListings = async (p = searchParams, c = activeCategory, s = sort) => {
     setLoading(true);
     try {
@@ -106,7 +136,6 @@ const App = () => {
       const response = await API.get(url);
       setListings(response.data);
     } catch (err) {} finally { 
-      // --- FIXED: Removed artificial delay ---
       setLoading(false); 
     }
   };
@@ -116,10 +145,24 @@ const App = () => {
   const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
 
+  /**
+   * ============================================================================
+   * PROTECTED ROUTE ARCHITECTURE (The 404/Redirect Fix)
+   * ============================================================================
+   * HISTORICAL CONTEXT: Initially, routes were unprotected or used naive checks
+   * like `user?.role === 'admin' ? ...`. This caused immediate redirects to "/" 
+   * on page refreshes because 'user' was null for 100ms during API boot.
+   * 
+   * The 'isAuthLoading' flag solves this by pausing routing until the backend confirms.
+   */
   const ProtectedAdminRoute = ({ children }) => {
-    if (isAuthLoading) return null;
+    if (isAuthLoading) return null; 
     return user?.role === 'admin' ? children : <Navigate to="/" replace />;
   };
+
+  /* --- STAGE 1: PRIMITIVE ROUTING ---
+   * <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
+   */
 
   return (
     <Router>
