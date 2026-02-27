@@ -2,7 +2,7 @@
 
 Welcome to the **AirBnB Lite** Masterclass repository. This document is a 10,000-foot and 10-inch view of how a professional Software-as-a-Service (SaaS) application is built from the ground up. 
 
-This repository chronicles the evolution of a web application through **twenty-one distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
+This repository chronicles the evolution of a web application through **twenty-two distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
 
 ---
 
@@ -29,7 +29,8 @@ This repository chronicles the evolution of a web application through **twenty-o
 20. [Phase 19: High-Fidelity Review Submission & Social Proof](#20-phase-19-high-fidelity-review-submission--social-proof)
 21. [Phase 20: Spatial Interaction Sync & Reactive Discovery](#21-phase-20-spatial-interaction-sync--reactive-discovery)
 22. [Phase 21: Cinematic Navigation & Dynamic SEO Presence](#22-phase-21-cinematic-navigation--dynamic-seo-presence)
-23. [Final Engineering Summary & Evolution Table](#23-final-engineering-summary--evolution-table)
+23. [Phase 22: URL-Driven Discovery & Deep-Linking](#23-phase-22-url-driven-discovery--deep-linking)
+24. [Final Engineering Summary & Evolution Table](#24-final-engineering-summary--evolution-table)
 
 ---
 
@@ -166,26 +167,46 @@ Introduced **Component Synchronicity**, linking the Discovery Grid with the Map 
 
 ## 22. Phase 21: Cinematic Navigation & Dynamic SEO Presence
 
-This stage focused on **Visual Continuity** and **Contextual Awareness**, transforming the app from a series of pages into a fluid experience.
-
-### 1. Animated Route Orchestration
-We implemented a global **AnimatePresence** engine in `App.jsx`. Every page transition now features a smooth **Fade-and-Glide** effect, eliminating jarring snaps and providing an "App-like" high-fidelity feel.
-
-### 2. Dynamic SEO Presence (Contextual Handshake)
-To improve traveler orientation, we implemented **Dynamic Title Synchronization**. The application now proactively updates the browser tab (e.g., 'Glass Penthouse | AirnbLite') based on the active property, improving both UX and search engine visibility.
+Implemented a global **AnimatePresence** engine for smooth **Fade-and-Glide** page transitions and implemented **Dynamic Title Synchronization** for contextual browser tab awareness.
 
 ---
 
-## 23. Final Engineering Summary & Evolution Table
+## 23. Phase 22: URL-Driven Discovery & Deep-Linking
+
+This phase represents the application's transition to a **Stateless Discovery Hub**. We migrated the entire search and filter state from local component memory to the browser's URL.
+
+### 1. The SearchParams Authority
+We refactored `App.jsx` to use the `useSearchParams` hook as the single source of truth. Every user interaction—selecting a category, searching for a location, or adjusting guest counts—is instantly reflected in the URL.
+```javascript
+// URL STATE SYNC
+const [searchParams, setSearchParams] = useSearchParams();
+const location = searchParams.get('location') || '';
+const category = searchParams.get('category') || '';
+```
+
+### 2. Benefits: Deep-Linking & Persistence
+- **Sharable Discovery:** Users can now copy their browser URL (e.g., `?category=pools&guests=4`) and share it with others to show the exact same results.
+- **Refresh Resilience:** Reloading the page no longer resets filters, as the discovery context is persisted in the address bar.
+
+### 3. High-Fidelity Search Tools (Discovery 2.0)
+We overhauled the `SearchBar` with premium interaction patterns:
+- **Location Auto-suggest:** Implemented a backend metadata engine that performs a `.distinct()` query to provide real-time destination suggestions as the user types.
+- **Professional Guest Counter:** Replaced standard number inputs with a custom **+/- counter dropdown**, ensuring no negative values and a premium "Airbnb-like" feel.
+- **Amenity Selection Grid:** Added an interactive portal for "Extras" where users can scan and select property features via icons.
+- **Live Search Reset:** Implemented a proactive listener that restores the full property grid the millisecond a search term is cleared.
+
+---
+
+## 24. Final Engineering Summary & Evolution Table
 
 | Pillar | Evolutionary Step | Engineering Value |
 | :--- | :--- | :--- |
 | **Logic** | From Blind Saves to Mathematical Conflict Shields | 100% Data Integrity |
 | **Sync** | From 15s Polling to Private Socket Rooms | High Scalability |
+| **Search** | From Local State to URL-Driven Deep-Linking | Stateless Discovery |
 | **Media** | From Local Disk to AWS S3 Streaming | Stateless Cloud Readiness |
 | **Stability**| From Grouped Promises to Decoupled Defensive Fetches| Crash-Proof UX |
 | **Navigation**| From Jarring Snaps to Cinematic Fade-and-Glide | Visual Continuity |
-| **Theming** | From Hardcoded Hex to Design Tokens | Scalable Maintenance |
 | **Discovery**| From Static Pins to Reactive Map Highlighting | Interactive Orientation |
 | **Presence** | From Static Text to Typing Indicators | "Alive" Social Interaction |
 | **Identity** | From Boilerplate to Dynamic SEO Sync | Contextual Awareness |
@@ -195,4 +216,4 @@ To improve traveler orientation, we implemented **Dynamic Title Synchronization*
 ### Conclusion
 This repository serves as a testament to the fact that great software is not built, but **grown**. Every logic pivot was a step toward building a resilient, high-fidelity platform.
 
-**Happy engineering!** 🚀🌐🏠 Couch  Couch  Couch 🛋️🧤🌐
+**Happy engineering!** 🚀🌐🏠 Couch  Couch  Couch  Couch  Couch 🛋️🧤🌐
