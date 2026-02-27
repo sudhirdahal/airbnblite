@@ -1,107 +1,95 @@
 import React, { useState } from 'react';
-import Map, { Marker, Popup, NavigationControl, FullscreenControl } from 'react-map-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Star, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN; // SECURITY: Use environment variables for secrets
+import L from 'leaflet';
 
 /**
  * ============================================================================
  * LISTING MAP (The Interactive Discovery Engine)
  * ============================================================================
- * This component manages the spatial discovery of properties.
- * It has evolved from a simple marker-only view to an interactive experience
- * featuring smart popups and deep-linking.
+ * RESTORED LEAFLET IMPLEMENTATION: Switched back to react-leaflet to prevent 
+ * Mapbox token errors while keeping the high-fidelity UI popup logic.
  */
+
+// Custom Map Marker using Leaflet DivIcon
+const createCustomMarker = (price) => {
+  return L.divIcon({
+    className: 'custom-leaflet-marker',
+    html: `<div style="background-color: white; color: black; font-weight: 800; padding: 0.4rem 0.8rem; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); border: 1px solid #eee; font-size: 0.9rem; text-align: center;">$${price}</div>`,
+    iconSize: [60, 30],
+    iconAnchor: [30, 30] // Centered
+  });
+};
+
 const ListingMap = ({ listings }) => {
   const [selectedListing, setSelectedListing] = useState(null);
-  const [viewState, setViewState] = useState({
-    latitude: 40.7128, // Default to NYC
-    longitude: -74.0060,
-    zoom: 11
-  });
-
-  /* --- HISTORICAL STAGE 1: PRIMITIVE MARKERS ---
-   * return (
-   *   <Map ...>
-   *     {listings.map(l => <Marker key={l._id} latitude={l.coordinates.lat} longitude={l.coordinates.lng} />)}
-   *   </Map>
-   * );
-   */
+  
+  // Default to New York if no listings, otherwise center on the first listing
+  const centerPosition = listings.length > 0 && listings[0].coordinates 
+    ? [listings[0].coordinates.lat, listings[0].coordinates.lng]
+    : [40.7128, -74.0060];
 
   return (
     <div style={mapContainerStyle}>
-      <Map
-        {...viewState}
-        onMove={evt => setViewState(evt.viewState)}
+      <MapContainer 
+        center={centerPosition} 
+        zoom={11} 
         style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/streets-v12"
-        mapboxAccessToken={MAPBOX_TOKEN}
+        scrollWheelZoom={false}
       >
-        <FullscreenControl position="top-left" />
-        <NavigationControl position="top-left" />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
 
         {listings.map((listing) => (
-          <Marker
-            key={listing._id}
-            latitude={listing.coordinates?.lat || 0}
-            longitude={listing.coordinates?.lng || 0}
-            anchor="bottom"
-            onClick={e => { e.originalEvent.stopPropagation(); setSelectedListing(listing); }}
-          >
-            {/* --- HIGH-FIDELITY PRICE TAG MARKER --- */}
-            <motion.div whileHover={{ scale: 1.1 }} style={markerTagStyle}>
-              ${listing.rate}
-            </motion.div>
-          </Marker>
-        ))}
-
-        <AnimatePresence>
-          {selectedListing && (
-            <Popup
-              latitude={selectedListing.coordinates?.lat}
-              longitude={selectedListing.coordinates?.lng}
-              anchor="top"
-              onClose={() => setSelectedListing(null)}
-              closeButton={false}
-              maxWidth="300px"
+          listing.coordinates && (
+            <Marker
+              key={listing._id}
+              position={[listing.coordinates.lat, listing.coordinates.lng]}
+              icon={createCustomMarker(listing.rate)}
+              eventHandlers={{
+                click: () => {
+                  setSelectedListing(listing);
+                },
+              }}
             >
-              {/* --- INTERACTIVE POPUP CARD --- */}
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={popupCardStyle}>
-                <Link to={`/listing/${selectedListing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <img src={selectedListing.images[0]} style={popupImgStyle} alt="Thumb" />
-                  <div style={popupContentStyle}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
-                      <h4 style={popupTitleStyle}>{selectedListing.title}</h4>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                        <Star size={12} fill="black" /> {selectedListing.rating || 'New'}
+              <Popup closeButton={false} offset={[0, -20]} className="custom-popup">
+                {/* --- INTERACTIVE POPUP CARD --- */}
+                <div style={popupCardStyle}>
+                  <Link to={`/listing/${listing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <img src={listing.images[0]} style={popupImgStyle} alt="Thumb" />
+                    <div style={popupContentStyle}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                        <h4 style={popupTitleStyle}>{listing.title}</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                          <Star size={12} fill="black" /> {listing.rating || 'New'}
+                        </div>
                       </div>
+                      <p style={popupLocationStyle}>{listing.location}</p>
+                      <p style={popupPriceStyle}><b>${listing.rate}</b> night</p>
                     </div>
-                    <p style={popupLocationStyle}>{selectedListing.location}</p>
-                    <p style={popupPriceStyle}><b>${selectedListing.rate}</b> night</p>
-                  </div>
-                </Link>
-                <button onClick={() => setSelectedListing(null)} style={closePopupBtn}><X size={14} /></button>
-              </motion.div>
-            </Popup>
-          )}
-        </AnimatePresence>
-      </Map>
+                  </Link>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        ))}
+      </MapContainer>
     </div>
   );
 };
 
 // --- PREMIUM MAP STYLES ---
 const mapContainerStyle = { width: '100%', height: 'calc(100vh - 160px)', minHeight: '500px', borderRadius: '16px', overflow: 'hidden', border: '1px solid #ddd', marginTop: '2rem' };
-const markerTagStyle = { backgroundColor: 'white', color: 'black', fontWeight: '800', padding: '0.4rem 0.8rem', borderRadius: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.15)', cursor: 'pointer', border: '1px solid #eee', fontSize: '0.9rem' };
-const popupCardStyle = { width: '220px', backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', position: 'relative' };
+const popupCardStyle = { width: '220px', backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', position: 'relative', margin: '-14px -20px -14px -20px' };
 const popupImgStyle = { width: '100%', height: '140px', objectFit: 'cover' };
 const popupContentStyle = { padding: '0.8rem' };
-const popupTitleStyle = { margin: 0, fontSize: '0.9rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const popupTitleStyle = { margin: 0, fontSize: '0.9rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#222' };
 const popupLocationStyle = { margin: '0.2rem 0', fontSize: '0.8rem', color: '#717171' };
 const popupPriceStyle = { margin: 0, fontSize: '0.9rem', color: '#222' };
-const closePopupBtn = { position: 'absolute', top: '8px', right: '8px', backgroundColor: 'white', border: 'none', borderRadius: '50%', padding: '0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' };
 
 export default ListingMap;
