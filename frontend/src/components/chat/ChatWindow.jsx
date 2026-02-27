@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../services/socket';
-import { SendHorizontal, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react'; // --- CHANGED: SendHorizontal ---
+import { SendHorizontal, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
 /**
- * ChatWindow Component: Optimized with Horizontal Send Icon.
+ * ChatWindow Component: Updated with a MAXIMIZED Send icon.
+ * Icon size increased to 32px for a bold, high-fidelity presence.
  */
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -132,14 +133,19 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
         <form onSubmit={handleSendMessage} style={formStyle}>
           <input type="text" value={newMessage} onChange={handleInputChange} placeholder="Write a message..." style={inputStyle} />
-          {/* --- REINFORCED HORIZONTAL SEND BUTTON --- */}
+          {/* --- MAXIMIZED BOLD SEND BUTTON --- */}
           <motion.button 
             type="submit" 
             whileHover={{ scale: 1.05, backgroundColor: isHost ? '#310e5d' : '#e31c5f' }}
             whileTap={{ scale: 0.95 }}
             style={sendBtnStyle(themeColor)}
           >
-            <SendHorizontal size={26} color="white" strokeWidth={2.5} style={{ marginLeft: '2px' }} />
+            <SendHorizontal 
+              size={32} // --- BUMPED FROM 26 TO 32 ---
+              color="white" 
+              strokeWidth={2.5} 
+              style={{ transform: 'translateX(2px)' }} // Visual optical centering
+            />
           </motion.button>
         </form>
       </div>
@@ -158,19 +164,20 @@ const senderNameStyle = { fontSize: '0.72rem', color: '#717171', marginLeft: '0.
 const formStyle = { padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.8rem', backgroundColor: 'white', alignItems: 'center' };
 const inputStyle = { flexGrow: 1, padding: '0.8rem 1.4rem', borderRadius: '28px', border: '1.5px solid #eee', outline: 'none', fontSize: '1rem', backgroundColor: '#f9f9f9', color: '#222', WebkitAppearance: 'none' };
 
-// FIXED: Large action button with centered horizontal icon
+// REINFORCED BOLD DESIGN
 const sendBtnStyle = (color) => ({ 
   backgroundColor: color, 
   border: 'none', 
   borderRadius: '50%', 
-  width: '52px', 
-  height: '52px', 
+  width: '54px', // Slightly larger container
+  height: '54px', 
   display: 'flex', 
   alignItems: 'center', 
   justifyContent: 'center', 
   cursor: 'pointer',
   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  flexShrink: 0
+  flexShrink: 0,
+  padding: 0
 });
 
 const unreadBadgeStyle = { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#222', color: 'white', borderRadius: '50%', width: '24px', height: '24px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' };
