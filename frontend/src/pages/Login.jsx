@@ -4,18 +4,19 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../services/api';
+import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
 
 /**
  * ============================================================================
  * LOGIN PAGE (The Session Authority)
  * ============================================================================
- * This component manages user entry and session persistence.
- * Logic: Validates credentials against the backend, retrieves the JWT,
- * and hydrates the global 'User' state in App.jsx.
+ * OVERHAUL: Refactored to consume the centralized Design Token system.
+ * This ensures that input radii, brand buttons, and typography are
+ * perfectly synchronized with the global design language.
  */
 const Login = ({ setUser }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
-  const [showPassword, setShowPassword] = useState(false); // --- NEW: High-Fidelity Toggle ---
+  const [showPassword, setShowPassword] = useState(false); 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -25,17 +26,11 @@ const Login = ({ setUser }) => {
     const loginToast = toast.loading('Authenticating...');
 
     try {
-      // API call to backend /auth/login
       const res = await API.post('/auth/login', formData);
-      
-      // PERSISTENCE STAGE: Save to both memory and disk
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      
       setUser(res.data.user);
       toast.success(`Welcome back, ${res.data.user.name}!`, { id: loginToast });
-      
-      // Pivot to homepage
       navigate('/');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed', { id: loginToast });
@@ -44,22 +39,12 @@ const Login = ({ setUser }) => {
     }
   };
 
-  /* --- HISTORICAL STAGE 1: PRIMITIVE FORM ---
-   * return (
-   *   <form onSubmit={handleSubmit}>
-   *     <input type="email" onChange={...} />
-   *     <input type="password" onChange={...} />
-   *     <button type="submit">Go</button>
-   *   </form>
-   * );
-   */
-
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={containerStyle}>
       <div style={cardStyle}>
-        <div style={iconWrapperStyle}><LogIn size={32} color="#ff385c" /></div>
-        <h2 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Welcome back</h2>
-        <p style={{ color: '#717171', marginBottom: '2.5rem' }}>Login to manage your stays and bookings.</p>
+        <div style={iconWrapperStyle}><LogIn size={32} color={theme.colors.brand} /></div>
+        <h2 style={{ fontSize: theme.typography.sizes.xl, marginBottom: '0.5rem', fontWeight: theme.typography.weights.extraBold }}>Welcome back</h2>
+        <p style={{ color: theme.colors.slate, marginBottom: '2.5rem' }}>Login to manage your stays and bookings.</p>
 
         <form onSubmit={handleSubmit} style={formStyle}>
           <div style={inputGroup}>
@@ -84,7 +69,6 @@ const Login = ({ setUser }) => {
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                 style={inputStyle} required 
               />
-              {/* --- HIGH-FIDELITY TOGGLE BUTTON --- */}
               <button 
                 type="button" onClick={() => setShowPassword(!showPassword)} 
                 style={toggleBtnStyle}
@@ -111,20 +95,20 @@ const Login = ({ setUser }) => {
   );
 };
 
-// --- STYLES ---
+// --- TOKEN-BASED STYLES ---
 const containerStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '85vh', padding: '2rem' };
-const cardStyle = { width: '100%', maxWidth: '450px', padding: '3.5rem', border: '1px solid #eee', borderRadius: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.04)', backgroundColor: '#fff' };
-const iconWrapperStyle = { width: '64px', height: '64px', backgroundColor: '#fff1f2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' };
+const cardStyle = { width: '100%', maxWidth: '450px', padding: '3.5rem', border: `1px solid ${theme.colors.divider}`, borderRadius: theme.radius.lg, display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: theme.shadows.lg, backgroundColor: theme.colors.white };
+const iconWrapperStyle = { width: '64px', height: '64px', backgroundColor: '#fff1f2', borderRadius: theme.radius.full, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' };
 const formStyle = { width: '100%', display: 'flex', flexDirection: 'column' };
 const inputGroup = { display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem' };
-const labelStyle = { fontSize: '0.85rem', fontWeight: '700', color: '#222' };
+const labelStyle = { fontSize: '0.85rem', fontWeight: theme.typography.weights.bold, color: theme.colors.charcoal };
 const inputWrapper = { position: 'relative', display: 'flex', alignItems: 'center' };
 const fieldIcon = { position: 'absolute', left: '1rem', color: '#aaa' };
-const inputStyle = { width: '100%', padding: '0.9rem 1rem 0.9rem 3rem', borderRadius: '12px', border: '1.5px solid #eee', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', color: '#222' };
+const inputStyle = { width: '100%', padding: '0.9rem 1rem 0.9rem 3rem', borderRadius: theme.radius.md, border: `1.5px solid ${theme.colors.divider}`, fontSize: theme.typography.base, outline: 'none', color: theme.colors.charcoal };
 const toggleBtnStyle = { position: 'absolute', right: '1rem', background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center' };
-const buttonStyle = { marginTop: '1rem', padding: '1rem', border: 'none', borderRadius: '12px', backgroundColor: '#222', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', fontSize: '1rem' };
-const forgotLinkStyle = { fontSize: '0.85rem', color: '#717171', textDecoration: 'none', fontWeight: '600' };
-const footerTextStyle = { marginTop: '2.5rem', color: '#717171', fontSize: '0.95rem' };
-const linkStyle = { color: '#ff385c', fontWeight: 'bold', textDecoration: 'none' };
+const buttonStyle = { marginTop: '1rem', padding: '1rem', border: 'none', borderRadius: theme.radius.md, backgroundColor: theme.colors.charcoal, color: theme.colors.white, fontWeight: theme.typography.weights.bold, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', fontSize: '1rem' };
+const forgotLinkStyle = { fontSize: '0.85rem', color: theme.colors.slate, textDecoration: 'none', fontWeight: theme.typography.weights.semibold };
+const footerTextStyle = { marginTop: '2.5rem', color: theme.colors.slate, fontSize: '0.95rem' };
+const linkStyle = { color: theme.colors.brand, fontWeight: theme.typography.weights.bold, textDecoration: 'none' };
 
 export default Login;
