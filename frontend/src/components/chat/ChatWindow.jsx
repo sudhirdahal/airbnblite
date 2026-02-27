@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../services/socket';
-import { ArrowUp, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react'; // --- CHANGED: ArrowUp ---
+import { Send, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react'; // --- RESTORED: Send icon ---
 import { formatDistanceToNow } from 'date-fns'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
 /**
- * ChatWindow Component: Final UX Overhaul for the Send Button.
- * Switched to 'ArrowUp' for a cleaner, modern look similar to premium messaging apps.
+ * ChatWindow Component: Restored 'Airplane' Send icon with reinforced styling.
  */
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -143,14 +142,14 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
             placeholder="Write a message..." 
             style={inputStyle} 
           />
-          {/* --- ULTIMATE SEND BUTTON --- */}
+          {/* --- RESTORED AIRPLANE SEND BUTTON --- */}
           <motion.button 
             type="submit" 
             whileHover={{ scale: 1.05, backgroundColor: isHost ? '#310e5d' : '#e31c5f' }}
             whileTap={{ scale: 0.95 }}
             style={sendBtnStyle(themeColor)}
           >
-            <ArrowUp size={22} color="white" strokeWidth={3} />
+            <Send size={20} color="white" style={{ marginLeft: '2px' }} />
           </motion.button>
         </form>
       </div>
@@ -180,7 +179,6 @@ const inputStyle = {
   WebkitAppearance: 'none'
 };
 
-// REINFORCED DESIGN: Large, high-contrast action button
 const sendBtnStyle = (color) => ({ 
   backgroundColor: color, 
   border: 'none', 
