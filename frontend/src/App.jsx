@@ -23,10 +23,6 @@ import Inbox from './pages/Inbox';
 import API from './services/api';
 import socket from './services/socket';
 
-/**
- * DEPLOYMENT PING: 03:25
- */
-
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
   return (
     <div style={{ position: 'relative' }}>
@@ -112,9 +108,7 @@ const App = () => {
       if (p.guests) url += `guests=${p.guests}&`;
       const response = await API.get(url);
       setListings(response.data);
-    } catch (err) {} finally { 
-      setLoading(false); 
-    }
+    } catch (err) {} finally { setLoading(false); }
   };
 
   const handleSearch = (np) => { setSearchParams(p => ({...p, ...np})); fetchListings({...searchParams, ...np}, activeCategory, sort); };
@@ -125,12 +119,6 @@ const App = () => {
   return (
     <Router>
       <div className="app" style={{ fontFamily: 'Arial, sans-serif', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        
-        {/* --- GLOBAL DIAGNOSTIC --- */}
-        <div style={{ backgroundColor: '#000', color: '#fff', textAlign: 'center', padding: '0.5rem', fontWeight: 'bold' }}>
-          ROUTING ENGINE DIAGNOSTIC: v1.0.6
-        </div>
-
         <Toaster position="top-center" reverseOrder={false} />
         <Navbar 
           userRole={user ? user.role : 'guest'} 
@@ -146,14 +134,8 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home user={user} listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} />} />
             
-            {/* --- THE NUCLEAR ROUTING TEST --- */}
-            <Route path="/listing/:id" element={
-              <div style={{ padding: '10rem 2rem', backgroundColor: '#0000ff', color: '#fff', textAlign: 'center', minHeight: '80vh' }}>
-                <h1>ROUTING SUCCESSFUL</h1>
-                <p>If you see this BLUE BOX, the Router is working perfectly.</p>
-                <Link to="/" style={{ color: '#fff', textDecoration: 'underline' }}>Go back home</Link>
-              </div>
-            } />
+            {/* --- RESTORED PROPERTY PAGE --- */}
+            <Route path="/listing/:id" element={<ListingDetail user={user} onChatOpened={syncUpdates} />} />
             
             <Route path="/login" element={<Login setUser={setUser} />} />
             <Route path="/signup" element={<Signup />} />
