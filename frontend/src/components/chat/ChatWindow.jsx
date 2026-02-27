@@ -7,37 +7,59 @@ import API from '../../services/api';
 
 /**
  * ============================================================================
- * CHAT WINDOW COMPONENT (The Real-Time Presence Layer)
+ * 💬 CHAT WINDOW COMPONENT (The Real-Time Presence Layer)
  * ============================================================================
- * This component manages the live bidirectional communication channel.
- * It has evolved from a primitive socket emission widget to a 
- * role-aware, hydrated communication hub featuring:
- * 1. Role-specific Theming (Host Purple vs Guest Red).
- * 2. Real-time Typing Indicators.
- * 3. Relative Timestamps (High-fidelity).
- * 4. Automatic 'Mark as Read' synchronization.
+ * 
+ * MASTERCLASS NOTES:
+ * This component manages the live bidirectional communication channel. 
+ * Building a chat widget requires handling complex asynchronous state:
+ * 1. Historical Hydration (Loading old messages).
+ * 2. Real-time Interception (Catching new messages via Sockets).
+ * 3. Presence Indicators (Visualizing when the other user is typing).
  */
+
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 4 (The Static Text-Only Chat)
+ * ============================================================================
+ * Initially, we just emitted a raw string to the server:
+ * 
+ * const handleSend = () => {
+ *    socket.emit('chat message', { text: newMessage });
+ * }
+ * 
+ * THE FLAW: The server didn't know who sent it or which listing it belonged to!
+ * We had to refactor to include `senderId` and `listingId` for private 
+ * thread isolation.
+ * ============================================================================ */
+
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  
+  // Real-Time Interaction States
   const [unreadCount, setUnreadCount] = useState(0);
   const [typingUser, setTypingUser] = useState(null); 
-  const typingTimeoutRef = useRef(null);
   
+  // Ref Persistence (Avoiding re-render cycles)
+  const typingTimeoutRef = useRef(null);
   const messagesEndRef = useRef(null);
   const isOpenRef = useRef(isOpen);
+  
+  // Audio Feedback: High-fidelity chime for incoming messages
   const audioRef = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'));
 
   /**
    * HYDRATION SYNC
-   * Syncs historical messages when the listing context changes.
+   * Logic: When the property history arrives from ListingDetail.jsx,
+   * we inject it into the local state.
    */
   useEffect(() => { if (history.length > 0) setMessages(history); }, [history]);
 
   /**
    * INTERACTION SYNC
-   * When opened, we tell the backend to mark these messages as seen.
+   * Logic: When the user opens the window, we tell the backend to mark 
+   * these specific messages as 'read'.
    */
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -51,8 +73,12 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
   const getUserId = (user) => user?._id || user?.id;
 
   /**
-   * REAL-TIME ENGINE
-   * Listeners for incoming messages and presence (typing) events.
+   * ⚡ REAL-TIME ENGINE (Socket.IO Handshake)
+   * 
+   * Logic:
+   * 1. Room Isolation: Join a room specific to this Listing ID.
+   * 2. Message Interception: Listen for 'chat message' and append to state.
+   * 3. Presence Interception: Listen for 'typing' events from the OTHER party.
    */
   useEffect(() => {
     if (!currentUser || !listingId) return; 
@@ -61,9 +87,12 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     socket.emit('join room', listingId);
 
     const handleNewMessage = (message) => {
+      // Only process messages belonging to this property
       if (message.listingId === listingId) {
         setMessages(prev => [...prev, message]);
-        setTypingUser(null); 
+        setTypingUser(null); // Clear typing indicator upon message arrival
+        
+        // If the window is CLOSED, increment the unread badge and play a sound
         if (!isOpenRef.current) {
           setUnreadCount(prev => prev + 1);
           audioRef.current.play().catch(() => {});
@@ -72,11 +101,12 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     };
 
     const handleTyping = (data) => {
-      // Determine if the OTHER party is typing
+      // Logic: Only show indicator if the OTHER person is typing
       if (data.listingId === listingId && data.userId !== getUserId(currentUser)) {
         setTypingUser(isHost ? 'Guest' : 'Host');
       }
     };
+    
     const handleStopTyping = (data) => {
       if (data.listingId === listingId) setTypingUser(null);
     };
@@ -85,6 +115,7 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     socket.on('typing', handleTyping);
     socket.on('stop_typing', handleStopTyping);
 
+    // CLEANUP: Nuclear stability - kill listeners when navigating away
     return () => {
       socket.off('chat message', handleNewMessage);
       socket.off('typing', handleTyping);
@@ -92,11 +123,13 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     };
   }, [listingId, currentUser, isHost]);
 
+  // Auto-scroll logic: Keep the latest message in view
   useEffect(() => { if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
 
   /**
-   * PRESENCE HANDLER
-   * Emits typing state to let the other user know we are active.
+   * PRESENCE EMITTER
+   * Logic: Informs the server we are currently typing.
+   * Debounce Pattern: We emit 'stop_typing' after 3 seconds of inactivity.
    */
   const handleInputChange = (e) => {
     setNewMessage(e.target.value);
@@ -112,28 +145,32 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     e.preventDefault();
     if (newMessage.trim() === '') return;
     
-    /* --- HISTORICAL STAGE 1: RAW EMISSION ---
-     * Initially, we just sent the text.
-     * socket.emit('chat message', { content: newMessage });
-     */
-
-    socket.emit('chat message', { senderId: getUserId(currentUser), listingId: listingId, content: newMessage });
+    // Push event to server
+    socket.emit('chat message', { 
+      senderId: getUserId(currentUser), 
+      listingId: listingId, 
+      content: newMessage 
+    });
+    
     socket.emit('stop_typing', { listingId });
     setNewMessage('');
   };
 
   if (!currentUser) return null;
 
-  // Visual Identity Logic
+  // DESIGN TOKEN: Visual Identity Logic
+  // Host uses Purple branding, Guests use Brand Red
   const themeColor = isHost ? '#4a148c' : '#ff385c';
 
   return (
     <>
+      {/* 🔘 FLOATING TOGGLE */}
       <button onClick={() => setIsOpen(!isOpen)} style={floatingBtnStyle(themeColor)}>
         {isOpen ? <X size={28} /> : <MessageCircle size={28} />}
         {!isOpen && unreadCount > 0 && (<div style={unreadBadgeStyle}>{unreadCount}</div>)}
       </button>
 
+      {/* 💬 CHAT PORTAL */}
       <div style={{ ...chatContainerStyle, display: isOpen ? 'flex' : 'none' }}>
         <div style={headerStyle(themeColor)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -184,9 +221,9 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
   );
 };
 
-// --- STYLES ---
+// --- DESIGN TOKEN STYLES ---
 const floatingBtnStyle = (color) => ({ position: 'fixed', bottom: '30px', right: '30px', width: '60px', height: '60px', borderRadius: '50%', backgroundColor: color, color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 });
-const chatContainerStyle = { position: 'fixed', bottom: '100px', right: '30px', width: '380px', maxWidth: 'calc(100vw - 60px)', height: '540px', maxHeight: 'calc(100vh - 150px)', backgroundColor: 'white', borderRadius: '16px', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000, border: '1px solid #eee' };
+const chatContainerStyle = { position: 'fixed', bottom: 100, right: '30px', width: '380px', maxWidth: 'calc(100vw - 60px)', height: '540px', maxHeight: 'calc(100vh - 150px)', backgroundColor: 'white', borderRadius: '16px', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000, border: '1px solid #eee' };
 const headerStyle = (color) => ({ padding: '1.2rem', backgroundColor: color, color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
 const messageListStyle = { flexGrow: 1, padding: '1.2rem', overflowY: 'auto', backgroundColor: '#fcfcfc', display: 'flex', flexDirection: 'column' };
 const bubbleStyle = (isMe, color) => ({ padding: '0.8rem 1.2rem', borderRadius: isMe ? '20px 20px 4px 20px' : '20px 20px 20px 4px', backgroundColor: isMe ? color : '#fff', color: isMe ? 'white' : '#222', fontSize: '0.95rem', border: isMe ? 'none' : '1px solid #eee', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' });
