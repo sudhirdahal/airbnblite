@@ -4,17 +4,18 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, LogIn } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../services/api';
-import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
+import { theme } from '../theme'; 
+import { useAuth } from '../context/AuthContext'; // --- NEW: CONTEXT HOOK ---
 
 /**
  * ============================================================================
  * LOGIN PAGE (The Session Authority)
  * ============================================================================
  * OVERHAUL: Refactored to consume the centralized Design Token system.
- * This ensures that input radii, brand buttons, and typography are
- * perfectly synchronized with the global design language.
+ * UPDATED: Integrated with AuthContext for unified session management.
  */
-const Login = ({ setUser }) => {
+const Login = () => {
+  const { login } = useAuth(); // CONSUME CONTEXT
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false); 
   const [loading, setLoading] = useState(false);
@@ -27,9 +28,9 @@ const Login = ({ setUser }) => {
 
     try {
       const res = await API.post('/auth/login', formData);
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data.user));
-      setUser(res.data.user);
+      // Use the centralized login method
+      login(res.data.user, res.data.token);
+      
       toast.success(`Welcome back, ${res.data.user.name}!`, { id: loginToast });
       navigate('/');
     } catch (err) {

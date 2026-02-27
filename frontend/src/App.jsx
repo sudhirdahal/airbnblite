@@ -120,7 +120,7 @@ const AppContent = () => {
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<Home listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} onHoverListing={setHoveredListingId} />} />
-              <Route path="/listing/:id" element={<PageWrapper><ListingDetail onChatOpened={syncUpdates} /></PageWrapper>} />
+              <Route path="/listing/:id" element={<PageWrapper><ListingDetail user={user} onChatOpened={syncUpdates} /></PageWrapper>} />
               <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
               <Route path="/signup" element={<PageWrapper><Signup /></PageWrapper>} />
               <Route path="/verify/:token" element={<PageWrapper><VerifyEmail /></PageWrapper>} />
@@ -131,7 +131,7 @@ const AppContent = () => {
               <Route path="/inbox" element={<PageWrapper><Inbox onThreadOpened={syncUpdates} /></PageWrapper>} />
               <Route path="/pay" element={<PageWrapper><MockPayment /></PageWrapper>} />
               <Route path="/bookings" element={<PageWrapper><Bookings /></PageWrapper>} />
-              <Route path="/admin" element={<ProtectedAdminRoute><PageWrapper><AdminDashboard refreshListings={fetchListings} /></PageWrapper></ProtectedAdminRoute>} />
+              <Route path="/admin" element={<ProtectedAdminRoute><PageWrapper><AdminDashboard user={user} refreshListings={fetchListings} /></PageWrapper></ProtectedAdminRoute>} />
             </Routes>
           </AnimatePresence>
         </Suspense>

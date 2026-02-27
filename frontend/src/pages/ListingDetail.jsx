@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize, Camera, Utensils, ChevronDown, Grid, Loader2
+  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize, Camera, Utensils, ChevronDown, Grid, Loader2,
+  Wifi, Waves, Car, Tv, Wind, Dumbbell, Shield, Coffee
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, isValid } from 'date-fns'; 
@@ -93,16 +94,36 @@ const ListingDetail = ({ user, onChatOpened }) => {
   const loadPageData = async () => {
     setLoading(true);
     try {
+      // 1. Fetch Core Listing Data
       const res = await API.get(`/listings/${id}`);
       if (!res.data) throw new Error("Context Unavailable.");
       setListing(res.data);
-      const reviewRes = await API.get(`/reviews/${id}`).catch(() => ({ data: [] }));
-      setReviews(reviewRes.data || []);
-      if (localStorage.getItem('token')) {
-        const chatRes = await API.get(`/auth/chat-history/${id}`).catch(() => ({ data: [] }));
-        setChatHistory(chatRes.data || []);
+
+      // 2. Fetch Reviews (Defensive Pattern)
+      try {
+        const reviewRes = await API.get(`/reviews/${id}`);
+        setReviews(reviewRes.data || []);
+      } catch (err) {
+        console.warn('Reviews Sync Failure (Non-Critical)');
+        setReviews([]);
       }
-    } catch (err) { setError("Property sync failed."); } finally { setLoading(false); }
+
+      // 3. Fetch Chat History (Defensive Pattern)
+      if (localStorage.getItem('token')) {
+        try {
+          const chatRes = await API.get(`/auth/chat-history/${id}`);
+          setChatHistory(chatRes.data || []);
+        } catch (err) {
+          console.warn('Chat History Sync Failure (Non-Critical)');
+          setChatHistory([]);
+        }
+      }
+    } catch (err) { 
+      console.error("Property Sync Failure (Critical):", err.message);
+      setError("Property sync failed."); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   useEffect(() => { if (id) loadPageData(); }, [id, user]);
@@ -222,7 +243,12 @@ const ListingDetail = ({ user, onChatOpened }) => {
           )}
         </div>
       </div>
-      <ChatWindow listingId={id} currentUser={user} isHost={user?.id === listing.adminId} history={chatHistory} />
+      <ChatWindow 
+        listingId={id} 
+        currentUser={user} 
+        isHost={(user?._id || user?.id) === (listing.adminId?._id || listing.adminId)} 
+        history={chatHistory} 
+      />
     </div>
   );
 };

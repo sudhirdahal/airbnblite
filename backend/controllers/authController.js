@@ -21,9 +21,11 @@ const { sendVerificationEmail, sendWelcomeEmail, sendResetPasswordEmail } = requ
  * stateless session revocation engine.
  */
 const generateToken = (user) => {
+  const secret = process.env.JWT_SECRET || 'secret_key_123';
+  // console.log(`Auth Handshake: Generating token with secret starting with: ${secret.substring(0, 3)}...`);
   return jwt.sign(
     { id: user._id, role: user.role, version: user.tokenVersion },
-    process.env.JWT_SECRET || 'secret_key_123', 
+    secret, 
     { expiresIn: '7d' } // High-fidelity session length
   );
 };
@@ -44,24 +46,39 @@ exports.getProfile = async (req, res) => {
  */
 exports.login = async (req, res) => {
   const { email, password } = req.body;
+  // console.log(`Auth Handshake: Attempting login for ${email}`);
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid Identity' });
+    if (!user) {
+      // console.warn(`Auth Handshake: No user found with email ${email}`);
+      return res.status(400).json({ message: 'Invalid Identity' });
+    }
     
+    // console.log(`Auth Handshake: User found. Verified status: ${user.isVerified}`);
+
     // Phase 2: Trust verification pivot
     if (!user.isVerified) {
+      // console.warn('Auth Handshake: User exists but is NOT verified.');
       return res.status(401).json({ message: 'Identity not verified. Please check email.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid Identity' });
+    if (!isMatch) {
+      // console.warn('Auth Handshake: Password mismatch.');
+      return res.status(400).json({ message: 'Invalid Identity' });
+    }
 
+    // console.log('Auth Handshake: Password verified. Generating token...');
     const token = generateToken(user);
+    // console.log('Auth Handshake: Token generated successfully.');
     res.json({
       token,
       user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, wishlist: user.wishlist }
     });
-  } catch (err) { res.status(500).send('Authentication Handshake Failure'); }
+  } catch (err) {
+    // console.error('Auth Handshake: CRITICAL LOGIN ERROR:', err);
+    res.status(500).send('Authentication Handshake Failure'); 
+  }
 };
 
 /**

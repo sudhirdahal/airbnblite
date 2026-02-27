@@ -16,10 +16,15 @@ const connectDB = async () => {
     const conn = await mongoose.connect(process.env.MONGO_URI);
 
     console.log(`Seed Engine: MongoDB Connected: ${conn.connection.host}`);
+    // console.log(`Target Database: ${conn.connection.name}`);
+
+    // DIAGNOSTIC: List collections to verify we are in the right DB
+    // const collections = await conn.connection.db.listCollections().toArray();
+    // console.log('Available Collections:', collections.map(c => c.name));
 
     // --- EVENT LISTENERS: RESILIENCE ---
     mongoose.connection.on('error', (err) => {
-      console.error('Mongoose Connectivity Error:', err);
+      console.error('Mongoose Connectivity Error:', err.message);
     });
 
     mongoose.connection.on('disconnected', () => {
