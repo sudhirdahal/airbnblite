@@ -2,29 +2,19 @@ import axios from 'axios';
 
 /**
  * ============================================================================
- * API SERVICE (The HTTP Connector)
+ * API SERVICE (The Production Connector)
  * ============================================================================
- * Initially, this was a collection of raw fetch() calls. 
- * It has evolved into a centralized Axios instance that handles:
- * 1. Automatic Base URL routing (Production vs. Local).
- * 2. High-fidelity Token Injection via Interceptors.
+ * FIXED: Explicit fallback to the live Render backend URL to prevent 
+ * 'Mixed Content' (HTTP vs HTTPS) crashes on the deployed site.
  */
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+  // Use Vercel's env variable, or fallback to your specific production backend
+  baseURL: import.meta.env.VITE_API_URL || 'https://airbnblite-backend.onrender.com/api',
 });
-
-/* --- HISTORICAL STAGE 1: MANUAL HEADERS ---
- * const res = await axios.get(url, {
- *   headers: { 'x-auth-token': localStorage.getItem('token') }
- * });
- * // Problem: Too much boilerplate! We forgot the token half the time.
- */
 
 /**
  * AUTHENTICATION INTERCEPTOR
- * Logic: Every single outbound request automatically checks the 
- * browser's local storage for a valid JWT and injects it into the 
- * 'x-auth-token' header if found.
+ * Injects the JWT into every outbound request.
  */
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
