@@ -7,18 +7,39 @@ import {
 
 /**
  * ============================================================================
- * CATEGORY BAR COMPONENT (The Discovery Pivot)
+ * 🏊 CATEGORY BAR (The Thematic Filter)
  * ============================================================================
- * Initially a static list of text links.
- * It has evolved into a high-fidelity visual filter bar that orchestrates
- * the global listing query based on property 'Category' metadata.
+ * 
+ * MASTERCLASS NOTES:
+ * This component handles thematic discovery. It allows users to filter the 
+ * entire database based on property "Vibe" rather than just location.
  * 
  * Logic: Toggles the 'activeCategory' state in App.jsx, which triggers
- * an immediate re-fetch of filtered results.
+ * an immediate re-fetch of filtered results from the backend.
+ * 
+ * Evolution Timeline:
+ * - Phase 1: Simple list of text buttons.
+ * - Phase 14: Transition to Iconography-driven navigation.
+ * - Phase 21: High-Fidelity Shared Layout Animations (Spring-loaded underline).
  */
+
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 1 (The Text List)
+ * ============================================================================
+ * return (
+ *   <div style={{ display: 'flex' }}>
+ *     <button onClick={() => onSelect('pools')}>Pools</button>
+ *     <button onClick={() => onSelect('beach')}>Beach</button>
+ *   </div>
+ * );
+ * 
+ * THE FLAW: It felt like a generic web form. It lacked the visual "vibe" 
+ * that users expect from a travel platform.
+ * ============================================================================ */
+
 const CategoryBar = ({ activeCategory, onSelect }) => {
   
-  // --- DEFINED THEMATIC CATEGORIES ---
+  // THEMATIC DATASET
   const categories = [
     { id: 'pools', label: 'Amazing pools', icon: Waves },
     { id: 'beach', label: 'Beachfront', icon: Palmtree },
@@ -32,15 +53,6 @@ const CategoryBar = ({ activeCategory, onSelect }) => {
     { id: 'mountain', label: 'Mountains', icon: Mountain },
   ];
 
-  /* --- HISTORICAL STAGE 1: STATIC LIST ---
-   * return (
-   *   <div>
-   *     <button onClick={() => onSelect('pools')}>Pools</button>
-   *     <button onClick={() => onSelect('beach')}>Beach</button>
-   *   </div>
-   * );
-   */
-
   return (
     <div style={containerStyle}>
       <div style={scrollWrapper}>
@@ -52,6 +64,7 @@ const CategoryBar = ({ activeCategory, onSelect }) => {
               onClick={() => onSelect(cat.id)}
               style={itemStyle(isActive)}
             >
+              {/* INTERACTIVE ICON: Cinematic zoom and color shift */}
               <motion.div 
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.95 }}
@@ -62,7 +75,10 @@ const CategoryBar = ({ activeCategory, onSelect }) => {
               
               <span style={labelStyle(isActive)}>{cat.label}</span>
               
-              {/* --- HIGH-FIDELITY ACTIVE INDICATOR --- */}
+              {/* --- 💎 HIGH-FIDELITY ACTIVE INDICATOR (Phase 21) --- */}
+              {/* layoutId="categoryUnderline" allows Framer Motion to 
+                  physically slide the underline from one button to the next, 
+                  creating a professional "Shared Element" animation. */}
               {isActive && (
                 <motion.div 
                   layoutId="categoryUnderline"
@@ -84,7 +100,7 @@ const containerStyle = {
   backgroundColor: '#fff',
   borderBottom: '1px solid #f0f0f0',
   position: 'sticky',
-  top: '225px', // Below SearchBar
+  top: '225px', // Positioning: Sits perfectly below the SearchBar
   zIndex: 90,
   padding: '0.5rem 0'
 };
@@ -97,7 +113,7 @@ const scrollWrapper = {
   maxWidth: '2560px',
   margin: '0 auto',
   overflowX: 'auto',
-  scrollbarWidth: 'none', // Hide scrollbar for clean UI
+  scrollbarWidth: 'none', // Hide scrollbar for a sleek, app-like experience
   WebkitOverflowScrolling: 'touch'
 };
 
