@@ -2,7 +2,7 @@
 
 Welcome to the **AirBnB Lite** Masterclass repository. This document is a 10,000-foot and 10-inch view of how a professional Software-as-a-Service (SaaS) application is built from the ground up. 
 
-This repository chronicles the evolution of a web application through **thirteen distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
+This repository chronicles the evolution of a web application through **fourteen distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
 
 ---
 
@@ -21,7 +21,8 @@ This repository chronicles the evolution of a web application through **thirteen
 12. [Phase 11: Professional Admin Tooling & State Recovery](#12-phase-11-professional-admin-tooling--state-recovery)
 13. [Phase 12: Architectural Stability & Defensive Rendering](#13-phase-12-architectural-stability--defensive-rendering)
 14. [Phase 13: The High-Fidelity Visual Ecosystem](#14-phase-13-the-high-fidelity-visual-ecosystem)
-15. [Final Engineering Summary & Evolution Table](#15-final-engineering-summary--evolution-table)
+15. [Phase 14: Design Token Orchestration & UI Architecture](#15-phase-14-design-token-orchestration--ui-architecture)
+16. [Final Engineering Summary & Evolution Table](#16-final-engineering-summary--evolution-table)
 
 ---
 
@@ -73,17 +74,7 @@ Authentication is the most sensitive part of any app. We went beyond standard "L
 We built a dual-middleware system. First, `auth.js` verifies the user's identity via JWT. Second, `role.js` verifies their permissions.
 
 ### 2. The JWT Invalidation Problem (Token Versioning)
-**The Fix:** We implemented **Token Versioning**. We added a `tokenVersion` field to the User DB. The token issued contains this version number.
-
-**Verification Logic:**
-```javascript
-// Inside authMiddleware.js
-const user = await User.findById(req.user.id);
-if (user.tokenVersion !== req.user.version) {
-  return res.status(401).json({ msg: 'Session expired. Please log in again.' });
-}
-```
-*This allows for a "Logout All Devices" feature by simply incrementing the `tokenVersion` in the database.*
+**The Fix:** We implemented **Token Versioning**. We added a `tokenVersion` field to the User DB. The token issued contains this version number. Every time a user logs out globally or resets their password, this version increments, invalidating all other active tokens instantly.
 
 ---
 
@@ -134,7 +125,7 @@ We transitioned the app's aesthetic from "Functional" to "Premium" using modern 
 
 ## 8. Phase 7: Cloud Migration & Distributed Storage (AWS S3)
 
-Moving to production introduced the **Ephemeral Storage** challenge. Cloud servers (Render/Vercel) wipe their local disks every time code is redeployed.
+Moving to production introduced the **Ephemeral Storage** challenge. Cloud servers (Render/Vercel) wipe local disks on every deploy. 
 
 **The Fix:** Direct-to-Cloud Streaming using `multer-s3`. This architecture ensures that property photos and user avatars are stored permanently in the AWS cloud, independent of the application server.
 
@@ -158,8 +149,8 @@ The application is deployed using a decoupled infrastructure:
 -   **Backend:** Render (Node.js/Express)
 
 **Critical Fixes:**
--   **CORS Policy:** Whitelisted specific production URLs.
--   **SPA Routing:** Implemented `vercel.json` rewrites to prevent 404 errors on page refreshes.
+-   **CORS Whitelisting:** Strictly enforced HTTPS handshakes between distributed domains.
+-   **SPA Routing:** Implemented catch-all rewrites to prevent 404 errors on page refresh.
 
 ---
 
@@ -174,7 +165,7 @@ We moved beyond functionality to focus on "Presence"—making the app feel like 
 ## 12. Phase 11: Professional Admin Tooling & State Recovery
 
 The host management suite was upgraded for data consistency and UX speed.
-- **Interactive Amenity Selector:** Replaced text inputs with a visual grid of selectable badges.
+- **Interactive Amenity Selection:** Replaced text inputs with a visual grid of selectable badges.
 - **Form State Recovery:** Implemented state hydration that pre-fills 15+ fields when editing a listing, preventing data loss.
 
 ---
@@ -182,7 +173,7 @@ The host management suite was upgraded for data consistency and UX speed.
 ## 13. Phase 12: Architectural Stability & Defensive Rendering
 
 To resolve blank-page issues, we implemented a **Nuclear Stability Pattern**.
-- **De-coupled Data Fetching:** On the Detail page, we separated the **Public** property data from **Private** chat history. This ensures that non-logged-in users can still view properties even if unauthenticated chat requests fail.
+- **De-coupled Data Fetching:** On the Detail page, we separated **Public** property data from **Private** chat history. This ensures that non-logged-in users can still view properties even if unauthenticated chat requests fail.
 - **Error Boundaries:** Added defensive null-checks and `try-catch` blocks within rendering logic to prevent one component from crashing the entire page.
 
 ---
@@ -190,13 +181,26 @@ To resolve blank-page issues, we implemented a **Nuclear Stability Pattern**.
 ## 14. Phase 13: The High-Fidelity Visual Ecosystem
 
 Final visual refinements to achieve "AirBnB-Level" polish.
-- **Proportion Lock (4/3):** Enforced a strict landscape aspect ratio on all listing cards. This "Proportion Shield" ensures that every image—from tall Penthouses to wide Cabins—is perfectly uniform and balanced.
-- **Visual Hierachy:** Overhauled typography to eliminate "Ant-size" text, using bold Charcoal (#222) and readable Slate (#717171) palettes.
+- **Proportion Lock (4/3):** Enforced a strict landscape aspect ratio on listing cards. This "Proportion Shield" ensures visual uniformity across all screen sizes.
 - **Cinematic Success:** A full-screen checkout confirmation modal with checkmark animations and progress bars.
 
 ---
 
-## 15. Final Engineering Summary & Evolution Table
+## 15. Phase 14: Design Token Orchestration & UI Architecture
+
+This phase represents the application's transition to a **SaaS Design System**. We migrated from fragmented, hardcoded CSS constants to a centralized **Theme Authority**.
+
+### 1. The Centralized source of truth (`theme.js`)
+We established a library of **Semantic Tokens**. Instead of using raw hex codes like `#ff385c` in components, we use `theme.colors.brand`. This allows for:
+- **Global Maintenance:** Update the brand identity across the entire app in one file.
+- **Visual Integrity:** Ensures that shadows, radii, and typography remain consistent across all components.
+
+### 2. Refactored Component Consumption
+Core visual units like the `ListingCard` and `Navbar` now consume the theme as a direct dependency, documenting the journey from "Atomic Styles" to a "Design Language."
+
+---
+
+## 16. Final Engineering Summary & Evolution Table
 
 | Feature | Evolutionary Step | Engineering Value |
 | :--- | :--- | :--- |
@@ -206,6 +210,7 @@ Final visual refinements to achieve "AirBnB-Level" polish.
 | **Storage** | From Local Disk to Permanent AWS S3 | Cloud-Ready & CDN Optimized |
 | **Stability**| From Grouped Promises to Decoupled Defensive Fetches| Crash-Proof Public Access |
 | **Proportions**| From Square 1:1 to Professional 4:3 Grid Lock | Visual Uniformity & Premium Feel |
+| **Styling** | From Hardcoded Hex to Centralized Design Tokens | Scalable Theming & Design Ops |
 | **Security** | From standard JWT to Token Versioning | Remote Session Revocation Power |
 
 ---

@@ -4,15 +4,15 @@ import { Star, Heart, MapPin, Trash2, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../../services/api';
+import { theme } from '../../theme'; // --- NEW: THEME IMPORT ---
 
 /**
  * ============================================================================
- * LISTING CARD (High-Fidelity V2)
+ * LISTING CARD (V3 - THE DESIGN TOKEN UPDATE)
  * ============================================================================
- * BEAUTIFICATION UPDATES:
- * 1. Typography: Increased 'Ant-size' text to professional 15px/16px.
- * 2. Hierarchy: Bold titles, muted locations, emphatic pricing.
- * 3. Proportions: Locked 20/19 ratio to prevent Penthouse 'Blowup'.
+ * OVERHAUL: Migrated all hardcoded styles to the centralized 'theme' authority.
+ * This component now consumes 'Tokens' (e.g., theme.colors.brand) instead 
+ * of raw hex codes, enabling global consistency.
  */
 const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, onWishlistUpdate }) => {
   const isWishlisted = user?.wishlist?.includes(listing._id);
@@ -39,13 +39,17 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
     >
       <Link to={`/listing/${listing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div style={imageWrapperStyle}>
-          {/* THE PROPORTION SHIELD */}
           <img src={listing.images[0]} alt={listing.title} style={imageStyle(isHovered)} />
           
           {!isAdminView && (
             <button onClick={handleWishlistClick} style={heartBtnStyle}>
-              <motion.div whileTap={{ scale: 0.8 }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
-                <Heart size={24} fill={isWishlisted ? "#ff385c" : "rgba(0,0,0,0.4)"} color={isWishlisted ? "#ff385c" : "white"} strokeWidth={2} />
+              <motion.div whileTap={{ scale: 0.8 }} transition={theme.transitions.spring}>
+                <Heart 
+                  size={24} 
+                  fill={isWishlisted ? theme.colors.brand : "rgba(0,0,0,0.4)"} 
+                  color={isWishlisted ? theme.colors.brand : theme.colors.white} 
+                  strokeWidth={2} 
+                />
               </motion.div>
             </button>
           )}
@@ -53,25 +57,22 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
           {isAdminView && (
             <div style={adminOverlayStyle}>
               <button onClick={(e) => { e.preventDefault(); onEdit(listing); }} style={adminBtnStyle}><Edit size={16} /></button>
-              <button onClick={(e) => { e.preventDefault(); onDelete(listing._id); }} style={{ ...adminBtnStyle, color: '#ff385c' }}><Trash2 size={16} /></button>
+              <button onClick={(e) => { e.preventDefault(); onDelete(listing._id); }} style={{ ...adminBtnStyle, color: theme.colors.brand }}><Trash2 size={16} /></button>
             </div>
           )}
         </div>
 
         <div style={contentAreaStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {/* LARGE READABLE TITLE */}
             <h3 style={titleStyle}>{listing.title}</h3>
             <div style={ratingStyle}>
-              <Star size={14} fill="#222" /> 
-              <span style={{ fontWeight: '600' }}>{listing.rating || 'New'}</span>
+              <Star size={14} fill={theme.colors.charcoal} /> 
+              <span style={{ fontWeight: theme.typography.weights.semibold }}>{listing.rating || 'New'}</span>
             </div>
           </div>
           
-          {/* MUTED LOCATION */}
           <p style={locationStyle}>{listing.location}</p>
           
-          {/* EMPHATIC PRICING */}
           <div style={priceContainerStyle}>
             <span style={priceStyle}>${listing.rate}</span>
             <span style={nightLabelStyle}>night</span>
@@ -82,22 +83,16 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
   );
 };
 
-// --- PREMIUM VISUAL STYLES ---
-const cardContainerStyle = { 
-  cursor: 'pointer', 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '0.8rem', 
-  position: 'relative' 
-};
+// --- TOKEN-BASED STYLES ---
+const cardContainerStyle = { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.8rem', position: 'relative' };
 
 const imageWrapperStyle = { 
   position: 'relative', 
   width: '100%', 
-  aspectRatio: '20 / 19', // FORCED PROPORTION LOCK
-  borderRadius: '12px', 
+  aspectRatio: '4 / 3', 
+  borderRadius: theme.radius.md, 
   overflow: 'hidden', 
-  backgroundColor: '#f7f7f7' 
+  backgroundColor: theme.colors.lightGrey 
 };
 
 const imageStyle = (hovered) => ({ 
@@ -110,50 +105,27 @@ const imageStyle = (hovered) => ({
 
 const heartBtnStyle = { position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', zIndex: 10, padding: 0 };
 const adminOverlayStyle = { position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '0.5rem', zIndex: 10 };
-const adminBtnStyle = { backgroundColor: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' };
-
-const contentAreaStyle = { 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '0.2rem' 
-};
+const adminBtnStyle = { backgroundColor: theme.colors.white, border: 'none', borderRadius: theme.radius.full, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: theme.shadows.sm };
 
 const titleStyle = { 
   margin: 0, 
-  fontSize: '1.05rem', // INCREASED FROM ANT-SIZE
-  fontWeight: '700', 
-  color: '#222',
+  fontSize: theme.typography.sizes.sm, 
+  fontWeight: theme.typography.weights.bold, 
+  color: theme.colors.charcoal,
   whiteSpace: 'nowrap', 
   overflow: 'hidden', 
   textOverflow: 'ellipsis' 
 };
 
-const ratingStyle = { display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.95rem' };
+const ratingStyle = { display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: theme.typography.sizes.sm };
+const locationStyle = { margin: 0, color: theme.colors.slate, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.normal };
+const priceContainerStyle = { marginTop: '0.3rem', display: 'flex', alignItems: 'baseline', gap: '0.3rem' };
+const priceStyle = { fontWeight: theme.typography.weights.extraBold, fontSize: theme.typography.sizes.sm, color: theme.colors.charcoal };
+const nightLabelStyle = { fontSize: theme.typography.sizes.sm, color: theme.colors.charcoal, fontWeight: theme.typography.weights.normal };
+const contentAreaStyle = { display: 'flex', flexDirection: 'column', gap: '0.2rem' };
 
-const locationStyle = { 
-  margin: 0, 
-  color: '#717171', 
-  fontSize: '0.95rem', // READABLE SLATE TEXT
-  fontWeight: '400' 
-};
-
-const priceContainerStyle = { 
-  marginTop: '0.3rem', 
-  display: 'flex', 
-  alignItems: 'baseline', 
-  gap: '0.3rem' 
-};
-
-const priceStyle = { 
-  fontWeight: '800', 
-  fontSize: '1.05rem', 
-  color: '#222' 
-};
-
-const nightLabelStyle = { 
-  fontSize: '0.95rem', 
-  color: '#222',
-  fontWeight: '400'
-};
+/* --- HISTORICAL STAGE 1: HARDCODED HEX ---
+ * const titleStyle = { color: '#222', fontSize: '15px' };
+ */
 
 export default ListingCard;
