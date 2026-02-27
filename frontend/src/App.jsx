@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom'; // --- UPDATED: Added useSearchParams ---
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast'; 
 import Navbar from './components/layout/Navbar';
 import Hero from './components/layout/Hero'; 
@@ -21,29 +21,18 @@ import Wishlist from './pages/Wishlist';
 import MockPayment from './pages/MockPayment';
 import Inbox from './pages/Inbox';
 import API from './services/api';
-import socket from './services/socket';
+import { AuthProvider, useAuth } from './context/AuthContext'; // --- NEW: CONTEXT IMPORT ---
 import { AnimatePresence } from 'framer-motion';
 
-/**
- * ============================================================================
- * ANIMATED CONTENT WRAPPER
- * ============================================================================
- */
-const PageWrapper = ({ children }) => (
-  <div style={{ width: '100%' }}>
-    {children}
-  </div>
-);
+const PageWrapper = ({ children }) => (<div style={{ width: '100%' }}>{children}</div>);
 
 /**
  * ============================================================================
- * HOME COMPONENT (The URL-Aware Discovery Layer)
+ * HOME COMPONENT (The Discovery Layer)
  * ============================================================================
- * UPDATED: Now reacts exclusively to SearchParams.
- * Logic: When the URL changes, the parent AppContent re-fetches data,
- * and this component renders the results.
  */
-const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange, onHoverListing }) => {
+const Home = ({ listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange, onHoverListing }) => {
+  const { user } = useAuth(); // Consume Global Context
   return (
     <PageWrapper>
       <div style={{ position: 'relative' }}>
@@ -52,28 +41,15 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4rem', maxWidth: '2560px', margin: '0 auto' }}>
           <CategoryBar activeCategory={activeCategory} onSelect={onCategorySelect} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button 
-              onClick={() => setShowMap(!showMap)}
-              style={{ padding: '0.6rem 1.2rem', borderRadius: '24px', border: '1px solid #ddd', backgroundColor: '#fff', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-            >
-              {showMap ? 'Show List' : 'Show Map'}
-            </button>
-            <select value={sort} onChange={(e) => onSortChange(e.target.value)} style={{ padding: '0.6rem', borderRadius: '12px', border: '1px solid #ddd' }}>
+            <button onClick={() => setShowMap(!showMap)} style={mapToggleStyle}>{showMap ? 'Show List' : 'Show Map'}</button>
+            <select value={sort} onChange={(e) => onSortChange(e.target.value)} style={sortSelectStyle}>
               <option value="newest">Newest First</option>
               <option value="price-asc">Price: Low to High</option>
               <option value="price-desc">Price: High to Low</option>
             </select>
           </div>
         </div>
-        
-        {showMap ? (
-          <ListingMap listings={listings} />
-        ) : (
-          <ListingGrid 
-            listings={listings} userRole={user?.role} loading={loading} onSearch={onSearch} user={user} 
-            onHoverListing={onHoverListing}
-          />
-        )}
+        {showMap ? <ListingMap listings={listings} /> : <ListingGrid listings={listings} loading={loading} onSearch={onSearch} onHoverListing={onHoverListing} />}
       </div>
     </PageWrapper>
   );
@@ -81,125 +57,38 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
 
 /**
  * ============================================================================
- * MAIN APP CONTENT (The Stateless Search Authority)
+ * APP CONTENT (The Route & Sync Orchestrator)
  * ============================================================================
- * OVERHAUL: Migrated from Component State to URL State.
- * This component now uses 'useSearchParams' as the single source of truth
- * for all discovery filters, enabling Deep-Linking and Refresh Persistence.
+ * UPDATED: Context API Refactor.
+ * State for 'user', 'unreadCount', and 'sync' has been lifted to AuthContext.
  */
 const AppContent = () => {
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams(); // --- THE URL ENGINE ---
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, isAuthLoading, syncUpdates, logout } = useAuth(); // CONSUME CONTEXT
   
-  const [user, setUser] = useState(null);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState([]);
   const [showMap, setShowMap] = useState(false);
   const [hoveredListingId, setHoveredListingId] = useState(null);
 
-  /**
-   * EXTRACTOR LOGIC
-   * Pulls current filter values directly from the URL.
-   */
   const activeCategory = searchParams.get('category') || '';
   const sort = searchParams.get('sort') || 'newest';
-  const currentFilters = {
-    location: searchParams.get('location') || '',
-    guests: searchParams.get('guests') || '',
-    amenities: searchParams.get('amenities') || ''
-  };
 
-  const syncUpdates = useCallback(async () => {
-    if (!localStorage.getItem('token')) return;
-    try {
-      const [inboxRes, notifRes] = await Promise.all([
-        API.get('/auth/inbox'),
-        API.get('/auth/notifications')
-      ]);
-      setUnreadCount(inboxRes.data.reduce((acc, curr) => acc + curr.unreadCount, 0));
-      setNotifications(notifRes.data);
-    } catch (err) {}
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    socket.emit('identify', user._id || user.id);
-    syncUpdates();
-    const handleInstantAlert = () => { syncUpdates(); };
-    socket.on('new_notification', handleInstantAlert);
-    socket.on('new_message_alert', handleInstantAlert);
-    return () => {
-      socket.off('new_notification', handleInstantAlert);
-      socket.off('new_message_alert', handleInstantAlert);
-    };
-  }, [user, syncUpdates]);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      const savedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('token');
-      if (savedUser && token) {
-        try {
-          const res = await API.get('/auth/profile');
-          setUser(res.data);
-        } catch (e) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
-      }
-      setIsAuthLoading(false);
-    };
-    initAuth();
-  }, []);
-
-  /**
-   * DATA FETCHING ENGINE (V3 - URL Reactive)
-   * This effect fires every time the searchParams change, 
-   * ensuring the UI is always in sync with the URL.
-   */
   const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
       const paramsObj = Object.fromEntries([...searchParams]);
-      const queryString = new URLSearchParams(paramsObj).toString();
-      const response = await API.get(`/listings?${queryString}`);
+      const response = await API.get(`/listings?${new URLSearchParams(paramsObj).toString()}`);
       setListings(response.data);
-    } catch (err) {
-      console.error('Search Failure');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) {} finally { setLoading(false); }
   }, [searchParams]);
 
-  useEffect(() => {
-    fetchListings();
-  }, [fetchListings]);
+  useEffect(() => { fetchListings(); }, [fetchListings]);
 
-  /**
-   * STATE MUTATORS (URL Directed)
-   * These functions no longer set local state; they update the URL.
-   */
-  const handleSearch = (newParams) => {
-    const current = Object.fromEntries([...searchParams]);
-    setSearchParams({ ...current, ...newParams });
-  };
-
-  const handleCategorySelect = (categoryId) => {
-    const current = Object.fromEntries([...searchParams]);
-    if (current.category === categoryId) delete current.category;
-    else current.category = categoryId;
-    setSearchParams(current);
-  };
-
-  const handleSortChange = (newSort) => {
-    const current = Object.fromEntries([...searchParams]);
-    setSearchParams({ ...current, sort: newSort });
-  };
-
-  const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
+  const handleSearch = (np) => { const c = Object.fromEntries([...searchParams]); setSearchParams({ ...c, ...np }); };
+  const handleCategorySelect = (id) => { const c = Object.fromEntries([...searchParams]); if (c.category === id) delete c.category; else c.category = id; setSearchParams(c); };
+  const handleSortChange = (s) => { const c = Object.fromEntries([...searchParams]); setSearchParams({ ...c, sort: s }); };
 
   const ProtectedAdminRoute = ({ children }) => {
     if (isAuthLoading) return null; 
@@ -209,33 +98,26 @@ const AppContent = () => {
   return (
     <div className="app" style={{ fontFamily: 'Arial, sans-serif', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Toaster position="top-center" reverseOrder={false} />
-      <Navbar 
-        userRole={user ? user.role : 'guest'} 
-        onLogout={handleLogout} 
-        resetHomeView={() => setSearchParams({})} // Clear URL to reset home
-        unreadCount={unreadCount}
-        notifications={notifications}
-        onNotificationRead={syncUpdates}
-        onInboxClick={syncUpdates}
-      />
+      
+      {/* NO MORE PROP DRILLING: Navbar consumes context internally */}
+      <Navbar onLogout={logout} resetHomeView={() => setSearchParams({})} />
       
       <main style={{ flex: 1, width: '100%' }}>
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
-            <Route path="/" element={<Home user={user} listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} onHoverListing={setHoveredListingId} />} />
-            
-            <Route path="/listing/:id" element={<PageWrapper><ListingDetail user={user} onChatOpened={syncUpdates} /></PageWrapper>} />
-            <Route path="/login" element={<PageWrapper><Login setUser={setUser} /></PageWrapper>} />
+            <Route path="/" element={<Home listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} onHoverListing={setHoveredListingId} />} />
+            <Route path="/listing/:id" element={<PageWrapper><ListingDetail onChatOpened={syncUpdates} /></PageWrapper>} />
+            <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
             <Route path="/signup" element={<PageWrapper><Signup /></PageWrapper>} />
-            <Route path="/verify/:token" element={<PageWrapper><VerifyEmail setUser={setUser} /></PageWrapper>} />
+            <Route path="/verify/:token" element={<PageWrapper><VerifyEmail /></PageWrapper>} />
             <Route path="/forgot-password" element={<PageWrapper><ForgotPassword /></PageWrapper>} />
             <Route path="/reset-password" element={<PageWrapper><ResetPassword /></PageWrapper>} />
-            <Route path="/profile" element={<PageWrapper><Profile user={user} setUser={setUser} /></PageWrapper>} />
-            <Route path="/wishlist" element={<PageWrapper><Wishlist user={user} /></PageWrapper>} />
-            <Route path="/inbox" element={<PageWrapper><Inbox user={user} onThreadOpened={syncUpdates} /></PageWrapper>} />
+            <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
+            <Route path="/wishlist" element={<PageWrapper><Wishlist /></PageWrapper>} />
+            <Route path="/inbox" element={<PageWrapper><Inbox onThreadOpened={syncUpdates} /></PageWrapper>} />
             <Route path="/pay" element={<PageWrapper><MockPayment /></PageWrapper>} />
             <Route path="/bookings" element={<PageWrapper><Bookings /></PageWrapper>} />
-            <Route path="/admin" element={<ProtectedAdminRoute><PageWrapper><AdminDashboard user={user} refreshListings={fetchListings} /></PageWrapper></ProtectedAdminRoute>} />
+            <Route path="/admin" element={<ProtectedAdminRoute><PageWrapper><AdminDashboard refreshListings={fetchListings} /></PageWrapper></ProtectedAdminRoute>} />
           </Routes>
         </AnimatePresence>
       </main>
@@ -245,9 +127,14 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <Router>
-    <AppContent />
-  </Router>
+  <AuthProvider>
+    <Router>
+      <AppContent />
+    </Router>
+  </AuthProvider>
 );
+
+const mapToggleStyle = { padding: '0.6rem 1.2rem', borderRadius: '24px', border: '1px solid #ddd', backgroundColor: '#fff', fontWeight: 'bold', cursor: 'pointer' };
+const sortSelectStyle = { padding: '0.6rem', borderRadius: '12px', border: '1px solid #ddd' };
 
 export default App;
