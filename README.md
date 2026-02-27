@@ -2,7 +2,7 @@
 
 Welcome to the **AirBnB Lite** Masterclass repository. This document is a 10,000-foot and 10-inch view of how a professional Software-as-a-Service (SaaS) application is built from the ground up. 
 
-This repository chronicles the evolution of a web application through **eighteen distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
+This repository chronicles the evolution of a web application through **nineteen distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
 
 ---
 
@@ -26,20 +26,14 @@ This repository chronicles the evolution of a web application through **eighteen
 17. [Phase 16: The Infrastructure Manifests (Self-Documenting Code)](#17-phase-16-the-infrastructure-manifests-self-documenting-code)
 18. [Phase 17: High-Fidelity Amenity Iconography](#18-phase-17-high-fidelity-amenity-iconography)
 19. [Phase 18: Structural Detail Skeletons (Ghost UI)](#19-phase-18-structural-detail-skeletons-ghost-ui)
-20. [Final Engineering Summary & Evolution Table](#20-final-engineering-summary--evolution-table)
+20. [Phase 19: High-Fidelity Review Submission & Social Proof](#20-phase-19-high-fidelity-review-submission--social-proof)
+21. [Final Engineering Summary & Evolution Table](#21-final-engineering-summary--evolution-table)
 
 ---
 
 ## 1. Vision & Technology Stack Rationale
 
 The vision for AirBnB Lite was to create an educational platform that doesn't just "work," but follows the same rigorous standards as a production enterprise app.
-
-### The Stack:
--   **MongoDB (Atlas):** Chosen for its flexible document structure.
--   **Express.js:** Headless RESTful API framework.
--   **React (Vite):** Fast, component-based frontend.
--   **Socket.IO:** Event-driven real-time presence engine.
--   **AWS S3:** Permanent distributed media storage.
 
 ---
 
@@ -52,7 +46,7 @@ We initiated the project using a **Monorepo** structure. This allows developers 
 ## 3. Phase 2: Advanced Security & Session Management
 
 ### 1. The JWT Invalidation Problem (Token Versioning)
-**The Fix:** We implemented **Token Versioning**. We added a `tokenVersion` field to the User DB. Every time a user logs out globally or resets their password, this version increments, invalidating all other active tokens instantly.
+**The Fix:** We implemented **Token Versioning**. We added a `tokenVersion` field to the User DB. The token issued contains this version number. Every time a user logs out globally or resets their password, this version increments, invalidating all other active tokens instantly.
 
 ---
 
@@ -154,7 +148,6 @@ Migrated to a **SaaS Design System** using a centralized `theme.js`. This allows
 
 We transitioned from generic checkmarks to a **Context-Aware Icon System**.
 - **The Mapper:** Created a utility that links backend strings (e.g., 'WiFi') to specific Lucide icons.
-- **Visual Scannability:** Guests can now identify key property features at a glance, elevating the premium feel of the detail page.
 
 ---
 
@@ -162,11 +155,20 @@ We transitioned from generic checkmarks to a **Context-Aware Icon System**.
 
 The final performance optimization was the implementation of **Detail Skeletons**.
 - **Ghost UI Pattern:** Instead of a spinner, we render a structural ghost of the 5-photo grid and sidebar.
-- **Layout Locking:** The skeleton's dimensions exactly match the final data-driven view, ensuring a seamless, non-jarring transition from loading to live data.
 
 ---
 
-## 20. Final Engineering Summary & Evolution Table
+## 20. Phase 19: High-Fidelity Review Submission & Social Proof
+
+The final functional stage was the completion of the guest feedback loop.
+- **Interactive Star Selection:** Implemented a hover-sensitive star component using Lucide icons.
+- **Visual Feedback (S3):** Guests can now upload stay photos directly to AWS S3 as part of their review.
+- **Sentiment Mapping:** Implemented logic that translates raw ratings into semantic labels (e.g., 'Exceptional').
+- **Real-Time Recalculation:** Every new review triggers a backend utility that mathematically updates the listing's average rating and count instantly.
+
+---
+
+## 21. Final Engineering Summary & Evolution Table
 
 | Pillar | Evolutionary Step | Engineering Value |
 | :--- | :--- | :--- |
@@ -176,7 +178,7 @@ The final performance optimization was the implementation of **Detail Skeletons*
 | **Stability**| From Grouped Promises to Decoupled Defensive Fetches| Crash-Proof UX |
 | **Grid** | From Collapsed 1-Column to 4/3 Proportion Lock | Visual Professionalism |
 | **Theming** | From Hardcoded Hex to Design Tokens | Scalable Maintenance |
-| **Loading** | From Spinners to Structural Ghost Skeletons | Higher Perceived Speed |
+| **Feedback** | From Display-Only to Interactive S3 Reviews | Complete Social Proof Loop |
 | **Presence** | From Static Text to Typing Indicators | "Alive" Social Interaction |
 | **Identity** | From Boilerplate to OpenGraph SEO | Professional Web Presence |
 
