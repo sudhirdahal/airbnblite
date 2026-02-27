@@ -5,8 +5,18 @@ const { sendBookingConfirmationEmail, sendCancellationEmail } = require('../serv
 const { createNotification } = require('./notificationController');
 
 /**
+ * ============================================================================
+ * BOOKING CONTROLLER (The Transaction Engine)
+ * ============================================================================
+ * Evolution:
+ * 1. Stage 1: Naive DB save (Phase 1).
+ * 2. Stage 2: Mathematical conflict detection (Phase 3).
+ * 3. Stage 3: Automated email and system-alert integration (Current).
+ */
+
+/**
  * @desc Get all confirmed dates for a property
- * Use Case: Disabling tiles in the frontend calendar.
+ * Logic: Used to disable occupied days in the frontend calendar.
  */
 exports.getTakenDates = async (req, res) => {
   try {
@@ -16,26 +26,12 @@ exports.getTakenDates = async (req, res) => {
 };
 
 /**
- * ============================================================================
- * BOOKING LOGIC EVOLUTION
- * ============================================================================
- */
-
-/* --- HISTORICAL STAGE 1: THE NAIVE BOOKING (FLAWED) ---
- * In the beginning, we simply saved whatever the client sent. 
- * This resulted in overbookings.
- * 
- * exports.createBooking = async (req, res) => {
- *   const { listingId, checkIn, checkOut, totalPrice } = req.body;
- *   const booking = new Booking({ listingId, userId: req.user.id, checkIn, checkOut, totalPrice });
- *   await booking.save();
- *   res.status(201).json(booking);
- * };
- */
-
-/**
  * @desc Create a new booking
- * CURRENT LOGIC (Phase 3+): Includes Mathematical Overlap Protection.
+ * @route POST /api/bookings
+ * 
+ * Logic:
+ * 1. Conflict Prevention: Uses MongoDB $and/$lt/$gt operators to ensure no overlapping stays.
+ * 2. Handshake: Finalizes transaction and notifies both parties via Email and Bell.
  */
 exports.createBooking = async (req, res) => {
   const { listingId, checkIn, checkOut, totalPrice } = req.body;
@@ -43,9 +39,9 @@ exports.createBooking = async (req, res) => {
 
   try {
     const listing = await Listing.findById(listingId);
-    if (!listing) return res.status(404).json({ message: 'Listing not found' });
+    if (!listing) return res.status(404).json({ message: 'Listing Context Lost' });
 
-    // Mathematical Conflict Check: (New_Start < Existing_End) AND (New_End > Existing_Start)
+    // --- MATHEMATICAL CONFLICT SHIELD ---
     const newCheckIn = new Date(checkIn);
     const newCheckOut = new Date(checkOut);
 
@@ -54,19 +50,32 @@ exports.createBooking = async (req, res) => {
       $and: [{ checkIn: { $lt: newCheckOut } }, { checkOut: { $gt: newCheckIn } }]
     });
 
-    if (overlappingBooking) return res.status(400).json({ message: 'These dates were just reserved. Please refresh.' });
+    if (overlappingBooking) {
+      return res.status(400).json({ message: 'Conflict Detected: Dates already reserved.' });
+    }
 
     const user = await User.findById(req.user.id);
     const booking = new Booking({ listingId, userId: req.user.id, checkIn: newCheckIn, checkOut: newCheckOut, totalPrice });
     await booking.save();
 
-    // Notify user via Email
-    sendBookingConfirmationEmail(user.email, user.name, { listingTitle: listing.title, location: listing.location, checkIn, checkOut, totalPrice });
+    // --- TRANSACTIONAL EMAIL NOTIFICATION ---
+    sendBookingConfirmationEmail(user.email, user.name, { 
+      listingTitle: listing.title, location: listing.location, checkIn, checkOut, totalPrice 
+    });
 
-    // Real-time Push Notifications (Phase 8 Scalability)
-    const guestNotif = await createNotification({ recipient: req.user.id, type: 'booking', title: 'Stay Confirmed!', message: `Booked ${listing.title}.`, link: '/bookings' });
-    const hostNotif = await createNotification({ recipient: listing.adminId, type: 'booking', title: 'New Booking', message: `${user.name} booked ${listing.title}.`, link: '/admin' });
+    // --- HIGH-FIDELITY SYSTEM ALERTS (Phase 15) ---
+    // 1. Notify Traveler
+    const guestNotif = await createNotification({
+      recipient: req.user.id, type: 'booking', title: 'Stay Confirmed!',
+      message: `Your adventure at ${listing.title} is all set.`, link: '/bookings'
+    });
+    // 2. Notify Host (Bell Alert)
+    const hostNotif = await createNotification({
+      recipient: listing.adminId, type: 'booking', title: 'New Reservation',
+      message: `${user.name} has booked ${listing.title}.`, link: '/admin'
+    });
 
+    // INSTANT PUSH: Emit to private user rooms for zero-lag Navbar update
     io.to(req.user.id.toString()).emit('new_notification', guestNotif);
     io.to(listing.adminId.toString()).emit('new_notification', hostNotif);
 
@@ -74,9 +83,17 @@ exports.createBooking = async (req, res) => {
   } catch (err) { res.status(500).send('Server Error'); }
 };
 
+/* --- HISTORICAL STAGE 1: BLIND SAVE ---
+ * exports.createBookingLegacy = async (req, res) => {
+ *   const booking = new Booking(req.body);
+ *   await booking.save(); // Problem: Allowed double-bookings!
+ *   res.json(booking);
+ * };
+ */
+
 /**
  * @desc Cancel a booking
- * SECURITY: Only the guest (owner) or the host (admin) can cancel.
+ * Security: Validates requester is either the guest OR the host.
  */
 exports.cancelBooking = async (req, res) => {
   const io = req.app.get('socketio');
@@ -91,17 +108,24 @@ exports.cancelBooking = async (req, res) => {
     booking.status = 'cancelled';
     await booking.save();
 
-    sendCancellationEmail(booking.userId.email, booking.userId.name, { listingTitle: booking.listingId.title, checkIn: booking.checkIn.toLocaleDateString(), checkOut: booking.checkOut.toLocaleDateString() });
+    // Notify other party of cancellation
+    sendCancellationEmail(booking.userId.email, booking.userId.name, { 
+      listingTitle: booking.listingId.title, checkIn: booking.checkIn.toLocaleDateString(), checkOut: booking.checkOut.toLocaleDateString() 
+    });
 
     const recipientId = isGuest ? booking.listingId.adminId : booking.userId._id;
-    const notif = await createNotification({ recipient: recipientId, type: 'booking', title: 'Stay Cancelled', message: `Reservation for ${booking.listingId.title} was cancelled.`, link: isGuest ? '/admin' : '/bookings' });
+    const notif = await createNotification({
+      recipient: recipientId, type: 'booking', title: 'Reservation Voided',
+      message: `The stay for ${booking.listingId.title} has been cancelled.`,
+      link: isGuest ? '/admin' : '/bookings'
+    });
 
     io.to(recipientId.toString()).emit('new_notification', notif);
-    res.json({ message: 'Reservation successfully cancelled.' });
+    res.json({ message: 'Successfully voided reservation.' });
   } catch (err) { res.status(500).send('Server Error'); }
 };
 
-// ... (Standard fetchers)
+// Standard data fetchers with JSDoc
 exports.getMyBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ userId: req.user.id }).populate('listingId', ['title', 'images', 'location']);
