@@ -1,24 +1,29 @@
-import { io } from "socket.io-client";
+import { io } from 'socket.io-client';
 
-// --- DEPLOYMENT READY: Dynamic Socket URL ---
-// Use VITE_SOCKET_URL environment variable if present, otherwise default to localhost.
-const SOCKET_SERVER_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:5001";
+/**
+ * ============================================================================
+ * SOCKET SERVICE (The Real-Time Connector)
+ * ============================================================================
+ * This module manages the persistent WebSocket tunnel between the 
+ * frontend and the backend server. 
+ * 
+ * Logic: Enables the 'Push' architecture that allows the server to 
+ * notify the user of messages and alerts without the need for polling.
+ */
 
-// Create and export a single Socket.IO client instance.
-const socket = io(SOCKET_SERVER_URL, {
-  transports: ["websocket"]
+// --- DYNAMIC PRODUCTION ROUTING ---
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
+
+const socket = io(SOCKET_URL, {
+  autoConnect: true,
+  reconnection: true, // Maintain high-fidelity connection on mobile network swaps
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
 });
 
-socket.on("connect", () => {
-  console.log("Connected to Socket.IO server.");
-});
-
-socket.on("disconnect", () => {
-  console.log("Disconnected from Socket.IO server.");
-});
-
-socket.on("connect_error", (err) => {
-  console.error("Socket.IO connection error:", err.message);
-});
+/* --- HISTORICAL STAGE 1: LOCAL-ONLY SOCKET ---
+ * const socket = io('http://localhost:5001');
+ * // Problem: Chat broke the second we deployed to Render/Vercel!
+ */
 
 export default socket;
