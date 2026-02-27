@@ -2,29 +2,46 @@ const Message = require('../models/Message');
 const Listing = require('../models/Listing');
 
 /**
- * Persists a new message to the database.
+ * ============================================================================
+ * CHAT CONTROLLER (The Real-Time Message Authority)
+ * ============================================================================
+ * This controller orchestrates bidirectional communication and threading.
+ * Evolution:
+ * 1. Stage 1: Simple DB persistence (Phase 4).
+ * 2. Stage 2: Host-only inbox queries (Phase 5).
+ * 3. Stage 3: Symmetrical thread aggregation via .distinct() (Current).
+ */
+
+/**
+ * PERSISTENCE UTILITY: saveMessage
+ * Logic: Encapsulates the DB save operation for internal Socket use.
  */
 const saveMessage = async (senderId, listingId, content) => {
-  const newMessage = new Message({
-    sender: senderId,
-    listingId,
-    content
-  });
+  const newMessage = new Message({ sender: senderId, listingId, content });
   return await newMessage.save();
 };
 
 /**
- * @desc Fetch unique conversations for the current user (Inbox)
+ * @desc Fetch unique conversations for the current user
+ * @route GET /api/auth/inbox
+ * 
+ * Logic: THE SYMMETRICAL INBOX
+ * To ensure guests can see host replies on properties they don't own, we:
+ * 1. Find all listingIds where the user is ANY participant (sender or owner).
+ * 2. Group the full message collection into threads based on those IDs.
  */
 exports.getInbox = async (req, res) => {
   try {
+    // 1. Identification: Properties I own
     const myListings = await Listing.find({ adminId: req.user.id }).select('_id');
     const myListingIds = myListings.map(l => l._id);
 
+    // 2. Thread Discovery: Find every conversation I am part of
     const allUserMessages = await Message.find({
       $or: [{ sender: req.user.id }, { listingId: { $in: myListingIds } }]
     }).distinct('listingId'); 
 
+    // 3. Hydration & Aggregation
     const messages = await Message.find({ listingId: { $in: allUserMessages } })
       .populate('sender', 'name avatar')
       .populate('listingId', 'title images adminId')
@@ -37,16 +54,25 @@ exports.getInbox = async (req, res) => {
       if (!threads[lid]) {
         threads[lid] = { listing: msg.listingId, lastMessage: msg, unreadCount: 0 };
       }
+      // Unread Rule: I did not send this, and it is marked unread.
       if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
         threads[lid].unreadCount++;
       }
     });
     res.json(Object.values(threads));
-  } catch (err) { res.status(500).send('Server Error'); }
+  } catch (err) { res.status(500).send('Inbox Engine Failure'); }
 };
+
+/* --- HISTORICAL STAGE 1: ONE-WAY INBOX (FLAWED) ---
+ * exports.getInboxLegacy = async (req, res) => {
+ *   const messages = await Message.find({ listingId: { $in: myOwnedIds } });
+ *   res.json(messages); // Problem: Guests saw an empty inbox!
+ * };
+ */
 
 /**
  * @desc Mark messages as read
+ * Security: Validates the user is the recipient of the unread messages.
  */
 exports.markAsRead = async (req, res) => {
   try {
@@ -56,16 +82,19 @@ exports.markAsRead = async (req, res) => {
       { $set: { isRead: true } }
     );
     res.json({ success: true });
-  } catch (err) { res.status(500).send('Server Error'); }
+  } catch (err) { res.status(500).send('Sync Error'); }
 };
 
+/**
+ * @desc Fetch full chat history for a listing
+ */
 exports.getMessageHistory = async (req, res) => {
   try {
     const messages = await Message.find({ listingId: req.params.listingId })
       .populate('sender', 'name avatar')
       .sort({ timestamp: 1 });
     res.json(messages);
-  } catch (err) { res.status(500).send('Server Error'); }
+  } catch (err) { res.status(500).send('History Retrieval Failure'); }
 };
 
 exports.handleJoinRoom = (io, socket, listingId) => {
@@ -73,8 +102,11 @@ exports.handleJoinRoom = (io, socket, listingId) => {
 };
 
 /**
- * @desc Real-time chat handler
- * REPAIRED: Correctly identifies the recipient for private pushes.
+ * @desc Real-time chat handler (Socket.IO)
+ * 
+ * Logic: THE PRIVATE ROOM PUSH
+ * 1. Broadcasts to the active room (anyone looking at the listing).
+ * 2. Pushes an alert directly to the recipient's private UserID room.
  */
 exports.handleChatMessage = async (io, socket, msg) => {
   try {
@@ -85,35 +117,25 @@ exports.handleChatMessage = async (io, socket, msg) => {
     const payload = {
       _id: savedMessage._id,
       listingId: msg.listingId,
-      sender: { 
-        _id: savedMessage.sender._id, 
-        name: savedMessage.sender.name, 
-        avatar: savedMessage.sender.avatar 
-      },
+      sender: { _id: savedMessage.sender._id, name: savedMessage.sender.name, avatar: savedMessage.sender.avatar },
       content: savedMessage.content,
       timestamp: savedMessage.timestamp,
       isRead: false
     };
 
-    // 1. BROADCAST to the active room (anyone currently looking at this listing)
     io.to(msg.listingId).emit('chat message', payload);
 
-    // 2. TARGETED PUSH: Send to the OTHER person's private room for Navbar badges
+    // TARGETED RECIPIENT LOGIC
     const listing = savedMessage.listingId;
-    
-    if (msg.senderId !== listing.adminId.toString()) {
-      // SENDER IS GUEST -> Push to Host
-      io.to(listing.adminId.toString()).emit('new_message_alert', payload);
-    } else {
-      // SENDER IS HOST -> Push to all Guests who have messaged about this listing
-      // In a 'Lite' app, we find everyone who has sent a message in this thread
-      const participants = await Message.find({ listingId: msg.listingId }).distinct('sender');
-      participants.forEach(pId => {
-        if (pId.toString() !== msg.senderId) {
-          io.to(pId.toString()).emit('new_message_alert', payload);
-        }
-      });
+    if (listing && listing.adminId) {
+      if (msg.senderId !== listing.adminId.toString()) {
+        io.to(listing.adminId.toString()).emit('new_message_alert', payload);
+      } else {
+        const participants = await Message.find({ listingId: msg.listingId }).distinct('sender');
+        participants.forEach(pId => {
+          if (pId.toString() !== msg.senderId) io.to(pId.toString()).emit('new_message_alert', payload);
+        });
+      }
     }
-
-  } catch (err) { console.error('Socket Error:', err); }
+  } catch (err) { console.error('Socket Crash:', err); }
 };
