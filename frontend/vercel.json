@@ -1,8 +1,32 @@
 {
+  /**
+   * ============================================================================
+   * FRONTEND DEPLOYMENT CONFIG (The SPA Shield)
+   * ============================================================================
+   * This file solves the 'Refresh 404' problem inherent in Single Page Apps.
+   * 
+   * Logic: 
+   * In a traditional server, /bookings would look for a file named bookings.html.
+   * Since React uses client-side routing, we 'Rewrite' all requests to index.html,
+   * allowing React Router to take control of the URL.
+   */
   "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+
+  /* --- HISTORICAL STAGE 1: NO CONFIG ---
+   * SPA routes (like /admin) resulted in 404 errors on page refresh!
+   */
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
     }
   ]
 }
