@@ -8,30 +8,63 @@ import { theme } from '../../theme';
 
 /**
  * ============================================================================
- * LISTING CARD (V4 - THE PROGRESSIVE LOADING UPDATE)
+ * LISTING CARD (V5 - THE HIGH-FIDELITY INTERACTION UPDATE)
  * ============================================================================
- * UPDATED: Implemented high-fidelity image loading transitions.
- * This component now manages its own 'Loaded' state to prevent the 
- * 'Flash of Unstyled Content' (FOUC) when high-res photos arrive from S3.
- * 
- * Performance Logic: 
- * The image starts at opacity 0. Once the browser confirms the data is ready
- * (onLoad), it smoothly fades into view using Framer Motion.
+ * This component manages the primary discovery and collection unit.
+ * Evolution:
+ * 1. Stage 1: Static grid item (Phase 1).
+ * 2. Stage 2: Proportion lock & typography overhaul (Phase 13).
+ * 3. Stage 3: Progressive image loading (Phase 15).
+ * 4. Stage 4: High-fidelity wishlist handshakes (Current).
  */
 const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, onWishlistUpdate }) => {
   const isWishlisted = user?.wishlist?.includes(listing._id);
   const [isHovered, setIsHovered] = useState(false);
-  const [isImageLoaded, setIsImageLoaded] = useState(false); // --- NEW: LOADING STATE ---
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
 
+  /**
+   * WISHLIST HANDSHAKE LOGIC
+   * Logic: Performs a secure POST request to toggle property association.
+   * UX: Utilizes a high-fidelity toast with visual cues to confirm the 
+   * successful addition/removal from the collection.
+   */
   const handleWishlistClick = async (e) => {
     e.preventDefault(); e.stopPropagation(); 
-    if (!user) return toast.error("Log in to save properties.");
+    if (!user) return toast.error("Log in to save your favorite stays.");
+
     try {
       const res = await API.post(`/auth/wishlist/${listing._id}`);
+      
+      // OPTIMISTIC SYNC: Notify App.jsx to update global state instantly
       if (onWishlistUpdate) onWishlistUpdate(res.data);
-      toast.success(isWishlisted ? "Removed from wishlist" : "Saved to wishlist");
-    } catch (err) { toast.error("Sync Error"); }
+
+      // --- HIGH-FIDELITY FEEDBACK ---
+      if (!isWishlisted) {
+        toast.success((t) => (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <img src={listing.images[0]} style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover' }} />
+            <div>
+              <div style={{ fontWeight: 'bold' }}>Saved to Wishlist</div>
+              <div style={{ fontSize: '0.8rem', color: '#717171' }}>{listing.title}</div>
+            </div>
+          </div>
+        ), { duration: 3000 });
+      } else {
+        toast("Removed from Wishlist", { icon: '🗑️' });
+      }
+
+    } catch (err) { 
+      toast.error("Collection sync failure. Please try again."); 
+    }
   };
+
+  /* --- HISTORICAL STAGE 1: PRIMITIVE TOGGLE ---
+   * const handleWishlistClickLegacy = async () => {
+   *   await API.post('/wishlist/' + id);
+   *   alert('Saved!');
+   * };
+   * // Problem: Blocking alerts and no visual context!
+   */
 
   return (
     <motion.div 
@@ -45,7 +78,6 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
       <Link to={`/listing/${listing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div style={imageWrapperStyle}>
           
-          {/* --- HIGH-FIDELITY PROGRESSIVE IMAGE --- */}
           <motion.img 
             src={listing.images[0]} 
             alt={listing.title} 
@@ -59,7 +91,6 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
             style={imageStyle} 
           />
 
-          {/* SKELETON BACKDROP: Visible while image is loading */}
           {!isImageLoaded && (
             <div style={skeletonBackdrop}>
               <div className="shimmer-sweep" style={shimmerOverlay} />
@@ -108,42 +139,10 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
 
 // --- STYLES ---
 const cardContainerStyle = { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.8rem', position: 'relative' };
-
-const imageWrapperStyle = { 
-  position: 'relative', 
-  width: '100%', 
-  aspectRatio: '4 / 3', 
-  borderRadius: theme.radius.md, 
-  overflow: 'hidden', 
-  backgroundColor: theme.colors.lightGrey 
-};
-
-const imageStyle = { 
-  width: '100%', 
-  height: '100%', 
-  objectFit: 'cover'
-};
-
-const skeletonBackdrop = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: '100%',
-  backgroundColor: '#f3f3f3',
-  zIndex: 1
-};
-
-const shimmerOverlay = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: '100%',
-  background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%)',
-  zIndex: 2
-};
-
+const imageWrapperStyle = { position: 'relative', width: '100%', aspectRatio: '4 / 3', borderRadius: theme.radius.md, overflow: 'hidden', backgroundColor: theme.colors.lightGrey };
+const imageStyle = { width: '100%', height: '100%', objectFit: 'cover' };
+const skeletonBackdrop = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: '#f3f3f3', zIndex: 1 };
+const shimmerOverlay = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%)', zIndex: 2 };
 const heartBtnStyle = { position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', zIndex: 10, padding: 0 };
 const adminOverlayStyle = { position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '0.5rem', zIndex: 10 };
 const adminBtnStyle = { backgroundColor: theme.colors.white, border: 'none', borderRadius: theme.radius.full, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: theme.shadows.sm };
