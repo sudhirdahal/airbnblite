@@ -2,7 +2,7 @@
 
 Welcome to the **AirBnB Lite** Masterclass repository. This document is a 10,000-foot and 10-inch view of how a professional Software-as-a-Service (SaaS) application is built from the ground up. 
 
-This repository chronicles the evolution of a web application through **twenty-two distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
+This repository chronicles the evolution of a web application through **twenty-three distinct phases of engineering maturity**. It is designed to serve as an elite educational resource for full-stack developers, documenting the transition from a primitive CRUD prototype to a high-fidelity, cloud-deployed, event-driven platform.
 
 ---
 
@@ -30,7 +30,8 @@ This repository chronicles the evolution of a web application through **twenty-t
 21. [Phase 20: Spatial Interaction Sync & Reactive Discovery](#21-phase-20-spatial-interaction-sync--reactive-discovery)
 22. [Phase 21: Cinematic Navigation & Dynamic SEO Presence](#22-phase-21-cinematic-navigation--dynamic-seo-presence)
 23. [Phase 22: URL-Driven Discovery & Deep-Linking](#23-phase-22-url-driven-discovery--deep-linking)
-24. [Final Engineering Summary & Evolution Table](#24-final-engineering-summary--evolution-table)
+24. [Phase 23: Global State & Context API Refactor](#24-phase-23-global-state--context-api-refactor)
+25. [Final Engineering Summary & Evolution Table](#25-final-engineering-summary--evolution-table)
 
 ---
 
@@ -173,31 +174,28 @@ Implemented a global **AnimatePresence** engine for smooth **Fade-and-Glide** pa
 
 ## 23. Phase 22: URL-Driven Discovery & Deep-Linking
 
-This phase represents the application's transition to a **Stateless Discovery Hub**. We migrated the entire search and filter state from local component memory to the browser's URL.
-
-### 1. The SearchParams Authority
-We refactored `App.jsx` to use the `useSearchParams` hook as the single source of truth. Every user interaction—selecting a category, searching for a location, or adjusting guest counts—is instantly reflected in the URL.
-```javascript
-// URL STATE SYNC
-const [searchParams, setSearchParams] = useSearchParams();
-const location = searchParams.get('location') || '';
-const category = searchParams.get('category') || '';
-```
-
-### 2. Benefits: Deep-Linking & Persistence
-- **Sharable Discovery:** Users can now copy their browser URL (e.g., `?category=pools&guests=4`) and share it with others to show the exact same results.
-- **Refresh Resilience:** Reloading the page no longer resets filters, as the discovery context is persisted in the address bar.
-
-### 3. High-Fidelity Search Tools (Discovery 2.0)
-We overhauled the `SearchBar` with premium interaction patterns:
-- **Location Auto-suggest:** Implemented a backend metadata engine that performs a `.distinct()` query to provide real-time destination suggestions as the user types.
-- **Professional Guest Counter:** Replaced standard number inputs with a custom **+/- counter dropdown**, ensuring no negative values and a premium "Airbnb-like" feel.
-- **Amenity Selection Grid:** Added an interactive portal for "Extras" where users can scan and select property features via icons.
-- **Live Search Reset:** Implemented a proactive listener that restores the full property grid the millisecond a search term is cleared.
+Migrated the search state to `useSearchParams`, enabling **Refresh Persistence** and **Sharable Deep-Links** for specific search results.
 
 ---
 
-## 24. Final Engineering Summary & Evolution Table
+## 24. Phase 23: Global State & Context API Refactor
+
+This stage focused on **Architectural Scalability**, moving from localized state management to a centralized **Identity Authority**.
+
+### 1. The Centralized Brain (`AuthContext.jsx`)
+We refactored the entire application to use the **React Context API**. We created an `AuthProvider` that encapsulates:
+- **Global Identity:** User state and Auth hydration from localStorage.
+- **Real-Time Sync:** The global notification engine and Socket.IO listeners.
+- **Security Actions:** Unified `login` and `logout` methods.
+
+### 2. Elimination of Prop-Drilling
+By lifting state into Context, we eliminated the need to pass `user` and `unreadCount` props through multiple layers of the component tree. Components now consume global data via the custom `useAuth()` hook, significantly improving:
+- **Render Performance:** Reducing unnecessary re-renders in the layout tree.
+- **Maintainability:** Providing a single, documented source of truth for the entire application state.
+
+---
+
+## 25. Final Engineering Summary & Evolution Table
 
 | Pillar | Evolutionary Step | Engineering Value |
 | :--- | :--- | :--- |
@@ -205,15 +203,15 @@ We overhauled the `SearchBar` with premium interaction patterns:
 | **Sync** | From 15s Polling to Private Socket Rooms | High Scalability |
 | **Search** | From Local State to URL-Driven Deep-Linking | Stateless Discovery |
 | **Media** | From Local Disk to AWS S3 Streaming | Stateless Cloud Readiness |
+| **State** | From Prop-Drilling to Centralized Context API | Higher Performance |
 | **Stability**| From Grouped Promises to Decoupled Defensive Fetches| Crash-Proof UX |
 | **Navigation**| From Jarring Snaps to Cinematic Fade-and-Glide | Visual Continuity |
 | **Discovery**| From Static Pins to Reactive Map Highlighting | Interactive Orientation |
 | **Presence** | From Static Text to Typing Indicators | "Alive" Social Interaction |
-| **Identity** | From Boilerplate to Dynamic SEO Sync | Contextual Awareness |
 
 ---
 
 ### Conclusion
 This repository serves as a testament to the fact that great software is not built, but **grown**. Every logic pivot was a step toward building a resilient, high-fidelity platform.
 
-**Happy engineering!** 🚀🌐🏠 Couch  Couch  Couch  Couch  Couch 🛋️🧤🌐
+**Happy engineering!** 🚀🌐🏠 Couch  Couch  Couch  Couch  Couch  Couch 🛋️🧤🌐
