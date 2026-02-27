@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../services/socket';
-import { Send, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react'; // --- RESTORED: Send icon ---
+import { SendHorizontal, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react'; // --- CHANGED: SendHorizontal ---
 import { formatDistanceToNow } from 'date-fns'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
 /**
- * ChatWindow Component: Restored 'Airplane' Send icon with reinforced styling.
+ * ChatWindow Component: Optimized with Horizontal Send Icon.
  */
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -111,13 +111,9 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
             return (
               <div key={msg._id} style={{ marginBottom: '1.2rem', alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
                 {!isMe && <div style={senderNameStyle}>{msg.sender?.name || 'User'}</div>}
-                <div style={bubbleStyle(isMe, themeColor)}>
-                  {msg.content}
-                </div>
+                <div style={bubbleStyle(isMe, themeColor)}>{msg.content}</div>
                 {msg.timestamp && (
-                  <div style={timeStyle(isMe)}>
-                    {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
-                  </div>
+                  <div style={timeStyle(isMe)}>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</div>
                 )}
               </div>
             );
@@ -135,21 +131,15 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
         </div>
 
         <form onSubmit={handleSendMessage} style={formStyle}>
-          <input 
-            type="text" 
-            value={newMessage} 
-            onChange={handleInputChange} 
-            placeholder="Write a message..." 
-            style={inputStyle} 
-          />
-          {/* --- RESTORED AIRPLANE SEND BUTTON --- */}
+          <input type="text" value={newMessage} onChange={handleInputChange} placeholder="Write a message..." style={inputStyle} />
+          {/* --- REINFORCED HORIZONTAL SEND BUTTON --- */}
           <motion.button 
             type="submit" 
             whileHover={{ scale: 1.05, backgroundColor: isHost ? '#310e5d' : '#e31c5f' }}
             whileTap={{ scale: 0.95 }}
             style={sendBtnStyle(themeColor)}
           >
-            <Send size={20} color="white" style={{ marginLeft: '2px' }} />
+            <SendHorizontal size={26} color="white" strokeWidth={2.5} style={{ marginLeft: '2px' }} />
           </motion.button>
         </form>
       </div>
@@ -166,32 +156,21 @@ const bubbleStyle = (isMe, color) => ({ padding: '0.8rem 1.2rem', borderRadius: 
 const timeStyle = (isMe) => ({ fontSize: '0.68rem', color: '#888', marginTop: '0.35rem', textAlign: isMe ? 'right' : 'left', marginRight: '0.4rem', marginLeft: '0.4rem', fontWeight: '500' });
 const senderNameStyle = { fontSize: '0.72rem', color: '#717171', marginLeft: '0.4rem', marginBottom: '0.3rem', fontWeight: '700' };
 const formStyle = { padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.8rem', backgroundColor: 'white', alignItems: 'center' };
+const inputStyle = { flexGrow: 1, padding: '0.8rem 1.4rem', borderRadius: '28px', border: '1.5px solid #eee', outline: 'none', fontSize: '1rem', backgroundColor: '#f9f9f9', color: '#222', WebkitAppearance: 'none' };
 
-const inputStyle = { 
-  flexGrow: 1, 
-  padding: '0.8rem 1.4rem', 
-  borderRadius: '28px', 
-  border: '1.5px solid #eee', 
-  outline: 'none', 
-  fontSize: '1rem', 
-  backgroundColor: '#f9f9f9',
-  color: '#222',
-  WebkitAppearance: 'none'
-};
-
+// FIXED: Large action button with centered horizontal icon
 const sendBtnStyle = (color) => ({ 
   backgroundColor: color, 
   border: 'none', 
   borderRadius: '50%', 
-  width: '48px', 
-  height: '48px', 
+  width: '52px', 
+  height: '52px', 
   display: 'flex', 
   alignItems: 'center', 
   justifyContent: 'center', 
   cursor: 'pointer',
   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  flexShrink: 0,
-  transition: 'background-color 0.2s'
+  flexShrink: 0
 });
 
 const unreadBadgeStyle = { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#222', color: 'white', borderRadius: '50%', width: '24px', height: '24px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' };

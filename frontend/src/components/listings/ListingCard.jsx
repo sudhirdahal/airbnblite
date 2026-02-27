@@ -9,8 +9,9 @@ import API from '../../services/api';
  * ============================================================================
  * LISTING CARD COMPONENT (The Discovery Unit)
  * ============================================================================
- * UPDATED: Fixed aspect ratio to 20/19 for professional hospitality proportions.
- * This prevents images from appearing too tall on larger screens.
+ * UPDATED: Fixed aspect ratio to 4/3 for professional uniformity.
+ * This ensures every property image occupies the EXACT same space,
+ * preventing 'out of proportion' issues for tall or wide photos.
  */
 const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, onWishlistUpdate }) => {
   const isWishlisted = user?.wishlist?.includes(listing._id);
@@ -37,6 +38,7 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
     >
       <Link to={`/listing/${listing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div style={imageWrapperStyle}>
+          {/* IMAGE LOCK: Guaranteed 4:3 Proportion */}
           <img src={listing.images[0]} alt={listing.title} style={imageStyle(isHovered)} />
           
           {!isAdminView && (
@@ -72,14 +74,15 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
 const cardContainerStyle = { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.8rem', position: 'relative' };
 
 /**
- * IMAGE WRAPPER (The Proportion Shield)
- * FIXED: '20 / 19' aspect ratio is the industry standard for card thumbnails.
- * It provides a balanced landscape view that looks consistent across all screen sizes.
+ * IMAGE WRAPPER (The Professional Landscape Shield)
+ * FIXED: '4 / 3' aspect ratio is the gold standard for listing grids.
+ * It provides a wide, cinematic view that is impossible to break, 
+ * ensuring even tall photos (like Penthouses) are cropped perfectly.
  */
 const imageWrapperStyle = { 
   position: 'relative', 
   width: '100%', 
-  aspectRatio: '20 / 19', // FIXED PROPORTIONS
+  aspectRatio: '4 / 3', // FORCE UNIFORM PROPORTIONS
   borderRadius: '12px', 
   overflow: 'hidden', 
   backgroundColor: '#f7f7f7' 
