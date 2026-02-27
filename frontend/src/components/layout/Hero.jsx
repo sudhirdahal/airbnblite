@@ -1,28 +1,20 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { theme } from '../../theme'; // --- NEW: THEME AUTHORITY ---
 
 /**
  * ============================================================================
- * HERO COMPONENT (The Dashboard Context)
+ * HERO COMPONENT (V2 - THE DESIGN TOKEN UPDATE)
  * ============================================================================
- * Initially, this was a massive, centered full-screen greeting.
- * As the app matured into a SaaS platform, we refactored it into a 
- * compact 'Dashboard Banner' that provides context without pushing 
- * the listings too far below the fold.
+ * OVERHAUL: Refactored to consume the centralized Design Token system.
+ * This ensures that spacing, typography weights, and accent colors are
+ * mathematically consistent with the global Design Language.
  */
 const Hero = ({ user }) => {
   const greeting = user ? `Welcome back, ${user.name}` : "Find your next adventure";
   const subtitle = user 
     ? "Manage your stays and explore new destinations from your traveler dashboard." 
     : "Discover unique homes and experiences around the world.";
-
-  /* --- HISTORICAL STAGE 1: FULL-SCREEN GREETING ---
-   * return (
-   *   <div style={{ height: '80vh', display: 'flex', alignItems: 'center' }}>
-   *     <h1>Travel with AirBnB Lite</h1>
-   *   </div>
-   * );
-   */
 
   return (
     <div style={heroContainer}>
@@ -36,7 +28,7 @@ const Hero = ({ user }) => {
           <p style={subtitleStyle}>{subtitle}</p>
         </motion.div>
         
-        {/* Decorative Graphic Element */}
+        {/* Decorative High-Fidelity Accent */}
         <div style={heroGraphic}>
           <div style={blobStyle} />
         </div>
@@ -45,9 +37,9 @@ const Hero = ({ user }) => {
   );
 };
 
-// --- PREMIUM DASHBOARD STYLES ---
+// --- TOKEN-BASED STYLES ---
 const heroContainer = {
-  backgroundColor: '#fff',
+  backgroundColor: theme.colors.white,
   padding: '3rem 4rem 1rem 4rem',
   maxWidth: '2560px',
   margin: '0 auto',
@@ -58,21 +50,21 @@ const heroInner = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  borderBottom: '1px solid #f0f0f0',
+  borderBottom: `1px solid ${theme.colors.lightGrey}`,
   paddingBottom: '2rem'
 };
 
 const greetingStyle = {
-  fontSize: '2rem',
-  fontWeight: '800',
+  fontSize: theme.typography.sizes.xxl,
+  fontWeight: theme.typography.weights.extraBold,
   margin: 0,
-  color: '#222',
+  color: theme.colors.charcoal,
   letterSpacing: '-0.02em'
 };
 
 const subtitleStyle = {
-  fontSize: '1rem',
-  color: '#717171',
+  fontSize: theme.typography.base,
+  color: theme.colors.slate,
   marginTop: '0.5rem',
   maxWidth: '500px'
 };
@@ -89,8 +81,8 @@ const heroGraphic = {
 const blobStyle = {
   width: '60px',
   height: '60px',
-  backgroundColor: '#ff385c',
-  borderRadius: '50%',
+  backgroundColor: theme.colors.brand,
+  borderRadius: theme.radius.full,
   filter: 'blur(30px)',
   opacity: 0.4
 };
