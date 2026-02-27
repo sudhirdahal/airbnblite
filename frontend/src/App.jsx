@@ -23,26 +23,14 @@ import Inbox from './pages/Inbox';
 import API from './services/api';
 import socket from './services/socket';
 
-const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
-  return (
-    <div style={{ position: 'relative' }}>
-      <Hero user={user} />
-      <SearchBar onSearch={onSearch} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4rem', maxWidth: '2560px', margin: '0 auto' }}>
-        <CategoryBar activeCategory={activeCategory} onSelect={onCategorySelect} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', border: '1px solid #ddd', padding: '0.6rem 1rem', borderRadius: '12px', backgroundColor: '#fff' }}>
-          <select value={sort} onChange={(e) => onSortChange(e.target.value)} style={{ border: 'none', outline: 'none', fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer', backgroundColor: 'transparent' }}>
-            <option value="newest">Newest First</option><option value="price-asc">Price: Low to High</option><option value="price-desc">Price: High to Low</option><option value="rating">Top Rated</option>
-          </select>
-        </div>
-      </div>
-      <div style={{ width: '100%', margin: '0 auto', padding: showMap ? '0' : '0 2rem' }}>
-        {showMap ? <ListingMap listings={listings} /> : <ListingGrid listings={listings} userRole={user?.role} loading={loading} onSearch={onSearch} user={user} />}
-      </div>
-    </div>
-  );
-};
-
+/**
+ * ============================================================================
+ * MAIN APP COMPONENT (V10 - THE INTERACTIVE SYNC UPDATE)
+ * ============================================================================
+ * OVERHAUL: Implemented 'Spatial Synchronicity'.
+ * The App now tracks the 'hoveredListingId' to coordinate visual feedback
+ * between the Discovery Grid and the interactive Map.
+ */
 const App = () => {
   const [user, setUser] = useState(null);
   const [listings, setListings] = useState([]);
@@ -54,6 +42,9 @@ const App = () => {
   const [activeCategory, setActiveCategory] = useState('');
   const [sort, setSort] = useState('newest');
   const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
+
+  // --- NEW: SPATIAL SYNC STATE ---
+  const [hoveredListingId, setHoveredListingId] = useState(null);
 
   const syncUpdates = useCallback(async () => {
     if (!localStorage.getItem('token')) return;
@@ -132,11 +123,40 @@ const App = () => {
         
         <main style={{ flex: 1, width: '100%' }}>
           <Routes>
-            <Route path="/" element={<Home user={user} listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} />} />
-            
-            {/* --- RESTORED PROPERTY PAGE --- */}
+            <Route path="/" element={
+              <div style={{ position: 'relative' }}>
+                <Hero user={user} />
+                <SearchBar onSearch={handleSearch} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4rem', maxWidth: '2560px', margin: '0 auto' }}>
+                  <CategoryBar activeCategory={activeCategory} onSelect={handleCategorySelect} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    {/* Map Toggle Widget */}
+                    <button 
+                      onClick={() => setShowMap(!showMap)}
+                      style={{ padding: '0.6rem 1.2rem', borderRadius: '24px', border: '1px solid #ddd', backgroundColor: '#fff', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                      {showMap ? 'Show List' : 'Show Map'}
+                    </button>
+                    <select value={sort} onChange={(e) => handleSortChange(e.target.value)} style={{ padding: '0.6rem', borderRadius: '12px', border: '1px solid #ddd' }}>
+                      <option value="newest">Newest First</option>
+                      <option value="price-asc">Price: Low to High</option>
+                      <option value="price-desc">Price: High to Low</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {/* --- SYNCED DISCOVERY COMPONENTS --- */}
+                {showMap ? (
+                  <ListingMap listings={listings} hoveredListingId={hoveredListingId} />
+                ) : (
+                  <ListingGrid 
+                    listings={listings} userRole={user?.role} loading={loading} onSearch={handleSearch} user={user} 
+                    onHoverListing={setHoveredListingId} // Emit hover ID
+                  />
+                )}
+              </div>
+            } />
             <Route path="/listing/:id" element={<ListingDetail user={user} onChatOpened={syncUpdates} />} />
-            
             <Route path="/login" element={<Login setUser={setUser} />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify/:token" element={<VerifyEmail setUser={setUser} />} />

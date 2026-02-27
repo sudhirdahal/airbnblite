@@ -6,13 +6,11 @@ import { SearchX } from 'lucide-react';
 
 /**
  * ============================================================================
- * LISTING GRID (The High-Fidelity Discovery Engine)
+ * LISTING GRID (V3 - THE SPATIAL HANDSHAKE UPDATE)
  * ============================================================================
- * FIX: Controlled Grid Proportions.
- * Instead of '1fr', we use '1fr' with a max-column count to prevent 
- * single listings from stretching to the full width of the monitor.
+ * UPDATED: Added support for hover events to coordinate with the Map.
  */
-const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUpdate }) => {
+const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUpdate, onHoverListing }) => {
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -55,6 +53,9 @@ const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUp
             userRole={userRole} 
             user={user}
             onWishlistUpdate={onWishlistUpdate}
+            // --- NEW: Emit hover events to parent ---
+            onHover={() => onHoverListing && onHoverListing(listing._id)}
+            onLeave={() => onHoverListing && onHoverListing(null)}
           />
         ))}
       </motion.div>
@@ -62,40 +63,9 @@ const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUp
   );
 };
 
-// --- PREMIUM GRID STYLES ---
-const pagePaddingContainer = {
-  padding: '0 4rem', 
-  maxWidth: '2560px', 
-  margin: '0 auto',
-  width: '100%'
-};
-
-const gridContainerStyle = {
-  display: 'grid',
-  /**
-   * THE PROPORTION FIX:
-   * We use a responsive column count. 
-   * Desktop: 4 columns
-   * Laptop: 3 columns
-   * Tablet: 2 columns
-   * Mobile: 1 column
-   * This prevents '1fr' from blowing up images when only 1 listing exists.
-   */
-  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-  columnGap: '1.5rem',
-  rowGap: '2.5rem',
-  marginTop: '2rem',
-  marginBottom: '5rem',
-  width: '100%'
-};
-
-const emptyStateStyle = {
-  padding: '10rem 2rem',
-  textAlign: 'center',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center'
-};
+// --- STYLES ---
+const pagePaddingContainer = { padding: '0 4rem', maxWidth: '2560px', margin: '0 auto', width: '100%' };
+const gridContainerStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', columnGap: '1.5rem', rowGap: '2.5rem', marginTop: '2rem', marginBottom: '5rem', width: '100%' };
+const emptyStateStyle = { padding: '10rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' };
 
 export default ListingGrid;
