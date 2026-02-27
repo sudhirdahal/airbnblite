@@ -2,23 +2,48 @@ const mongoose = require('mongoose');
 
 /**
  * ============================================================================
- * LISTING SCHEMA (The Discovery Unit)
+ * 🏠 LISTING SCHEMA (The Discovery Unit)
  * ============================================================================
- * The core data model for the property discovery engine.
- * It has evolved from a simple title/price object into a multi-dimensional 
- * metadata store supporting spatial search, capacity logic, and categorization.
+ * 
+ * MASTERCLASS NOTES:
+ * The Listing schema is the most complex data structure in the application. 
+ * It acts as a multi-dimensional metadata store that powers the Search Engine, 
+ * the Mapbox Spatial UI, and the dynamic Pricing logic.
+ * 
+ * Evolution Timeline:
+ * - Phase 1: Primitive object (Title, single image URL, price).
+ * - Phase 5: Spatial Geometry integration (`coordinates`).
+ * - Phase 10: Relational binding (`adminId`).
+ * - Phase 13: Array-based image management (Cinematic Galleries).
  */
+
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 1 (The Flat Listing)
+ * ============================================================================
+ * const listingSchema = new mongoose.Schema({
+ *   title: { type: String, required: true },
+ *   location: { type: String, required: true },
+ *   rate: { type: Number, required: true },
+ *   image: { type: String } // Single image only!
+ * });
+ * 
+ * THE FLAW: This schema lacked depth. We couldn't display a property on a map 
+ * (no coordinates), we couldn't build a gallery (only one image), and we 
+ * couldn't trace the property back to its owner (no adminId).
+ * ============================================================================ */
+
 const listingSchema = new mongoose.Schema({
   title: { 
     type: String, 
-    required: true 
+    required: true,
+    trim: true
   },
   description: { 
-    type: String, 
+    type: String, // The short "teaser" text for discovery cards
     required: true 
   },
   fullDescription: { 
-    type: String 
+    type: String // The deep-dive text for the property detail page
   },
   location: { 
     type: String, 
@@ -26,21 +51,21 @@ const listingSchema = new mongoose.Schema({
   },
   
   /**
-   * PRICING ENGINE
-   * rate: The base nightly cost.
-   * Phase 5+ added guest-specific rates for children and infants.
+   * 💰 PRICING ENGINE
+   * The base mathematical unit for all dynamic checkout calculations.
    */
   rate: { 
     type: Number, 
-    required: true 
+    required: true,
+    min: 0 // Data Integrity: Prevent negative prices
   },
   childRate: { type: Number },
   infantRate: { type: Number },
 
   /**
-   * DISCOVERY & FILTERING
-   * category: Used by the CategoryBar for thematic discovery.
-   * amenities: Array of strings used for the strict $all search query.
+   * 🔍 DISCOVERY & FILTERING METADATA
+   * Category powers the top navigation bar.
+   * Amenities powers the strict `$all` array-intersection queries.
    */
   category: { 
     type: String, 
@@ -51,25 +76,24 @@ const listingSchema = new mongoose.Schema({
   }],
 
   /**
-   * MEDIA ASSETS
-   * Array of AWS S3 image URLs. 
-   * Phase 1-3 used local strings; Phase 4+ migrated to distributed storage.
+   * 📸 MEDIA ASSETS (Phase 13)
+   * Array of AWS S3 URLs. Required for the 5-Photo Cinematic Grid UI.
    */
   images: [{ 
     type: String 
   }],
 
   /**
-   * CAPACITY METADATA
-   * Powers the 'Guests' filter in the SearchBar.
+   * 🛏️ CAPACITY METADATA
+   * Powers the 'Guests' and 'Rooms' filters in the SearchBar.
    */
-  maxGuests: { type: Number, default: 2 },
-  bedrooms: { type: Number, default: 1 },
-  beds: { type: Number, default: 1 },
+  maxGuests: { type: Number, default: 2, min: 1 },
+  bedrooms: { type: Number, default: 1, min: 1 },
+  beds: { type: Number, default: 1, min: 1 },
 
   /**
-   * SPATIAL DATA
-   * Powers the Mapbox discovery map.
+   * 🗺️ SPATIAL DATA (Phase 5)
+   * Required for rendering Mapbox markers and performing geographical queries.
    */
   coordinates: {
     lat: { type: Number, required: true },
@@ -77,8 +101,9 @@ const listingSchema = new mongoose.Schema({
   },
 
   /**
-   * RELATIONS
-   * adminId: Link to the User who owns this property (The Host).
+   * 🔗 RELATIONAL BINDING (Phase 10)
+   * Ties the property explicitly to the User (Host) who created it.
+   * Critical for Authorization checks before applying edits or deletes.
    */
   adminId: { 
     type: mongoose.Schema.Types.ObjectId, 
@@ -87,22 +112,14 @@ const listingSchema = new mongoose.Schema({
   },
 
   /**
-   * REPUTATION METRICS
-   * Dynamically recalculated by the reviewController.js.
+   * ⭐ REPUTATION METRICS (Phase 19)
+   * These are NOT manually edited by hosts. They are dynamically recalculated
+   * and synchronized by the `reviewController.js` whenever a review is added/deleted.
    */
   rating: { type: Number, default: 4.5 },
   reviewsCount: { type: Number, default: 0 },
 
   createdAt: { type: Date, default: Date.now }
 });
-
-/* --- HISTORICAL STAGE 1: PRIMITIVE LISTING ---
- * const listingSchema = new mongoose.Schema({
- *   title: { type: String, required: true },
- *   location: { type: String, required: true },
- *   rate: { type: Number, required: true },
- *   image: { type: String } // Single image only!
- * });
- */
 
 module.exports = mongoose.model('Listing', listingSchema);

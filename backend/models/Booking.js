@@ -2,13 +2,41 @@ const mongoose = require('mongoose');
 
 /**
  * ============================================================================
- * BOOKING SCHEMA (The Transaction Ledger)
+ * 📅 BOOKING SCHEMA (The Transaction Ledger)
  * ============================================================================
- * Manages the lifecycle of a property reservation.
- * Logic: Links a traveler (User) to a property (Listing) for a specific
- * date range, with a finalized price calculation.
+ * 
+ * MASTERCLASS NOTES:
+ * The Booking Schema acts as the irrefutable ledger of truth for the platform.
+ * It permanently links a Traveler (User), a Property (Listing), Time (Dates), 
+ * and Money (Price) into a single, cohesive entity.
+ * 
+ * Evolution Timeline:
+ * - Phase 1: Blind Date Storage (Strings instead of Date objects).
+ * - Phase 3: Temporal Integrity (Enforcing strict Date formatting).
+ * - Phase 6: Financial Locking (Storing the final price).
  */
+
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 1 (The Blind Booking)
+ * ============================================================================
+ * const bookingSchema = new mongoose.Schema({
+ *   listingId: { type: String, required: true }, // Not a relational reference!
+ *   checkIn: { type: String, required: true },   // Text string, not a Date!
+ *   checkOut: { type: String, required: true }
+ * });
+ * 
+ * THE FLAW: Because `checkIn` was a String (e.g., "Jan 5th"), MongoDB could not 
+ * perform mathematical operations ($lt, $gt) to detect overlapping stays. 
+ * Because `listingId` was just a string, we couldn't `populate()` the property details.
+ * ============================================================================ */
+
 const bookingSchema = new mongoose.Schema({
+  /**
+   * 🔗 RELATIONAL INTEGRITY
+   * We use strict ObjectIds. This allows us to use `.populate('listingId')` 
+   * to instantly fetch the property's Title and Image for the 'Trips' page,
+   * without needing to run separate database queries.
+   */
   listingId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Listing', 
@@ -20,7 +48,11 @@ const bookingSchema = new mongoose.Schema({
     required: true 
   },
   
-  // RESERVATION DATES
+  /**
+   * ⏳ TEMPORAL INTEGRITY (Phase 3)
+   * Storing as pure JS Dates allows the backend to perform the 
+   * Mathematical Conflict Shield operations seamlessly.
+   */
   checkIn: { 
     type: Date, 
     required: true 
@@ -30,15 +62,21 @@ const bookingSchema = new mongoose.Schema({
     required: true 
   },
 
-  // FINANCIAL DATA
+  /**
+   * 💰 FINANCIAL LOCKING (Phase 6)
+   * Why store the price here when the Listing has a `rate`?
+   * Because if the Host increases their rate *tomorrow*, it shouldn't change
+   * the price of a booking made *today*. The ledger must be immutable.
+   */
   totalPrice: { 
     type: Number, 
-    required: true 
+    required: true,
+    min: 0
   },
   
   /**
-   * STATUS LIFE-CYCLE
-   * pending: Initial request stage.
+   * 🚥 STATUS LIFE-CYCLE
+   * pending: Initial request stage (Pre-Payment).
    * confirmed: Payment successful / Handshake complete.
    * cancelled: Refunded or voided by guest/host.
    */
@@ -50,13 +88,5 @@ const bookingSchema = new mongoose.Schema({
   
   createdAt: { type: Date, default: Date.now }
 });
-
-/* --- HISTORICAL STAGE 1: BLIND BOOKING ---
- * const bookingSchema = new mongoose.Schema({
- *   listingId: { type: String, required: true },
- *   checkIn: { type: String, required: true },
- *   checkOut: { type: String, required: true }
- * });
- */
 
 module.exports = mongoose.model('Booking', bookingSchema);
