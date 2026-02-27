@@ -24,11 +24,10 @@ import API from './services/api';
 import socket from './services/socket';
 
 /**
- * DEPLOYMENT TIMESTAMP: 2026-02-27 00:35
+ * DEPLOYMENT STABILITY CHECK: 00:45
  */
 
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange }) => {
-  const userRole = user ? user.role : 'guest';
   return (
     <div style={{ position: 'relative' }}>
       <Hero user={user} />
@@ -42,7 +41,7 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
         </div>
       </div>
       <div style={{ width: '100%', margin: '0 auto', padding: showMap ? '0' : '0 2rem' }}>
-        {showMap ? <ListingMap listings={listings} /> : <ListingGrid listings={listings} userRole={userRole} loading={loading} onSearch={onSearch} />}
+        {showMap ? <ListingMap listings={listings} /> : <ListingGrid listings={listings} userRole={user?.role} loading={loading} onSearch={onSearch} user={user} />}
       </div>
     </div>
   );
@@ -76,10 +75,7 @@ const App = () => {
     if (!user) return;
     socket.emit('identify', user._id || user.id);
     syncUpdates();
-    const handleInstantAlert = () => {
-      setUnreadCount(prev => prev + 1);
-      syncUpdates();
-    };
+    const handleInstantAlert = () => { syncUpdates(); };
     socket.on('new_notification', handleInstantAlert);
     socket.on('new_message_alert', handleInstantAlert);
     return () => {
@@ -89,11 +85,21 @@ const App = () => {
   }, [user, syncUpdates]);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    if (savedUser && token) {
-      API.get('/auth/profile').then(r => { setUser(r.data); setIsAuthLoading(false); }).catch(() => { handleLogout(); setIsAuthLoading(false); });
-    } else setIsAuthLoading(false);
+    const initAuth = async () => {
+      const savedUser = localStorage.getItem('user');
+      const token = localStorage.getItem('token');
+      if (savedUser && token) {
+        try {
+          const res = await API.get('/auth/profile');
+          setUser(res.data);
+        } catch (e) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+      setIsAuthLoading(false);
+    };
+    initAuth();
     fetchListings();
   }, []);
 
@@ -104,14 +110,9 @@ const App = () => {
       if (p.location) url += `location=${p.location}&`;
       if (c) url += `category=${c}&`;
       if (p.guests) url += `guests=${p.guests}&`;
-      if (p.checkInDate) url += `checkInDate=${p.checkInDate}&`;
-      if (p.checkOutDate) url += `checkOutDate=${p.checkOutDate}&`;
-      if (p.amenities) url += `amenities=${p.amenities}&`;
       const response = await API.get(url);
       setListings(response.data);
-    } catch (err) {} finally { 
-      setLoading(false); 
-    }
+    } catch (err) {} finally { setLoading(false); }
   };
 
   const handleSearch = (np) => { setSearchParams(p => ({...p, ...np})); fetchListings({...searchParams, ...np}, activeCategory, sort); };
@@ -119,18 +120,13 @@ const App = () => {
   const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
 
-  const ProtectedAdminRoute = ({ children }) => {
-    if (isAuthLoading) return null; 
-    return user?.role === 'admin' ? children : <Navigate to="/" replace />;
-  };
-
   return (
     <Router>
-      <div className="app" style={{ fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div className="app" style={{ fontFamily: 'Arial, sans-serif', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         
-        {/* --- GLOBAL DIAGNOSTIC BANNER --- */}
-        <div style={{ backgroundColor: '#ff0000', color: '#fff', textAlign: 'center', padding: '0.5rem', fontWeight: 'bold', zIndex: 9999 }}>
-          APP UPDATE SYNC TEST: v1.0.3
+        {/* --- GLOBAL SYNC TEST --- */}
+        <div style={{ backgroundColor: '#ff385c', color: '#fff', textAlign: 'center', padding: '0.4rem', fontSize: '0.8rem', fontWeight: 'bold' }}>
+          VERIFIED BUILD: v1.0.4 - DETECTOR
         </div>
 
         <Toaster position="top-center" reverseOrder={false} />
@@ -143,11 +139,12 @@ const App = () => {
           onNotificationRead={syncUpdates}
           onInboxClick={syncUpdates}
         />
+        
         <main style={{ flex: 1, width: '100%' }}>
           <Routes>
             <Route path="/" element={<Home user={user} listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} />} />
             
-            {/* MATCHING PROPS TO SURVIVAL VERSION */}
+            {/* FORCE RENDER WITHOUT PROP NOISE */}
             <Route path="/listing/:id" element={<ListingDetail user={user} />} />
             
             <Route path="/login" element={<Login setUser={setUser} />} />
@@ -159,8 +156,8 @@ const App = () => {
             <Route path="/wishlist" element={<Wishlist user={user} />} />
             <Route path="/inbox" element={<Inbox user={user} onThreadOpened={syncUpdates} />} />
             <Route path="/pay" element={<MockPayment />} />
-            <Route path="/bookings" element={user ? <Bookings /> : <Navigate to="/login" replace />} />
-            <Route path="/admin" element={<ProtectedAdminRoute><AdminDashboard user={user} refreshListings={fetchListings} /></ProtectedAdminRoute>} />
+            <Route path="/bookings" element={<Bookings />} />
+            <Route path="/admin" element={user?.role === 'admin' ? <AdminDashboard user={user} refreshListings={fetchListings} /> : <Navigate to="/" replace />} />
           </Routes>
         </main>
         <Footer />
