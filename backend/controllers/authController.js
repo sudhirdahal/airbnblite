@@ -6,106 +6,108 @@ const { sendVerificationEmail, sendWelcomeEmail, sendResetPasswordEmail } = requ
 
 /**
  * ============================================================================
- * AUTH CONTROLLER (The Identity Authority)
+ * 🔐 AUTH CONTROLLER (The Identity Authority)
  * ============================================================================
- * This controller manages the security lifecycle of every user.
- * Evolution:
- * 1. Stage 1: Basic JWT issuance (Phase 1).
- * 2. Stage 2: Email verification enforcement (Phase 2).
- * 3. Stage 3: Token Versioning for Global Revocation (Phase 5).
+ * 
+ * MASTERCLASS NOTES:
+ * The Auth Controller is the vault. It manages the entire lifecycle of a user's 
+ * identity, from provisioning (registration) to revocation (logout).
+ * 
+ * Architectural Evolution:
+ * - Phase 1: Basic JWT issuance. (Stateless, but dangerous because tokens couldn't be killed).
+ * - Phase 2: Email verification enforced. (Preventing bot/spam accounts).
+ * - Phase 5: The "Token Versioning" Pivot. (Enabling Global Session Revocation).
  */
 
 /**
  * UTILITY: generateToken
+ * 
  * Logic: Includes the 'version' claim. This is the heart of our 
- * stateless session revocation engine.
+ * stateless session revocation engine. By injecting `user.tokenVersion` 
+ * into the payload, we tie the stateless JWT to a stateful database flag.
  */
 const generateToken = (user) => {
   const secret = process.env.JWT_SECRET || 'secret_key_123';
-  // console.log(`Auth Handshake: Generating token with secret starting with: ${secret.substring(0, 3)}...`);
   return jwt.sign(
     { id: user._id, role: user.role, version: user.tokenVersion },
     secret, 
-    { expiresIn: '7d' } // High-fidelity session length
+    { expiresIn: '7d' } // High-fidelity session length (7 days)
   );
 };
 
-/**
- * @desc Get current authenticated profile
- */
-exports.getProfile = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    res.json(user);
-  } catch (err) { res.status(500).send('Server Error'); }
-};
-
-/**
- * @desc Login user & issue versioned token
- * Logic: Validates verification status before allowing session creation.
- */
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  // console.log(`Auth Handshake: Attempting login for ${email}`);
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      // console.warn(`Auth Handshake: No user found with email ${email}`);
-      return res.status(400).json({ message: 'Invalid Identity' });
-    }
-    
-    // console.log(`Auth Handshake: User found. Verified status: ${user.isVerified}`);
-
-    // Phase 2: Trust verification pivot
-    if (!user.isVerified) {
-      // console.warn('Auth Handshake: User exists but is NOT verified.');
-      return res.status(401).json({ message: 'Identity not verified. Please check email.' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      // console.warn('Auth Handshake: Password mismatch.');
-      return res.status(400).json({ message: 'Invalid Identity' });
-    }
-
-    // console.log('Auth Handshake: Password verified. Generating token...');
-    const token = generateToken(user);
-    // console.log('Auth Handshake: Token generated successfully.');
-    res.json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, wishlist: user.wishlist }
-    });
-  } catch (err) {
-    // console.error('Auth Handshake: CRITICAL LOGIN ERROR:', err);
-    res.status(500).send('Authentication Handshake Failure'); 
-  }
-};
-
-/**
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 1 (The Immortal Session)
  * ============================================================================
- * SECURITY PIVOT: Global Logout
- * ============================================================================
- * Logic: By incrementing 'tokenVersion' in the DB, we instantly turn 
- * every existing token into a 'Ghost Token' that will fail the middleware 
- * check on its next request.
+ * In Phase 1, our logout function simply told the frontend to delete the token.
+ * 
+ * exports.logoutLegacy = (req, res) => {
+ *   // The token was deleted from the browser, but the string itself 
+ *   // remained valid mathematically until its expiration date!
+ *   res.json({ msg: 'Logged out locally' }); 
+ * };
+ * 
+ * THE FLAW: If an attacker copied the token from LocalStorage, they could 
+ * use it forever (or until expiration), even if the user clicked "Logout".
+ * ============================================================================ */
+
+/**
+ * @desc Revoke all active sessions globally
+ * @route POST /api/auth/logout-all
+ * 
+ * SECURITY PIVOT (Phase 5):
+ * By incrementing 'tokenVersion' in the database, we instantly turn every 
+ * existing token currently in the wild into a "Ghost Token". When those old 
+ * tokens attempt to authenticate, our middleware will see `Token.version (1) !== DB.version (2)` 
+ * and reject the request. This is True Global Logout.
  */
 exports.logoutAll = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    user.tokenVersion += 1; 
+    user.tokenVersion += 1; // The Nuclear Switch
     await user.save();
     res.json({ message: 'Global session revocation successful.' });
   } catch (err) { res.status(500).send('Revocation Failure'); }
 };
 
-/* --- HISTORICAL STAGE 1: LOCAL-ONLY LOGOUT ---
- * exports.logoutLegacy = (req, res) => {
- *   res.json({ msg: 'Logged out' }); // Token stayed valid on other devices!
- * };
+/**
+ * @desc Authenticate user & issue versioned token
+ * @route POST /api/auth/login
+ * 
+ * Logic:
+ * 1. Existence Check: Do they exist?
+ * 2. Trust Check: Did they verify their email?
+ * 3. Cryptographic Check: Does the bcrypt hash match?
  */
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    // Defensive UX: We return "Invalid Identity" instead of "User not found" 
+    // to prevent attackers from guessing which emails are registered.
+    if (!user) return res.status(400).json({ message: 'Invalid Identity' });
+    
+    // Phase 2: Trust verification pivot
+    if (!user.isVerified) {
+      return res.status(401).json({ message: 'Identity not verified. Please check email.' });
+    }
+
+    // Hash comparison prevents plain-text storage vulnerabilities
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Invalid Identity' });
+
+    const token = generateToken(user);
+    
+    // We never send the password hash back to the client!
+    res.json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, wishlist: user.wishlist }
+    });
+  } catch (err) { res.status(500).send('Authentication Handshake Failure'); }
+};
 
 /**
- * @desc Register identity & trigger verification pipeline
+ * @desc Provision a new identity
+ * @route POST /api/auth/register
  */
 exports.register = async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -113,32 +115,37 @@ exports.register = async (req, res) => {
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ message: 'Identity already claimed' });
     
+    // Generate a secure, random hex string for the email link
     const verificationToken = crypto.randomBytes(20).toString('hex');
     user = new User({ name, email, password, role: role || 'registered', verificationToken });
     
+    // Cryptography: Salting and Hashing
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(password, salt);
     await user.save();
     
+    // Dispatch asynchronous email (does not block the HTTP response)
     sendVerificationEmail(user.email, user.name, verificationToken);
     res.status(201).json({ message: 'Trust Handshake initiated. Check email.' });
   } catch (err) { res.status(500).send('Identity Provisioning Failure'); }
 };
 
 /**
- * @desc Verify and activate identity
+ * @desc Verify and activate identity via email link
+ * @route GET /api/auth/verify/:token
  */
 exports.verifyEmail = async (req, res) => {
   try {
     const user = await User.findOne({ verificationToken: req.params.token });
     if (!user) return res.status(400).json({ message: 'Invalid or expired token.' });
 
+    // Flip the trust flag and destroy the single-use token
     user.isVerified = true;
     user.verificationToken = undefined;
     await user.save();
 
     sendWelcomeEmail(user.email, user.name);
-    const token = generateToken(user);
+    const token = generateToken(user); // Auto-login upon verification
 
     res.json({ 
       message: 'Account activated.',
@@ -148,7 +155,17 @@ exports.verifyEmail = async (req, res) => {
   } catch (err) { res.status(500).send('Verification Sync Failure'); }
 };
 
-// ... (Rest of Auth handlers with technical headers)
+/**
+ * @desc Fetch the current logged-in profile data
+ * @route GET /api/auth/profile
+ */
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    res.json(user);
+  } catch (err) { res.status(500).send('Server Error'); }
+};
+
 exports.updateProfile = async (req, res) => {
   const { name, email, avatar } = req.body;
   try {
@@ -166,10 +183,13 @@ exports.forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'Identity not found' });
+    
+    // Generate a 6-digit numeric code for easy mobile entry
     const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour TTL
+    user.resetPasswordExpires = Date.now() + 3600000; // Strict 1-hour Time-To-Live (TTL)
     await user.save();
+    
     sendResetPasswordEmail(user.email, user.name, resetToken);
     res.json({ message: 'Security code dispatched.' });
   } catch (err) { res.status(500).send('Dispatch Failure'); }
@@ -178,13 +198,24 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   const { email, token, newPassword } = req.body;
   try {
-    const user = await User.findOne({ email, resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } });
+    // 1. Verify existence, token match, AND that the token hasn't expired ($gt)
+    const user = await User.findOne({ 
+      email, 
+      resetPasswordToken: token, 
+      resetPasswordExpires: { $gt: Date.now() } 
+    });
     if (!user) return res.status(400).json({ message: 'Invalid or expired code.' });
+    
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(newPassword, salt);
+    
+    // 2. Clean up tokens to prevent reuse
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
-    user.tokenVersion += 1; // Critical: Revoke all current sessions
+    
+    // 3. NUCLEAR SECURITY: Revoke all existing sessions immediately
+    user.tokenVersion += 1; 
+    
     await user.save();
     res.json({ message: 'Identity secured with new password.' });
   } catch (err) { res.status(500).send('Sync Failure'); }
@@ -193,10 +224,12 @@ exports.resetPassword = async (req, res) => {
 exports.toggleWishlist = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user.wishlist) user.wishlist = [];
+    if (!user.wishlist) user.wishlist = []; // Defensive array initialization
     const index = user.wishlist.indexOf(req.params.id);
+    
     if (index === -1) user.wishlist.push(req.params.id);
     else user.wishlist.splice(index, 1);
+    
     await user.save();
     res.json(user.wishlist);
   } catch (err) { res.status(500).send('Wishlist Sync Failure'); }
@@ -204,6 +237,7 @@ exports.toggleWishlist = async (req, res) => {
 
 exports.getWishlist = async (req, res) => {
   try {
+    // Mongoose populate converts the array of IDs into an array of full Listing objects
     const user = await User.findById(req.user.id).populate('wishlist');
     res.json(user.wishlist || []);
   } catch (err) { res.status(500).send('Collection Retrieval Failure'); }
