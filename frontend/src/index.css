@@ -1,52 +1,46 @@
 /**
  * ============================================================================
- * GLOBAL RESET & TYPOGRAPHY (The Foundation)
+ * GLOBAL RESET (V3 - STABILITY ENFORCEMENT)
  * ============================================================================
+ * FIXED: Removed 'display: flex' and 'place-items: center' from body.
+ * These properties were causing tall pages to be centered vertically,
+ * pushing the content off the top/bottom of the screen on many devices.
  */
 
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
   color-scheme: light;
-  color: #222;
-  background-color: #fff;
+  background-color: #ffffff;
 }
 
-/* 
- * CRITICAL FIX: Removed 'display: flex' and 'place-items: center' from body.
- * These were centering the entire app vertically, causing tall pages 
- * (like ListingDetail) to be pushed off-screen.
- */
 body {
   margin: 0;
-  min-width: 320px;
+  padding: 0;
   min-height: 100vh;
-  background-color: #fff;
+  width: 100%;
+  background-color: #ffffff;
+  color: #222222;
+  /* Standard block display for natural scrolling */
+  display: block; 
 }
 
 #root {
   width: 100%;
 }
 
-/* ============================================================================
- * HIGH-FIDELITY ANIMATION LIBRARY
- * ============================================================================
- */
+/* --- HIGH-FIDELITY ANIMATIONS --- */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
-@keyframes pulse {
-  0% { transform: scale(0.95); opacity: 0.7; }
-  50% { transform: scale(1.05); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.7; }
+.spin {
+  animation: spin 1s linear infinite;
 }
 
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
-}
-
-.pulse-dot {
-  animation: pulse 1.5s infinite ease-in-out;
 }
 
 .shimmer-sweep {
