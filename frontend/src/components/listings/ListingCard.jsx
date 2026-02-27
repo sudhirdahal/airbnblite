@@ -4,19 +4,24 @@ import { Star, Heart, MapPin, Trash2, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../../services/api';
-import { theme } from '../../theme'; // --- NEW: THEME IMPORT ---
+import { theme } from '../../theme';
 
 /**
  * ============================================================================
- * LISTING CARD (V3 - THE DESIGN TOKEN UPDATE)
+ * LISTING CARD (V4 - THE PROGRESSIVE LOADING UPDATE)
  * ============================================================================
- * OVERHAUL: Migrated all hardcoded styles to the centralized 'theme' authority.
- * This component now consumes 'Tokens' (e.g., theme.colors.brand) instead 
- * of raw hex codes, enabling global consistency.
+ * UPDATED: Implemented high-fidelity image loading transitions.
+ * This component now manages its own 'Loaded' state to prevent the 
+ * 'Flash of Unstyled Content' (FOUC) when high-res photos arrive from S3.
+ * 
+ * Performance Logic: 
+ * The image starts at opacity 0. Once the browser confirms the data is ready
+ * (onLoad), it smoothly fades into view using Framer Motion.
  */
 const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, onWishlistUpdate }) => {
   const isWishlisted = user?.wishlist?.includes(listing._id);
   const [isHovered, setIsHovered] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false); // --- NEW: LOADING STATE ---
 
   const handleWishlistClick = async (e) => {
     e.preventDefault(); e.stopPropagation(); 
@@ -39,7 +44,27 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
     >
       <Link to={`/listing/${listing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div style={imageWrapperStyle}>
-          <img src={listing.images[0]} alt={listing.title} style={imageStyle(isHovered)} />
+          
+          {/* --- HIGH-FIDELITY PROGRESSIVE IMAGE --- */}
+          <motion.img 
+            src={listing.images[0]} 
+            alt={listing.title} 
+            onLoad={() => setIsImageLoaded(true)}
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: isImageLoaded ? 1 : 0,
+              scale: isHovered ? 1.05 : 1 
+            }}
+            transition={{ duration: 0.4 }}
+            style={imageStyle} 
+          />
+
+          {/* SKELETON BACKDROP: Visible while image is loading */}
+          {!isImageLoaded && (
+            <div style={skeletonBackdrop}>
+              <div className="shimmer-sweep" style={shimmerOverlay} />
+            </div>
+          )}
           
           {!isAdminView && (
             <button onClick={handleWishlistClick} style={heartBtnStyle}>
@@ -70,9 +95,7 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
               <span style={{ fontWeight: theme.typography.weights.semibold }}>{listing.rating || 'New'}</span>
             </div>
           </div>
-          
           <p style={locationStyle}>{listing.location}</p>
-          
           <div style={priceContainerStyle}>
             <span style={priceStyle}>${listing.rate}</span>
             <span style={nightLabelStyle}>night</span>
@@ -83,7 +106,7 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
   );
 };
 
-// --- TOKEN-BASED STYLES ---
+// --- STYLES ---
 const cardContainerStyle = { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.8rem', position: 'relative' };
 
 const imageWrapperStyle = { 
@@ -95,37 +118,41 @@ const imageWrapperStyle = {
   backgroundColor: theme.colors.lightGrey 
 };
 
-const imageStyle = (hovered) => ({ 
+const imageStyle = { 
   width: '100%', 
   height: '100%', 
-  objectFit: 'cover', 
-  transition: 'transform 0.6s cubic-bezier(0.2, 1, 0.3, 1)', 
-  transform: hovered ? 'scale(1.05)' : 'scale(1)' 
-});
+  objectFit: 'cover'
+};
+
+const skeletonBackdrop = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  backgroundColor: '#f3f3f3',
+  zIndex: 1
+};
+
+const shimmerOverlay = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%)',
+  zIndex: 2
+};
 
 const heartBtnStyle = { position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', zIndex: 10, padding: 0 };
 const adminOverlayStyle = { position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '0.5rem', zIndex: 10 };
 const adminBtnStyle = { backgroundColor: theme.colors.white, border: 'none', borderRadius: theme.radius.full, width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: theme.shadows.sm };
-
-const titleStyle = { 
-  margin: 0, 
-  fontSize: theme.typography.sizes.sm, 
-  fontWeight: theme.typography.weights.bold, 
-  color: theme.colors.charcoal,
-  whiteSpace: 'nowrap', 
-  overflow: 'hidden', 
-  textOverflow: 'ellipsis' 
-};
-
+const titleStyle = { margin: 0, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.bold, color: theme.colors.charcoal, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const ratingStyle = { display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: theme.typography.sizes.sm };
 const locationStyle = { margin: 0, color: theme.colors.slate, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.normal };
 const priceContainerStyle = { marginTop: '0.3rem', display: 'flex', alignItems: 'baseline', gap: '0.3rem' };
 const priceStyle = { fontWeight: theme.typography.weights.extraBold, fontSize: theme.typography.sizes.sm, color: theme.colors.charcoal };
 const nightLabelStyle = { fontSize: theme.typography.sizes.sm, color: theme.colors.charcoal, fontWeight: theme.typography.weights.normal };
 const contentAreaStyle = { display: 'flex', flexDirection: 'column', gap: '0.2rem' };
-
-/* --- HISTORICAL STAGE 1: HARDCODED HEX ---
- * const titleStyle = { color: '#222', fontSize: '15px' };
- */
 
 export default ListingCard;
