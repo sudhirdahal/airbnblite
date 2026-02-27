@@ -25,15 +25,13 @@ const RatingBreakdown = ({ reviews = [] }) => {
   if (Array.isArray(reviews)) {
     reviews.forEach(r => { if (r && r.rating && counts[r.rating] !== undefined) counts[r.rating]++; });
   }
-  const total = reviews.length || 1; // Prevent division by zero
+  const total = reviews.length || 1;
   return (
     <div style={breakdownContainerStyle}>
       {[5, 4, 3, 2, 1].map(star => (
         <div key={star} style={breakdownRowStyle}>
           <span style={starLabelStyle}>{star} stars</span>
-          <div style={barBgStyle}>
-            <motion.div initial={{ width: 0 }} animate={{ width: `${(counts[star] / total) * 100}%` }} transition={{ duration: 1 }} style={barFillStyle} />
-          </div>
+          <div style={barBgStyle}><motion.div initial={{ width: 0 }} animate={{ width: `${(counts[star] / total) * 100}%` }} transition={{ duration: 1 }} style={barFillStyle} /></div>
           <span style={percentLabelStyle}>{Math.round((counts[star] / total) * 100)}%</span>
         </div>
       ))}
@@ -64,11 +62,9 @@ const ListingDetail = ({ user, onChatOpened }) => {
   const [listing, setListing] = useState(null);       
   const [reviews, setReviews] = useState([]);         
   const [chatHistory, setChatHistory] = useState([]);
-  
   const [loading, setLoading] = useState(true);       
   const [error, setError] = useState(null);
   
-  // UI State
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -98,11 +94,10 @@ const ListingDetail = ({ user, onChatOpened }) => {
       document.title = `${listing.title} | AirnbLite`;
     }
     return () => {
-      document.title = "AirnbLite | Unique Stays & Professional Hosting"; // Cleanup on unmount
+      document.title = "AirnbLite | Unique Stays & Professional Hosting";
     };
   }, [listing]);
 
-  // Handle responsive layout shifts
   useEffect(() => {
     window.scrollTo(0, 0);
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -135,27 +130,27 @@ const ListingDetail = ({ user, onChatOpened }) => {
   const loadPageData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch CRITICAL Data (The Listing)
+      // 1. Fetch Core Listing Data (Critical)
       const res = await API.get(`/listings/${id}`);
       if (!res.data) throw new Error("Context Unavailable.");
       setListing(res.data);
 
-      // 2. Fetch NON-CRITICAL Data (Reviews)
+      // 2. Fetch Reviews (Defensive Pattern)
       try {
         const reviewRes = await API.get(`/reviews/${id}`);
         setReviews(reviewRes.data || []);
       } catch (err) {
-        console.warn('Reviews Sync Failure (Non-Critical) - Defaulting to empty.');
+        console.warn('Reviews Sync Failure (Non-Critical)');
         setReviews([]);
       }
 
-      // 3. Fetch NON-CRITICAL Data (Chat History) - Only if logged in
+      // 3. Fetch Chat History (Defensive Pattern)
       if (localStorage.getItem('token')) {
         try {
           const chatRes = await API.get(`/auth/chat-history/${id}`);
           setChatHistory(chatRes.data || []);
         } catch (err) {
-          console.warn('Chat History Sync Failure (Non-Critical) - Defaulting to empty.');
+          console.warn('Chat History Sync Failure (Non-Critical)');
           setChatHistory([]);
         }
       }
@@ -178,13 +173,12 @@ const ListingDetail = ({ user, onChatOpened }) => {
     if (dateRange[0] && dateRange[1] && listing) {
       const diff = Math.ceil(Math.abs(dateRange[1] - dateRange[0]) / (1000 * 60 * 60 * 24));
       if (diff > 0) {
-        const total = (diff * listing.rate) * 1.14; 
+        const total = (diff * listing.rate) * 1.14;
         setPricing({ nights: diff, total: Math.round(total) });
       }
     }
   }, [dateRange, listing]);
 
-  // Phase 18: Render High-Fidelity Skeletons while hydrating
   if (loading) return <DetailSkeleton />;
   if (error || !listing) return <div style={centerStyle}><h2>Property Unavailable</h2><Link to="/" style={{ color: theme.colors.brand }}>Return Home</Link></div>;
 
@@ -226,7 +220,6 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
             <div style={{ padding: isMobile ? '1.5rem' : '2.5rem 0' }}>
               {isMobile && <h1 style={{ fontSize: '1.8rem', fontWeight: theme.typography.weights.extraBold }}>{listing.title}</h1>}
-              
               <div style={ratingSummary}>
                 <Star size={18} fill={theme.colors.charcoal} /> 
                 <span>{listing.rating || '4.5'}</span>
@@ -269,11 +262,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
                     <div key={r._id} style={{ marginBottom: '1.5rem' }}>
                       <div style={userRow}>
                         <div style={avatarCircle}>{r.userId?.name?.charAt(0) || 'U'}</div>
-                        <div>
-                          <div style={{ fontWeight: 'bold' }}>{r.userId?.name || 'Traveler'}</div>
-                          {/* INTEGRATION: date-fns for human-readable relative timestamps */}
-                          <div style={reviewDate}>{r.createdAt ? formatDistanceToNow(new Date(r.createdAt), { addSuffix: true }) : 'Recently'}</div>
-                        </div>
+                        <div><div style={{ fontWeight: 'bold' }}>{r.userId?.name || 'Traveler'}</div><div style={reviewDate}>{r.createdAt ? formatDistanceToNow(new Date(r.createdAt), { addSuffix: true }) : 'Recently'}</div></div>
                       </div>
                       <p style={reviewText}>{r.comment}</p>
                     </div>
@@ -300,7 +289,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
           )}
         </div>
       </div>
-
+      
       {/* 💬 REAL-TIME CHAT WIDGET */}
       <ChatWindow 
         listingId={id} 
@@ -346,8 +335,6 @@ const sidebarPrice = { fontSize: '1.6rem', fontWeight: theme.typography.weights.
 const priceRow = { display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginBottom: '0.8rem', color: theme.colors.charcoal };
 const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: theme.typography.weights.bold, borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '1rem', color: theme.colors.charcoal, fontSize: '1.2rem' };
 const reserveBtn = { width: '100%', marginTop: '2rem', padding: '1.1rem', backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.md, fontWeight: theme.typography.weights.extraBold, fontSize: '1.1rem', cursor: 'pointer', boxShadow: `0 4px 15px rgba(255, 56, 92, 0.3)` };
-const mobileBar = { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: theme.colors.white, borderTop: `1px solid ${theme.colors.divider}`, padding: '1.2rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1000, boxShadow: '0 -8px 24px rgba(0,0,0,0.08)' };
-const mobileBtn = { backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.md, fontWeight: theme.typography.weights.extraBold, fontSize: '1.1rem', cursor: 'pointer', padding: '0.8rem 2.5rem' };
 const lightboxOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const closeBtnStyle = { position: 'absolute', top: '40px', right: '40px', background: 'none', border: 'none', color: theme.colors.white, cursor: 'pointer' };
 const lightboxContent = { textAlign: 'center', maxWidth: '90vw' };

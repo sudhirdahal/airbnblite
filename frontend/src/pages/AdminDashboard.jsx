@@ -36,7 +36,6 @@ const priceValueStyle = { fontWeight: '900', fontSize: '1.8rem', color: theme.co
 const priceLabelStyle = { fontSize: '0.7rem', color: theme.colors.slate, textTransform: 'uppercase', fontWeight: '900', letterSpacing: '0.1em', marginTop: '0.2rem' };
 const pillActionButton = (color) => ({ width: '44px', height: '44px', borderRadius: '50%', border: `1px solid ${color}20`, backgroundColor: `${color}08`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', color: color });
 const iconCircleButton = { width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', border: '1px solid #e5e7eb', color: theme.colors.charcoal, cursor: 'pointer', transition: 'all 0.2s' };
-const smallActionButton = { padding: '0.6rem 1.2rem', backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer' };
 const fileUploadLabel = { display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 1.2rem', backgroundColor: '#f3f4f6', borderRadius: '10px', fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer', border: '1px solid #e5e7eb' };
 const emptyStateStyle = { padding: '8rem', textAlign: 'center', backgroundColor: '#fff', borderRadius: '24px', border: `2px dashed ${theme.colors.divider}` };
 const statCardStyle = { display: 'flex', alignItems: 'center', gap: '2rem', padding: '3rem', backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.02)' };
@@ -50,7 +49,6 @@ const inputGroup = { display: 'flex', flexDirection: 'column', gap: '0.8rem' };
 const labelStyle = { fontSize: '0.75rem', fontWeight: '900', color: theme.colors.charcoal, textTransform: 'uppercase', letterSpacing: '0.1em' };
 const inputStyle = { padding: '1.2rem', borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '1rem', outline: 'none', transition: 'all 0.2s', backgroundColor: '#f9fafb', fontFamily: 'inherit' };
 const amenityChipStyle = (active) => ({ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.8rem 1.4rem', borderRadius: '12px', border: `1px solid ${active ? theme.colors.charcoal : '#e5e7eb'}`, backgroundColor: active ? theme.colors.charcoal : '#fff', color: active ? '#fff' : '#4b5563', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' });
-const secondaryButtonStyle = { backgroundColor: theme.colors.charcoal, color: '#fff', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' };
 const removeImgBtnStyle = { position: 'absolute', top: '-8px', right: '-8px', backgroundColor: theme.colors.brand, color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: theme.shadows.sm };
 const primaryButtonStyle = { backgroundColor: theme.colors.charcoal, color: '#fff', border: 'none', padding: '1rem 2rem', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' };
 
@@ -69,8 +67,17 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
 
 /**
  * ============================================================================
- * ADMIN DASHBOARD (The Host Management Suite)
+ * 🏢 ADMIN DASHBOARD (The Host Management Suite)
  * ============================================================================
+ * 
+ * MASTERCLASS NOTES:
+ * This component acts as the high-fidelity control center for 'admin' users.
+ * 
+ * Architectural Evolution:
+ * - Phase 1: A basic HTML table for CRUD operations.
+ * - Phase 11: Introduction of State Recovery (pre-filling the edit form).
+ * - Phase 27: The Cinematic Overhaul. Transitioned to a "Live Card" grid, 
+ *   Pill Navigation, and Hybrid S3/URL image uploads.
  */
 const AdminDashboard = ({ user, refreshListings }) => {
   const [activeTab, setActiveTab] = useState('listings');
@@ -111,6 +118,11 @@ const AdminDashboard = ({ user, refreshListings }) => {
     if (user) fetchAdminData(); 
   }, [activeTab, user]);
 
+  /**
+   * REVENUE AGGREGATION ENGINE (Phase 6)
+   * Logic: Dynamically computes monthly totals from confirmed reservations 
+   * to power the Chart.js visualizer.
+   */
   const getChartData = () => {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const revenueByMonth = new Array(12).fill(0);
@@ -134,6 +146,11 @@ const AdminDashboard = ({ user, refreshListings }) => {
     }));
   };
 
+  /**
+   * FORM STATE RECOVERY (Phase 11)
+   * Logic: When a user clicks "Edit", we populate the entire formData state
+   * with the existing listing details. This prevents data loss during updates.
+   */
   const handleEditClick = (listing) => {
     setFormData({ 
       _id: listing._id, title: listing.title, location: listing.location, 
@@ -147,6 +164,11 @@ const AdminDashboard = ({ user, refreshListings }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  /**
+   * HYBRID UPLOAD ENGINE (Phase 27)
+   * Logic: Sends the physical file to the backend, which streams it to AWS S3,
+   * returns the permanent cloud URL, and pushes it into the local state array.
+   */
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -181,6 +203,16 @@ const AdminDashboard = ({ user, refreshListings }) => {
     } catch (err) { toast.error('Management Handshake Failure', { id: actionToast }); }
   };
 
+  /* ============================================================================
+   * 👻 HISTORICAL GHOST: PHASE 1 (The Dangerous Delete)
+   * ============================================================================
+   * const deleteListing = async (id) => {
+   *    await API.delete(`/listings/${id}`); // Instant removal!
+   * }
+   * 
+   * THE FLAW: No confirmation dialog. One accidental click destroyed data.
+   * THE FIX: window.confirm() integration.
+   * ============================================================================ */
   const handleDelete = async (id) => {
     if (!window.confirm("Permanent removal of this property? This action is irreversible.")) return;
     const deleteToast = toast.loading('Removing property...');
@@ -319,7 +351,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
             ) : (
               <div style={{ display: 'grid', gap: '1.5rem' }}>
                 {adminListings.map(l => (
-                  <div key={l._id} style={listingCardStyle}>
+                  <motion.div key={l._id} whileHover={{ y: -4, boxShadow: theme.shadows.lg }} style={listingCardStyle}>
                     <Link to={`/listing/${l._id}`} style={listingLinkStyle}>
                       <div style={imageWrapper}>
                         <img src={l.images[0]} style={refinedThumbStyle} alt={l.title} />
@@ -347,13 +379,14 @@ const AdminDashboard = ({ user, refreshListings }) => {
                         <button onClick={() => handleDelete(l._id)} style={{ ...pillActionButton(theme.colors.brand) }} title="Remove Listing"><Trash size={18} /></button>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
           </div>
         )}
 
+        {/* RESERVATIONS MANAGEMENT */}
         {activeTab === 'bookings' && (
           <div style={{ backgroundColor: '#fff', borderRadius: '24px', overflow: 'hidden', boxShadow: theme.shadows.card, border: '1px solid rgba(0,0,0,0.05)' }}>
             {bookings.length === 0 ? (
