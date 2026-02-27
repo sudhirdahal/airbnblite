@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'; // --- UPDATED: Added useLocation ---
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useSearchParams } from 'react-router-dom'; // --- UPDATED: Added useSearchParams ---
 import { Toaster } from 'react-hot-toast'; 
 import Navbar from './components/layout/Navbar';
 import Hero from './components/layout/Hero'; 
@@ -22,27 +22,27 @@ import MockPayment from './pages/MockPayment';
 import Inbox from './pages/Inbox';
 import API from './services/api';
 import socket from './services/socket';
-import { motion, AnimatePresence } from 'framer-motion'; // --- NEW: ANIMATION HUB ---
+import { AnimatePresence } from 'framer-motion';
 
 /**
  * ============================================================================
  * ANIMATED CONTENT WRAPPER
  * ============================================================================
- * Logic: Wraps every route in a cinematic fade-in transition.
- * This establishes the 'Visual Continuity' pattern of high-end SaaS apps.
  */
 const PageWrapper = ({ children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.3, ease: "easeOut" }}
-    style={{ width: '100%' }}
-  >
+  <div style={{ width: '100%' }}>
     {children}
-  </motion.div>
+  </div>
 );
 
+/**
+ * ============================================================================
+ * HOME COMPONENT (The URL-Aware Discovery Layer)
+ * ============================================================================
+ * UPDATED: Now reacts exclusively to SearchParams.
+ * Logic: When the URL changes, the parent AppContent re-fetches data,
+ * and this component renders the results.
+ */
 const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange, onHoverListing }) => {
   return (
     <PageWrapper>
@@ -70,7 +70,7 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
           <ListingMap listings={listings} />
         ) : (
           <ListingGrid 
-            listings={listings} userRole={user?.role} loading={loading} onSearch={handleSearch} user={user} 
+            listings={listings} userRole={user?.role} loading={loading} onSearch={onSearch} user={user} 
             onHoverListing={onHoverListing}
           />
         )}
@@ -81,14 +81,16 @@ const Home = ({ user, listings, loading, onSearch, activeCategory, onCategorySel
 
 /**
  * ============================================================================
- * MAIN APP COMPONENT (V11 - THE CINEMATIC NAVIGATION UPDATE)
+ * MAIN APP CONTENT (The Stateless Search Authority)
  * ============================================================================
- * OVERHAUL: Integrated 'AnimatePresence' for professional route transitions.
- * Every page transition now features a smooth fade-and-glide effect,
- * eliminating the jarring 'Snap' of traditional web navigation.
+ * OVERHAUL: Migrated from Component State to URL State.
+ * This component now uses 'useSearchParams' as the single source of truth
+ * for all discovery filters, enabling Deep-Linking and Refresh Persistence.
  */
 const AppContent = () => {
-  const location = useLocation(); // Track location for animation keys
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams(); // --- THE URL ENGINE ---
+  
   const [user, setUser] = useState(null);
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,10 +98,19 @@ const AppContent = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showMap, setShowMap] = useState(false);
-  const [activeCategory, setActiveCategory] = useState('');
-  const [sort, setSort] = useState('newest');
-  const [searchParams, setSearchParams] = useState({ location: '', checkInDate: '', checkOutDate: '', guests: '', amenities: '' });
   const [hoveredListingId, setHoveredListingId] = useState(null);
+
+  /**
+   * EXTRACTOR LOGIC
+   * Pulls current filter values directly from the URL.
+   */
+  const activeCategory = searchParams.get('category') || '';
+  const sort = searchParams.get('sort') || 'newest';
+  const currentFilters = {
+    location: searchParams.get('location') || '',
+    guests: searchParams.get('guests') || '',
+    amenities: searchParams.get('amenities') || ''
+  };
 
   const syncUpdates = useCallback(async () => {
     if (!localStorage.getItem('token')) return;
@@ -142,24 +153,52 @@ const AppContent = () => {
       setIsAuthLoading(false);
     };
     initAuth();
-    fetchListings();
   }, []);
 
-  const fetchListings = async (p = searchParams, c = activeCategory, s = sort) => {
+  /**
+   * DATA FETCHING ENGINE (V3 - URL Reactive)
+   * This effect fires every time the searchParams change, 
+   * ensuring the UI is always in sync with the URL.
+   */
+  const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/listings?sort=${s}&`;
-      if (p.location) url += `location=${p.location}&`;
-      if (c) url += `category=${c}&`;
-      if (p.guests) url += `guests=${p.guests}&`;
-      const response = await API.get(url);
+      const paramsObj = Object.fromEntries([...searchParams]);
+      const queryString = new URLSearchParams(paramsObj).toString();
+      const response = await API.get(`/listings?${queryString}`);
       setListings(response.data);
-    } catch (err) {} finally { setLoading(false); }
+    } catch (err) {
+      console.error('Search Failure');
+    } finally {
+      setLoading(false);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    fetchListings();
+  }, [fetchListings]);
+
+  /**
+   * STATE MUTATORS (URL Directed)
+   * These functions no longer set local state; they update the URL.
+   */
+  const handleSearch = (newParams) => {
+    const current = Object.fromEntries([...searchParams]);
+    setSearchParams({ ...current, ...newParams });
   };
 
-  const handleSearch = (np) => { setSearchParams(p => ({...p, ...np})); fetchListings({...searchParams, ...np}, activeCategory, sort); };
-  const handleCategorySelect = (c) => { const nc = activeCategory === c ? '' : c; setActiveCategory(nc); fetchListings(searchParams, nc, sort); };
-  const handleSortChange = (ns) => { setSort(ns); fetchListings(searchParams, activeCategory, ns); };
+  const handleCategorySelect = (categoryId) => {
+    const current = Object.fromEntries([...searchParams]);
+    if (current.category === categoryId) delete current.category;
+    else current.category = categoryId;
+    setSearchParams(current);
+  };
+
+  const handleSortChange = (newSort) => {
+    const current = Object.fromEntries([...searchParams]);
+    setSearchParams({ ...current, sort: newSort });
+  };
+
   const handleLogout = async () => { try { await API.post('/auth/logout-all'); } catch (err) {} localStorage.removeItem('token'); localStorage.removeItem('user'); setUser(null); };
 
   const ProtectedAdminRoute = ({ children }) => {
@@ -173,7 +212,7 @@ const AppContent = () => {
       <Navbar 
         userRole={user ? user.role : 'guest'} 
         onLogout={handleLogout} 
-        resetHomeView={() => { setShowMap(false); setActiveCategory(''); setSort('newest'); }} 
+        resetHomeView={() => setSearchParams({})} // Clear URL to reset home
         unreadCount={unreadCount}
         notifications={notifications}
         onNotificationRead={syncUpdates}
@@ -181,7 +220,6 @@ const AppContent = () => {
       />
       
       <main style={{ flex: 1, width: '100%' }}>
-        {/* --- CINEMATIC ROUTE ORCHESTRATOR --- */}
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<Home user={user} listings={listings} loading={loading} onSearch={handleSearch} activeCategory={activeCategory} onCategorySelect={handleCategorySelect} showMap={showMap} setShowMap={setShowMap} sort={sort} onSortChange={handleSortChange} onHoverListing={setHoveredListingId} />} />
@@ -211,14 +249,5 @@ const App = () => (
     <AppContent />
   </Router>
 );
-
-/* --- HISTORICAL STAGE 1: STATIC NAVIGATION ---
- * return (
- *   <Routes>
- *     <Route path="/" element={<Home />} />
- *   </Routes>
- * );
- * // Problem: Instant snaps between pages felt jarring and amateur.
- */
 
 export default App;
