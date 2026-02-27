@@ -7,25 +7,33 @@ import API from '../services/api';
 
 /**
  * ============================================================================
- * MOCK PAYMENT PAGE (The Checkout Engine)
+ * MOCK PAYMENT PAGE (The Transaction Gateway)
  * ============================================================================
- * UPDATED: Added a high-fidelity 'Success Modal' with animated feedback.
- * This component handles the final booking persistence and provides a 
- * rewarding visual confirmation to the traveler.
+ * This component handles the finalization of the booking lifecycle.
+ * Logic: Validates the incoming 'state' (from ListingDetail), performs 
+ * a simulated payment handshake, and persists the confirmed reservation 
+ * to the database.
+ * 
+ * High-Fidelity UX: Features a cinematic success modal with an 
+ * automatic redirection timer.
  */
 const MockPayment = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false); // --- NEW: Success State ---
+  const [showSuccess, setShowSuccess] = useState(false); 
 
-  if (!state) return <div style={{ padding: '4rem', textAlign: 'center' }}>Session expired. Please restart your booking.</div>;
+  /**
+   * SECURITY CHECK: Redirect if direct URL access is attempted 
+   * without a valid booking context in the router state.
+   */
+  if (!state) return <div style={{ padding: '4rem', textAlign: 'center' }}>Session context lost. Please restart your booking.</div>;
 
   const { listingId, bookingDetails, listing } = state;
 
   /**
-   * TRANSACTION HANDLER
-   * Communicates with the backend to finalize the reservation.
+   * THE TRANSACTION ENGINE
+   * Finalizes the reservation by hitting the POST /bookings endpoint.
    */
   const handlePayment = async (e) => {
     e.preventDefault();
@@ -33,7 +41,7 @@ const MockPayment = () => {
     const payToast = toast.loading('Securing your stay...');
 
     try {
-      // PERSISTENCE STAGE: Save booking to DB
+      // 1. DATABASE PERSISTENCE
       await API.post('/bookings', {
         listingId,
         checkIn: bookingDetails.checkIn,
@@ -41,26 +49,34 @@ const MockPayment = () => {
         totalPrice: bookingDetails.total
       });
 
-      toast.success('Transaction Successful!', { id: payToast });
+      toast.success('Transaction Confirmed!', { id: payToast });
       
-      // --- FEEDBACK STAGE: Show Success Animation ---
+      // 2. VISUAL REWARD STATE
       setShowSuccess(true);
       
-      // Auto-redirect after visual reward
+      // 3. AUTO-REDIRECT HANDSHAKE
       setTimeout(() => {
         navigate('/bookings');
       }, 2500);
 
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Payment failed', { id: payToast });
+      toast.error(err.response?.data?.message || 'Handshake failed', { id: payToast });
       setProcessing(false);
     }
   };
 
+  /* --- HISTORICAL STAGE 1: PRIMITIVE CHECKOUT ---
+   * return (
+   *   <button onClick={handlePayment}>
+   *     Confirm Booking for ${bookingDetails.total}
+   *   </button>
+   * );
+   */
+
   return (
     <div style={{ maxWidth: '1200px', margin: '4rem auto', padding: '0 2rem' }}>
       
-      {/* --- HIGH-FIDELITY SUCCESS MODAL --- */}
+      {/* --- SUCCESS OVERLAY MODAL --- */}
       <AnimatePresence>
         {showSuccess && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={successOverlayStyle}>
@@ -68,10 +84,12 @@ const MockPayment = () => {
               <div className="pulse-dot" style={successIconWrapper}>
                 <CheckCircle2 size={64} color="#16a34a" />
               </div>
-              <h2 style={{ fontSize: '2rem', margin: '1rem 0' }}>Stay Confirmed!</h2>
-              <p style={{ color: '#717171', textAlign: 'center', marginBottom: '2rem' }}>Your adventure at {listing.title} is all set. We've sent a confirmation email.</p>
-              <div style={loadingBarBg}><motion.div initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ duration: 2 }} style={loadingBarFill} /></div>
-              <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '1rem' }}>Redirecting to your trips...</p>
+              <h2 style={{ fontSize: '2rem', margin: '1rem 0', fontWeight: '800' }}>Stay Confirmed!</h2>
+              <p style={{ color: '#717171', textAlign: 'center', marginBottom: '2rem', lineHeight: '1.5' }}>
+                Your stay at <b>{listing.title}</b> is all set. We've notified the host of your arrival.
+              </p>
+              <div style={loadingBarBg}><motion.div initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ duration: 2.5 }} style={loadingBarFill} /></div>
+              <p style={{ fontSize: '0.8rem', color: '#aaa', marginTop: '1.2rem', fontWeight: '600' }}>Finalizing travel details...</p>
             </motion.div>
           </motion.div>
         )}
@@ -79,7 +97,7 @@ const MockPayment = () => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '3rem' }}>
         <button onClick={() => navigate(-1)} style={backBtnStyle}><ChevronLeft size={20} /></button>
-        <h1 style={{ margin: 0 }}>Confirm and pay</h1>
+        <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '800' }}>Confirm and pay</h1>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '6rem' }}>
@@ -88,15 +106,15 @@ const MockPayment = () => {
           <section>
             <h3 style={sectionTitle}>Your trip</h3>
             <div style={tripDetailRow}>
-              <div><div style={{ fontWeight: 'bold' }}>Dates</div><div>{new Date(bookingDetails.checkIn).toLocaleDateString()} – {new Date(bookingDetails.checkOut).toLocaleDateString()}</div></div>
+              <div><div style={{ fontWeight: 'bold', fontSize: '1rem' }}>Dates</div><div style={{ color: '#444' }}>{new Date(bookingDetails.checkIn).toLocaleDateString()} – {new Date(bookingDetails.checkOut).toLocaleDateString()}</div></div>
             </div>
             <div style={tripDetailRow}>
-              <div><div style={{ fontWeight: 'bold' }}>Guests</div><div>{bookingDetails.guests.adults + bookingDetails.guests.children} guests</div></div>
+              <div><div style={{ fontWeight: 'bold', fontSize: '1rem' }}>Guests</div><div style={{ color: '#444' }}>{bookingDetails.guests.adults + bookingDetails.guests.children} guests</div></div>
             </div>
           </section>
 
           <section style={{ borderTop: '1px solid #eee', paddingTop: '2.5rem' }}>
-            <h3 style={sectionTitle}>Pay with Credit Card</h3>
+            <h3 style={sectionTitle}>Secure Payment</h3>
             <form onSubmit={handlePayment} style={cardFormStyle}>
               <div style={inputGroup}><label style={labelStyle}>Card Number</label><input type="text" placeholder="0000 0000 0000 0000" style={inputStyle} required /></div>
               <div style={{ display: 'flex', gap: '1rem' }}>
@@ -113,11 +131,11 @@ const MockPayment = () => {
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #eee', paddingBottom: '2rem' }}>
             <img src={listing.images[0]} style={listingThumbStyle} alt="Thumb" />
             <div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{listing.title}</div>
+              <div style={{ fontSize: '0.95rem', fontWeight: '700' }}>{listing.title}</div>
               <div style={{ fontSize: '0.8rem', color: '#717171' }}>{listing.location}</div>
             </div>
           </div>
-          <h3 style={sectionTitle}>Price details</h3>
+          <h3 style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>Price details</h3>
           <div style={priceRow}><span>${listing.rate} x {bookingDetails.nights} nights</span><span>${bookingDetails.nights * listing.rate}</span></div>
           <div style={priceRow}><span>Service fee</span><span>${Math.round(bookingDetails.total - (bookingDetails.nights * listing.rate))}</span></div>
           <div style={totalRow}><span>Total (USD)</span><span>${bookingDetails.total}</span></div>
@@ -127,24 +145,24 @@ const MockPayment = () => {
   );
 };
 
-// --- STYLES ---
+// --- PREMIUM STYLES ---
 const successOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.98)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const successCardStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '450px', padding: '3rem', backgroundColor: '#fff', borderRadius: '32px', boxShadow: '0 20px 60px rgba(0,0,0,0.1)' };
-const successIconWrapper = { width: '100px', height: '100px', backgroundColor: '#f0fdf4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' };
-const loadingBarBg = { width: '100%', height: '4px', backgroundColor: '#eee', borderRadius: '2px', overflow: 'hidden', marginTop: '1rem' };
+const successCardStyle = { display: 'flex', flexDirection: 'column', alignItems: 'center', width: '90%', maxWidth: '480px', padding: '4rem 3rem', backgroundColor: '#fff', borderRadius: '32px', boxShadow: '0 25px 80px rgba(0,0,0,0.12)' };
+const successIconWrapper = { width: '110px', height: '110px', backgroundColor: '#f0fdf4', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' };
+const loadingBarBg = { width: '100%', height: '6px', backgroundColor: '#f0f0f0', borderRadius: '3px', overflow: 'hidden', marginTop: '1rem' };
 const loadingBarFill = { height: '100%', backgroundColor: '#16a34a' };
 
 const backBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' };
-const sectionTitle = { fontSize: '1.4rem', marginBottom: '1.5rem' };
+const sectionTitle = { fontSize: '1.4rem', marginBottom: '1.8rem', fontWeight: '700' };
 const tripDetailRow = { display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' };
-const cardFormStyle = { display: 'flex', flexDirection: 'column', gap: '1.2rem', border: '1px solid #ddd', padding: '2rem', borderRadius: '16px' };
-const inputGroup = { display: 'flex', flexDirection: 'column', gap: '0.5rem' };
-const labelStyle = { fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#717171' };
-const inputStyle = { padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #ddd', fontSize: '1rem' };
-const payBtnStyle = { marginTop: '1rem', padding: '1rem', backgroundColor: '#ff385c', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' };
-const summaryCardStyle = { border: '1px solid #ddd', borderRadius: '24px', padding: '2.5rem', height: 'fit-content', position: 'sticky', top: '120px' };
-const listingThumbStyle = { width: '100px', height: '100px', borderRadius: '12px', objectFit: 'cover' };
-const priceRow = { display: 'flex', justifyContent: 'space-between', color: '#222', marginBottom: '0.8rem' };
-const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '1.1rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #eee' };
+const cardFormStyle = { display: 'flex', flexDirection: 'column', gap: '1.5rem', border: '1px solid #ddd', padding: '2.5rem', borderRadius: '20px' };
+const inputGroup = { display: 'flex', flexDirection: 'column', gap: '0.6rem' };
+const labelStyle = { fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', color: '#717171' };
+const inputStyle = { padding: '0.9rem 1.2rem', borderRadius: '12px', border: '1.5px solid #eee', fontSize: '1rem', outline: 'none' };
+const payBtnStyle = { marginTop: '1rem', padding: '1.1rem', backgroundColor: '#ff385c', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '800', fontSize: '1.1rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(255, 56, 92, 0.3)' };
+const summaryCardStyle = { border: '1px solid #eee', borderRadius: '28px', padding: '2.5rem', height: 'fit-content', position: 'sticky', top: '120px', backgroundColor: '#fff', boxShadow: '0 8px 30px rgba(0,0,0,0.03)' };
+const listingThumbStyle = { width: '100px', height: '100px', borderRadius: '14px', objectFit: 'cover' };
+const priceRow = { display: 'flex', justifyContent: 'space-between', color: '#444', marginBottom: '1rem', fontSize: '0.95rem' };
+const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '1.15rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #eee', color: '#000' };
 
 export default MockPayment;
