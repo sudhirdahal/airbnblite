@@ -15,21 +15,25 @@ import { theme } from '../theme';
 
 /**
  * ============================================================================
- * RATING BREAKDOWN COMPONENT
+ * ⭐ RATING BREAKDOWN COMPONENT
  * ============================================================================
+ * Logic: Aggregates individual review scores into a visual, proportional bar chart.
+ * Uses Framer Motion to animate the bars growing from 0 to their actual percentage.
  */
 const RatingBreakdown = ({ reviews = [] }) => {
   const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   if (Array.isArray(reviews)) {
     reviews.forEach(r => { if (r && r.rating && counts[r.rating] !== undefined) counts[r.rating]++; });
   }
-  const total = reviews.length || 1;
+  const total = reviews.length || 1; // Prevent division by zero
   return (
     <div style={breakdownContainerStyle}>
       {[5, 4, 3, 2, 1].map(star => (
         <div key={star} style={breakdownRowStyle}>
           <span style={starLabelStyle}>{star} stars</span>
-          <div style={barBgStyle}><motion.div initial={{ width: 0 }} animate={{ width: `${(counts[star] / total) * 100}%` }} transition={{ duration: 1 }} style={barFillStyle} /></div>
+          <div style={barBgStyle}>
+            <motion.div initial={{ width: 0 }} animate={{ width: `${(counts[star] / total) * 100}%` }} transition={{ duration: 1 }} style={barFillStyle} />
+          </div>
           <span style={percentLabelStyle}>{Math.round((counts[star] / total) * 100)}%</span>
         </div>
       ))}
@@ -39,12 +43,19 @@ const RatingBreakdown = ({ reviews = [] }) => {
 
 /**
  * ============================================================================
- * LISTING DETAIL PAGE (V24 - THE DYNAMIC PRESENCE UPDATE)
+ * 🏠 LISTING DETAIL PAGE (The High-Fidelity Showcase)
  * ============================================================================
- * UPDATED: Implemented Dynamic SEO Metadata.
- * The document title now synchronizes with the Listing Title, ensuring 
- * professional-grade contextual awareness in the browser tab and 
- * improved indexing for search engines.
+ * 
+ * MASTERCLASS NOTES:
+ * This is the most complex UI component in the application. It handles
+ * data hydration from multiple sources, complex responsive layouts, 
+ * an interactive calendar, and real-time chat.
+ * 
+ * Architectural Evolution:
+ * - Phase 13: The Cinematic 5-Photo Grid implementation.
+ * - Phase 15: Progressive Loading (Skeleton Skeletons).
+ * - Phase 24: SEO-Driven Dynamic Titles.
+ * - Phase 26: The "Nuclear Stability Pattern" (Decoupled Fetches).
  */
 const ListingDetail = ({ user, onChatOpened }) => { 
   const { id } = useParams(); 
@@ -53,9 +64,11 @@ const ListingDetail = ({ user, onChatOpened }) => {
   const [listing, setListing] = useState(null);       
   const [reviews, setReviews] = useState([]);         
   const [chatHistory, setChatHistory] = useState([]);
+  
   const [loading, setLoading] = useState(true);       
   const [error, setError] = useState(null);
   
+  // UI State
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -69,21 +82,27 @@ const ListingDetail = ({ user, onChatOpened }) => {
     return "Reviewed";
   };
 
+  /**
+   * SMART AMENITY ENGINE
+   * Logic: Dynamically maps string text (e.g., 'WiFi') from the database
+   * to professional SVG icons from lucide-react.
+   */
   const getAmenityIcon = (name) => {
     const map = { 'WiFi': Wifi, 'Kitchen': Utensils, 'Pool': Waves, 'Parking': Car, 'TV': Tv, 'AC': Wind, 'Gym': Dumbbell, 'Security': Shield, 'Breakfast': Coffee };
     return map[name] || CheckCircle;
   };
 
-  // --- NEW: DYNAMIC TITLE HANDSHAKE ---
+  // --- DYNAMIC SEO HANDSHAKE (Phase 24) ---
   useEffect(() => {
     if (listing) {
       document.title = `${listing.title} | AirnbLite`;
     }
     return () => {
-      document.title = "AirnbLite | Unique Stays & Professional Hosting";
+      document.title = "AirnbLite | Unique Stays & Professional Hosting"; // Cleanup on unmount
     };
   }, [listing]);
 
+  // Handle responsive layout shifts
   useEffect(() => {
     window.scrollTo(0, 0);
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -91,30 +110,52 @@ const ListingDetail = ({ user, onChatOpened }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  /* ============================================================================
+   * 👻 HISTORICAL GHOST: PHASE 10 (The Fragile Fetch)
+   * ============================================================================
+   * Originally, we fetched the Listing, Reviews, and Chat in a single Promise:
+   * 
+   * const [listingRes, reviewRes, chatRes] = await Promise.all([
+   *    API.get(`/listings/${id}`),
+   *    API.get(`/reviews/${id}`),
+   *    API.get(`/auth/chat-history/${id}`)
+   * ]);
+   * 
+   * THE FLAW: If a brand-new property had NO reviews, the `reviews` endpoint
+   * would return a 404. Because `Promise.all` fails if ANY promise fails, the 
+   * ENTIRE page crashed, showing a blank screen for a perfectly valid property!
+   * ============================================================================ */
+
+  /**
+   * THE NUCLEAR STABILITY PATTERN (Phase 26)
+   * Logic: We decouple the fetches. The Listing is "Critical." If it fails,
+   * we abort. Reviews and Chat are "Non-Critical." If they fail, we catch 
+   * the error silently and default to empty arrays, allowing the page to render.
+   */
   const loadPageData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Core Listing Data
+      // 1. Fetch CRITICAL Data (The Listing)
       const res = await API.get(`/listings/${id}`);
       if (!res.data) throw new Error("Context Unavailable.");
       setListing(res.data);
 
-      // 2. Fetch Reviews (Defensive Pattern)
+      // 2. Fetch NON-CRITICAL Data (Reviews)
       try {
         const reviewRes = await API.get(`/reviews/${id}`);
         setReviews(reviewRes.data || []);
       } catch (err) {
-        console.warn('Reviews Sync Failure (Non-Critical)');
+        console.warn('Reviews Sync Failure (Non-Critical) - Defaulting to empty.');
         setReviews([]);
       }
 
-      // 3. Fetch Chat History (Defensive Pattern)
+      // 3. Fetch NON-CRITICAL Data (Chat History) - Only if logged in
       if (localStorage.getItem('token')) {
         try {
           const chatRes = await API.get(`/auth/chat-history/${id}`);
           setChatHistory(chatRes.data || []);
         } catch (err) {
-          console.warn('Chat History Sync Failure (Non-Critical)');
+          console.warn('Chat History Sync Failure (Non-Critical) - Defaulting to empty.');
           setChatHistory([]);
         }
       }
@@ -128,16 +169,22 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
   useEffect(() => { if (id) loadPageData(); }, [id, user]);
 
+  /**
+   * DYNAMIC PRICING ENGINE
+   * Logic: Calculates the total price in real-time as the user selects dates.
+   * Includes a 14% simulated "Service Fee" for realism.
+   */
   useEffect(() => {
     if (dateRange[0] && dateRange[1] && listing) {
       const diff = Math.ceil(Math.abs(dateRange[1] - dateRange[0]) / (1000 * 60 * 60 * 24));
       if (diff > 0) {
-        const total = (diff * listing.rate) * 1.14;
+        const total = (diff * listing.rate) * 1.14; 
         setPricing({ nights: diff, total: Math.round(total) });
       }
     }
   }, [dateRange, listing]);
 
+  // Phase 18: Render High-Fidelity Skeletons while hydrating
   if (loading) return <DetailSkeleton />;
   if (error || !listing) return <div style={centerStyle}><h2>Property Unavailable</h2><Link to="/" style={{ color: theme.colors.brand }}>Return Home</Link></div>;
 
@@ -146,6 +193,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
   return (
     <div style={{ minHeight: '100vh', width: '100%', backgroundColor: theme.colors.white }}>
       
+      {/* 🖼️ HIGH-FIDELITY LIGHTBOX (Phase 13) */}
       <AnimatePresence>
         {isLightboxOpen && (
           <div style={lightboxOverlayStyle}>
@@ -160,6 +208,8 @@ const ListingDetail = ({ user, onChatOpened }) => {
         
         <div style={layoutGrid(isMobile)}>
           <div style={{ flex: 2 }}>
+            
+            {/* 📸 CINEMATIC 5-PHOTO GRID (Desktop Only) */}
             {!isMobile ? (
               <div style={galleryGrid}>
                 <div onClick={() => setIsLightboxOpen(true)} style={mainImage}><img src={images[0]} style={fullFit} /></div>
@@ -176,6 +226,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
             <div style={{ padding: isMobile ? '1.5rem' : '2.5rem 0' }}>
               {isMobile && <h1 style={{ fontSize: '1.8rem', fontWeight: theme.typography.weights.extraBold }}>{listing.title}</h1>}
+              
               <div style={ratingSummary}>
                 <Star size={18} fill={theme.colors.charcoal} /> 
                 <span>{listing.rating || '4.5'}</span>
@@ -207,6 +258,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
                 </div>
               </div>
 
+              {/* ⭐️ HIGH-FIDELITY REVIEW SECTION */}
               <div style={{ marginTop: '4rem' }}>
                 <div style={reviewHeader(isMobile)}>
                   <div><h2 style={largeRating}><Star size={32} fill="#000" /> {listing.rating || '4.5'}</h2><p style={reviewsCountText}>{listing.reviewsCount || 0} reviews</p></div>
@@ -217,7 +269,11 @@ const ListingDetail = ({ user, onChatOpened }) => {
                     <div key={r._id} style={{ marginBottom: '1.5rem' }}>
                       <div style={userRow}>
                         <div style={avatarCircle}>{r.userId?.name?.charAt(0) || 'U'}</div>
-                        <div><div style={{ fontWeight: 'bold' }}>{r.userId?.name || 'Traveler'}</div><div style={reviewDate}>{r.createdAt ? formatDistanceToNow(new Date(r.createdAt), { addSuffix: true }) : 'Recently'}</div></div>
+                        <div>
+                          <div style={{ fontWeight: 'bold' }}>{r.userId?.name || 'Traveler'}</div>
+                          {/* INTEGRATION: date-fns for human-readable relative timestamps */}
+                          <div style={reviewDate}>{r.createdAt ? formatDistanceToNow(new Date(r.createdAt), { addSuffix: true }) : 'Recently'}</div>
+                        </div>
                       </div>
                       <p style={reviewText}>{r.comment}</p>
                     </div>
@@ -227,6 +283,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
             </div>
           </div>
 
+          {/* 💳 SIDEBAR CHECKOUT WIDGET */}
           {!isMobile && (
             <div style={{ flex: 1 }}>
               <div style={sidebarCard}>
@@ -243,6 +300,8 @@ const ListingDetail = ({ user, onChatOpened }) => {
           )}
         </div>
       </div>
+
+      {/* 💬 REAL-TIME CHAT WIDGET */}
       <ChatWindow 
         listingId={id} 
         currentUser={user} 
@@ -293,8 +352,6 @@ const lightboxOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bot
 const closeBtnStyle = { position: 'absolute', top: '40px', right: '40px', background: 'none', border: 'none', color: theme.colors.white, cursor: 'pointer' };
 const lightboxContent = { textAlign: 'center', maxWidth: '90vw' };
 const lightboxImg = { maxHeight: '80vh', maxWidth: '100%', borderRadius: theme.radius.md, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' };
-const lightboxNav = { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '3rem', marginTop: '2.5rem', color: theme.colors.white, fontWeight: 'bold', fontSize: '1.1rem' };
-const navBtn = { background: theme.colors.white, color: theme.colors.charcoal, border: 'none', borderRadius: theme.radius.full, padding: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', boxShadow: theme.shadows.sm };
 const breakdownContainerStyle = { flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' };
 const breakdownRowStyle = { display: 'flex', alignItems: 'center', gap: '1.2rem' };
 const starLabelStyle = { fontSize: '0.9rem', width: '70px', fontWeight: theme.typography.weights.semibold };
