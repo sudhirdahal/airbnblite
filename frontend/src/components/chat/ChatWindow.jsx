@@ -6,8 +6,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
 
 /**
- * ChatWindow Component: Updated with a MAXIMIZED Send icon.
- * Icon size increased to 32px for a bold, high-fidelity presence.
+ * ============================================================================
+ * CHAT WINDOW COMPONENT (The Real-Time Presence Layer)
+ * ============================================================================
+ * This component manages the live bidirectional communication channel.
+ * It has evolved from a primitive socket emission widget to a 
+ * role-aware, hydrated communication hub featuring:
+ * 1. Role-specific Theming (Host Purple vs Guest Red).
+ * 2. Real-time Typing Indicators.
+ * 3. Relative Timestamps (High-fidelity).
+ * 4. Automatic 'Mark as Read' synchronization.
  */
 const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,8 +29,16 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
   const isOpenRef = useRef(isOpen);
   const audioRef = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'));
 
+  /**
+   * HYDRATION SYNC
+   * Syncs historical messages when the listing context changes.
+   */
   useEffect(() => { if (history.length > 0) setMessages(history); }, [history]);
 
+  /**
+   * INTERACTION SYNC
+   * When opened, we tell the backend to mark these messages as seen.
+   */
   useEffect(() => {
     isOpenRef.current = isOpen;
     if (isOpen) {
@@ -34,8 +50,14 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
   const getUserId = (user) => user?._id || user?.id;
 
+  /**
+   * REAL-TIME ENGINE
+   * Listeners for incoming messages and presence (typing) events.
+   */
   useEffect(() => {
     if (!currentUser || !listingId) return; 
+    
+    // Join listing-specific room for private thread isolation
     socket.emit('join room', listingId);
 
     const handleNewMessage = (message) => {
@@ -50,6 +72,7 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     };
 
     const handleTyping = (data) => {
+      // Determine if the OTHER party is typing
       if (data.listingId === listingId && data.userId !== getUserId(currentUser)) {
         setTypingUser(isHost ? 'Guest' : 'Host');
       }
@@ -71,6 +94,10 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
   useEffect(() => { if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
 
+  /**
+   * PRESENCE HANDLER
+   * Emits typing state to let the other user know we are active.
+   */
   const handleInputChange = (e) => {
     setNewMessage(e.target.value);
     socket.emit('typing', { listingId, userId: getUserId(currentUser) });
@@ -84,6 +111,12 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (newMessage.trim() === '') return;
+    
+    /* --- HISTORICAL STAGE 1: RAW EMISSION ---
+     * Initially, we just sent the text.
+     * socket.emit('chat message', { content: newMessage });
+     */
+
     socket.emit('chat message', { senderId: getUserId(currentUser), listingId: listingId, content: newMessage });
     socket.emit('stop_typing', { listingId });
     setNewMessage('');
@@ -91,6 +124,7 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
   if (!currentUser) return null;
 
+  // Visual Identity Logic
   const themeColor = isHost ? '#4a148c' : '#ff385c';
 
   return (
@@ -102,7 +136,10 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
       <div style={{ ...chatContainerStyle, display: isOpen ? 'flex' : 'none' }}>
         <div style={headerStyle(themeColor)}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{isHost ? <ShieldCheck size={18} /> : <MessageCircle size={18} />}<span style={{ fontWeight: 'bold' }}>{isHost ? 'Host Controls' : 'Message Host'}</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {isHost ? <ShieldCheck size={18} /> : <MessageCircle size={18} />}
+            <span style={{ fontWeight: 'bold' }}>{isHost ? 'Host Controls' : 'Message Host'}</span>
+          </div>
           <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><Minus size={20} /></button>
         </div>
 
@@ -133,19 +170,13 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
 
         <form onSubmit={handleSendMessage} style={formStyle}>
           <input type="text" value={newMessage} onChange={handleInputChange} placeholder="Write a message..." style={inputStyle} />
-          {/* --- MAXIMIZED BOLD SEND BUTTON --- */}
           <motion.button 
             type="submit" 
             whileHover={{ scale: 1.05, backgroundColor: isHost ? '#310e5d' : '#e31c5f' }}
             whileTap={{ scale: 0.95 }}
             style={sendBtnStyle(themeColor)}
           >
-            <SendHorizontal 
-              size={32} // --- BUMPED FROM 26 TO 32 ---
-              color="white" 
-              strokeWidth={2.5} 
-              style={{ transform: 'translateX(2px)' }} // Visual optical centering
-            />
+            <SendHorizontal size={32} color="white" strokeWidth={2.5} style={{ transform: 'translateX(2px)' }} />
           </motion.button>
         </form>
       </div>
@@ -163,23 +194,7 @@ const timeStyle = (isMe) => ({ fontSize: '0.68rem', color: '#888', marginTop: '0
 const senderNameStyle = { fontSize: '0.72rem', color: '#717171', marginLeft: '0.4rem', marginBottom: '0.3rem', fontWeight: '700' };
 const formStyle = { padding: '1rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.8rem', backgroundColor: 'white', alignItems: 'center' };
 const inputStyle = { flexGrow: 1, padding: '0.8rem 1.4rem', borderRadius: '28px', border: '1.5px solid #eee', outline: 'none', fontSize: '1rem', backgroundColor: '#f9f9f9', color: '#222', WebkitAppearance: 'none' };
-
-// REINFORCED BOLD DESIGN
-const sendBtnStyle = (color) => ({ 
-  backgroundColor: color, 
-  border: 'none', 
-  borderRadius: '50%', 
-  width: '54px', // Slightly larger container
-  height: '54px', 
-  display: 'flex', 
-  alignItems: 'center', 
-  justifyContent: 'center', 
-  cursor: 'pointer',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-  flexShrink: 0,
-  padding: 0
-});
-
+const sendBtnStyle = (color) => ({ backgroundColor: color, border: 'none', borderRadius: '50%', width: '54px', height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', flexShrink: 0, padding: 0, transition: 'background-color 0.2s' });
 const unreadBadgeStyle = { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#222', color: 'white', borderRadius: '50%', width: '24px', height: '24px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' };
 const typingIndicatorStyle = { fontSize: '0.8rem', color: '#717171', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.5rem' };
 const dotPulseStyle = (color) => ({ width: '8px', height: '8px', backgroundColor: color, borderRadius: '50%' });
