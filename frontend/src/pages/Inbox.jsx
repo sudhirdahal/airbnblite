@@ -71,6 +71,33 @@ const Inbox = ({ user, onThreadOpened }) => {
   );
 };
 
+const ThreadCard = ({ thread, onOpen }) => {
+  const { listing, lastMessage, unreadCount } = thread;
+  const isUnread = unreadCount > 0;
+
+  return (
+    <motion.div whileHover={{ y: -2 }} onClick={onOpen} style={threadCardStyle(isUnread)}>
+      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', width: '100%' }}>
+        <img src={listing.images[0]} style={thumbStyle} alt="Listing" />
+        
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: theme.typography.weights.bold }}>{listing.title}</h3>
+            <span style={{ fontSize: '0.75rem', color: theme.colors.slate }}>{formatDistanceToNow(new Date(lastMessage.timestamp), { addSuffix: true })}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+            <div style={{ fontWeight: theme.typography.weights.bold, color: theme.colors.charcoal }}>{lastMessage.sender.name}:</div>
+            <p style={messagePreviewStyle}>{lastMessage.content}</p>
+          </div>
+        </div>
+
+        {isUnread && <div style={badgeStyle}>{unreadCount}</div>}
+        <button style={actionLinkStyle}>View Chat <ArrowRight size={16} /></button>
+      </div>
+    </motion.div>
+  );
+};
+
 const InboxSkeleton = () => (
   <div style={{ ...threadCardStyle(false), cursor: 'default' }}>
     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', width: '100%' }}>
