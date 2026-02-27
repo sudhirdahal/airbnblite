@@ -1,57 +1,110 @@
 const nodemailer = require('nodemailer');
 
+/**
+ * ============================================================================
+ * EMAIL SERVICE (The Transactional Messenger)
+ * ============================================================================
+ * This service handles all outbound SMTP communications.
+ * It has evolved from simple console logs to a production-grade 
+ * transport system using Nodemailer and HTML templating.
+ */
+
+// --- SMTP TRANSPORT CONFIGURATION ---
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
+  service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
-    password: process.env.EMAIL_PASS,
-  },
+    pass: process.env.EMAIL_PASS
+  }
 });
 
-exports.sendVerificationEmail = (email, name, token) => {
+/* --- HISTORICAL STAGE 1: PRIMITIVE LOGGING ---
+ * const sendEmailLegacy = (to, subject, body) => {
+ *   console.log(`[LEGACY EMAIL] To: ${to} | Subject: ${subject}`);
+ * };
+ */
+
+/**
+ * @desc Sends account verification link
+ */
+exports.sendVerificationEmail = async (email, name, token) => {
   const url = `${process.env.FRONTEND_URL}/verify/${token}`;
-  transporter.sendMail({
+  const mailOptions = {
+    from: `"AirnbLite Support" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: 'Verify your AirBnB Lite Account',
-    html: `<h1>Welcome ${name}!</h1><p>Please verify your email by clicking <a href="${url}">here</a></p>`
-  });
+    subject: 'Activate your AirnbLite Account',
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #ff385c;">Welcome to the community, ${name}!</h2>
+        <p>Please click the button below to verify your email address and start exploring unique stays.</p>
+        <a href="${url}" style="display: inline-block; padding: 12px 24px; background-color: #ff385c; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold;">Verify Email</a>
+      </div>
+    `
+  };
+  return transporter.sendMail(mailOptions);
+};
+
+/**
+ * @desc Sends booking confirmation with details
+ */
+exports.sendBookingConfirmationEmail = async (email, name, details) => {
+  const mailOptions = {
+    from: `"AirnbLite Stays" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Booking Confirmed: ${details.listingTitle}`,
+    html: `
+      <div style="font-family: sans-serif; border: 1px solid #ddd; padding: 2rem; border-radius: 16px;">
+        <h1 style="margin-top: 0;">Stay Confirmed! ✈️</h1>
+        <p>Hi ${name}, your adventure at <b>${details.listingTitle}</b> is all set.</p>
+        <hr />
+        <p><b>Check-in:</b> ${new Date(details.checkIn).toLocaleDateString()}</p>
+        <p><b>Total Paid:</b> $${details.totalPrice}</p>
+        <p>We've notified the host of your arrival. Safe travels!</p>
+      </div>
+    `
+  };
+  return transporter.sendMail(mailOptions);
+};
+
+/**
+ * @desc Notifies of reservation cancellation
+ */
+exports.sendCancellationEmail = async (email, name, details) => {
+  const mailOptions = {
+    from: `"AirnbLite Support" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `Reservation Cancelled: ${details.listingTitle}`,
+    html: `
+      <div style="font-family: sans-serif; border: 1px solid #ddd; padding: 2rem; border-radius: 16px;">
+        <h2 style="color: #ff385c;">Reservation Cancelled</h2>
+        <p>Hi ${name}, your booking for <b>${details.listingTitle}</b> has been cancelled.</p>
+        <p>If this was an error, please reach out to our support center.</p>
+      </div>
+    `
+  };
+  return transporter.sendMail(mailOptions);
+};
+
+/**
+ * @desc Sends 6-digit password reset code
+ */
+exports.sendResetPasswordEmail = async (email, name, code) => {
+  const mailOptions = {
+    from: `"AirnbLite Security" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: 'Your Password Reset Code',
+    html: `
+      <div style="font-family: sans-serif; text-align: center; padding: 2rem;">
+        <h2>Password Reset</h2>
+        <p>Hi ${name}, use the code below to reset your account password:</p>
+        <div style="font-size: 2rem; font-weight: bold; letter-spacing: 0.5rem; margin: 2rem 0; color: #ff385c;">${code}</div>
+        <p>This code expires in 1 hour.</p>
+      </div>
+    `
+  };
+  return transporter.sendMail(mailOptions);
 };
 
 exports.sendWelcomeEmail = (email, name) => {
-  transporter.sendMail({
-    to: email,
-    subject: 'Welcome to AirBnB Lite',
-    html: `<h1>Hi ${name}!</h1><p>Your account is now verified. Start exploring!</p>`
-  });
-};
-
-exports.sendBookingConfirmationEmail = (email, name, booking) => {
-  transporter.sendMail({
-    to: email,
-    subject: 'Booking Confirmed - AirBnB Lite',
-    html: `<h1>Stay Confirmed!</h1><p>Hi ${name}, your stay at <strong>${booking.listingTitle}</strong> is confirmed for ${booking.checkIn} to ${booking.checkOut}. Total: $${booking.totalPrice}</p>`
-  });
-};
-
-exports.sendResetPasswordEmail = (email, name, token) => {
-  transporter.sendMail({
-    to: email,
-    subject: 'Password Reset Code',
-    html: `<h1>Reset your password</h1><p>Hi ${name}, your 6-digit reset code is: <strong>${token}</strong>. It expires in 1 hour.</p>`
-  });
-};
-
-// --- NEW: Cancellation Notification ---
-exports.sendCancellationEmail = (email, name, details) => {
-  transporter.sendMail({
-    to: email,
-    subject: 'Reservation Cancelled - AirBnB Lite',
-    html: `
-      <h1>Booking Cancelled</h1>
-      <p>Hi ${name},</p>
-      <p>Your reservation for <strong>${details.listingTitle}</strong> (${details.checkIn} - ${details.checkOut}) has been successfully cancelled.</p>
-      <p>If this wasn't you, please contact support immediately.</p>
-    `
-  });
+  // Logic for onboarding series (Phase 11 placeholder)
 };
