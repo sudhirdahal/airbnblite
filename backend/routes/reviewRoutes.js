@@ -1,39 +1,37 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const { S3Client } = require('@aws-sdk/client-s3');
-const multerS3 = require('multer-s3');
-const { createReview, getListingReviews, deleteReview } = require('../controllers/reviewController');
-const authMiddleware = require('../middleware/auth');
+const reviewController = require('../controllers/reviewController');
+const auth = require('../middleware/auth');
 
-// --- S3 CONFIG FOR REVIEWS ---
-const s3 = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
+/**
+ * ============================================================================
+ * REVIEW ROUTES (The Reputation Controller)
+ * ============================================================================
+ * This router manages the lifecycle of guest feedback.
+ * It has evolved from a simple log to a data-integrity layer that 
+ * triggers property rating recalculations upon every save.
+ */
 
-const upload = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    key: (req, file, cb) => {
-      cb(null, `reviews/${Date.now().toString()}-${file.originalname}`);
-    },
-  }),
-});
+// --- PUBLIC ACCESS: SOCIAL PROOF ---
+router.get('/:listingId', reviewController.getListingReviews);
 
-// Routes
-router.get('/:listingId', getListingReviews);
-router.post('/', authMiddleware, createReview);
-router.delete('/:id', authMiddleware, deleteReview);
+// --- PROTECTED ACCESS: FEEDBACK SUBMISSION ---
+/**
+ * Logic: POST handles both 'Create' and 'Update' (Upsert pattern).
+ * This ensures a guest can only leave ONE review per property.
+ */
+router.post('/', auth, reviewController.createReview);
 
-// --- NEW: Review Photo Upload Endpoint ---
-router.post('/upload', authMiddleware, upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-  res.json({ imageUrl: req.file.location });
-});
+/**
+ * PROTECTED ACTION: Delete Review
+ * Security: Only the author of the review can delete it. 
+ * Logic: Triggers a listing average recalculation after deletion.
+ */
+router.delete('/:id', auth, reviewController.deleteReview);
+
+/* --- HISTORICAL STAGE 1: ANONYMOUS REVIEWS ---
+ * router.post('/', (req, res) => { ... });
+ * // Problem: Spammers could destroy a listing's rating in seconds!
+ */
 
 module.exports = router;
