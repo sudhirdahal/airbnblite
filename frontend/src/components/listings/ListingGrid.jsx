@@ -8,9 +8,9 @@ import { SearchX } from 'lucide-react';
  * ============================================================================
  * LISTING GRID (The High-Fidelity Discovery Engine)
  * ============================================================================
- * OVERHAUL: Forced strict responsive columns.
- * Prevents the 'Single Column Blowup' bug by ensuring images are never 
- * wider than their designated grid cell.
+ * FIX: Controlled Grid Proportions.
+ * Instead of '1fr', we use '1fr' with a max-column count to prevent 
+ * single listings from stretching to the full width of the monitor.
  */
 const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUpdate }) => {
   
@@ -25,9 +25,7 @@ const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUp
   if (loading) {
     return (
       <div style={gridContainerStyle}>
-        {[...Array(12)].map((_, i) => (
-          <SkeletonListing key={i} />
-        ))}
+        {[...Array(12)].map((_, i) => (<SkeletonListing key={i} />))}
       </div>
     );
   }
@@ -43,7 +41,7 @@ const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUp
   }
 
   return (
-    <div style={{ padding: '0 4rem', maxWidth: '2560px', margin: '0 auto' }}>
+    <div style={pagePaddingContainer}>
       <motion.div 
         variants={containerVariants}
         initial="hidden"
@@ -65,14 +63,25 @@ const ListingGrid = ({ listings, loading, userRole, onSearch, user, onWishlistUp
 };
 
 // --- PREMIUM GRID STYLES ---
+const pagePaddingContainer = {
+  padding: '0 4rem', 
+  maxWidth: '2560px', 
+  margin: '0 auto',
+  width: '100%'
+};
+
 const gridContainerStyle = {
   display: 'grid',
   /**
-   * THE FIX: auto-fill + minmax(280px). 
-   * This creates 4-6 columns on desktop and 1-2 on mobile.
-   * Gap: 40px vertical, 24px horizontal.
+   * THE PROPORTION FIX:
+   * We use a responsive column count. 
+   * Desktop: 4 columns
+   * Laptop: 3 columns
+   * Tablet: 2 columns
+   * Mobile: 1 column
+   * This prevents '1fr' from blowing up images when only 1 listing exists.
    */
-  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
   columnGap: '1.5rem',
   rowGap: '2.5rem',
   marginTop: '2rem',
@@ -86,10 +95,7 @@ const emptyStateStyle = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'center',
-  border: '1px solid #eee',
-  borderRadius: '24px',
-  margin: '2rem 4rem'
+  justifyContent: 'center'
 };
 
 export default ListingGrid;
