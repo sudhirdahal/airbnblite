@@ -1,9 +1,12 @@
 const mongoose = require('mongoose');
 
 /**
- * User Schema: Defines the structure for user accounts in MongoDB.
- * Includes fields for authentication, role management, security (token versioning),
- * and personalized user features (wishlist).
+ * ============================================================================
+ * USER SCHEMA (The Identity Authority)
+ * ============================================================================
+ * This model manages the authentication and personalization state.
+ * It has evolved from a basic Login/Signup object into a high-fidelity 
+ * traveler identity hub.
  */
 const userSchema = new mongoose.Schema({
   name: { 
@@ -19,27 +22,38 @@ const userSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
+  
+  /**
+   * RBAC (Role-Based Access Control)
+   * registered: Standard traveler (Guest)
+   * admin: Property owner (Host)
+   */
   role: { 
     type: String, 
-    enum: ['registered', 'admin'],
-    default: 'registered'
+    enum: ['registered', 'admin'], 
+    default: 'registered' 
   },
-  // Email verification status
-  isVerified: { 
-    type: Boolean, 
-    default: false 
+
+  /**
+   * SECURITY: Token Versioning
+   * This field is the key to 'Global Logout'. Every time a user logs out 
+   * of all devices or resets their password, this number increments. 
+   * The JWT contains this version; if they don't match, the session is killed.
+   */
+  tokenVersion: { 
+    type: Number, 
+    default: 0 
   },
+
+  isVerified: { type: Boolean, default: false },
   verificationToken: String,
-  
-  // Password reset fields
   resetPasswordToken: String,
   resetPasswordExpires: Date,
 
   /**
-   * WISHLIST FIELD
-   * Stores an array of Listing ObjectIds. 
-   * The 'ref' property allows Mongoose to "populate" these IDs 
-   * into full property documents when requested by the API.
+   * COLLECTIONS: Wishlist
+   * Stores references to Listing IDs. This powers the Discovery Grid's
+   * heart icon state.
    */
   wishlist: [{ 
     type: mongoose.Schema.Types.ObjectId, 
@@ -47,19 +61,20 @@ const userSchema = new mongoose.Schema({
   }],
 
   /**
-   * SECURITY: TOKEN VERSIONING
-   * Used for global session invalidation. Every JWT issued contains this version.
-   * If this number is incremented, all previously issued tokens become invalid.
+   * MEDIA: Avatar
+   * Initially null. Phase 5 migrated this to store AWS S3 URLs.
    */
-  tokenVersion: { 
-    type: Number, 
-    default: 0 
-  },
+  avatar: { type: String },
   
-  createdAt: { 
-    type: Date, 
-    default: Date.now 
-  }
+  createdAt: { type: Date, default: Date.now }
 });
+
+/* --- HISTORICAL STAGE 1: PRIMITIVE USER ---
+ * const userSchema = new mongoose.Schema({
+ *   name: { type: String, required: true },
+ *   email: { type: String, required: true, unique: true },
+ *   password: { type: String, required: true }
+ * });
+ */
 
 module.exports = mongoose.model('User', userSchema);
