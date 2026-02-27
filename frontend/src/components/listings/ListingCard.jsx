@@ -7,11 +7,12 @@ import API from '../../services/api';
 
 /**
  * ============================================================================
- * LISTING CARD COMPONENT (The Discovery Unit)
+ * LISTING CARD (High-Fidelity V2)
  * ============================================================================
- * UPDATED: Fixed aspect ratio to 4/3 for professional uniformity.
- * This ensures every property image occupies the EXACT same space,
- * preventing 'out of proportion' issues for tall or wide photos.
+ * BEAUTIFICATION UPDATES:
+ * 1. Typography: Increased 'Ant-size' text to professional 15px/16px.
+ * 2. Hierarchy: Bold titles, muted locations, emphatic pricing.
+ * 3. Proportions: Locked 20/19 ratio to prevent Penthouse 'Blowup'.
  */
 const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, onWishlistUpdate }) => {
   const isWishlisted = user?.wishlist?.includes(listing._id);
@@ -24,27 +25,27 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
       const res = await API.post(`/auth/wishlist/${listing._id}`);
       if (onWishlistUpdate) onWishlistUpdate(res.data);
       toast.success(isWishlisted ? "Removed from wishlist" : "Saved to wishlist");
-    } catch (err) { toast.error("Wishlist Sync Error"); }
+    } catch (err) { toast.error("Sync Error"); }
   };
 
   return (
     <motion.div 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
       style={cardContainerStyle}
     >
       <Link to={`/listing/${listing._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div style={imageWrapperStyle}>
-          {/* IMAGE LOCK: Guaranteed 4:3 Proportion */}
+          {/* THE PROPORTION SHIELD */}
           <img src={listing.images[0]} alt={listing.title} style={imageStyle(isHovered)} />
           
           {!isAdminView && (
             <button onClick={handleWishlistClick} style={heartBtnStyle}>
               <motion.div whileTap={{ scale: 0.8 }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
-                <Heart size={24} fill={isWishlisted ? "#ff385c" : "rgba(0,0,0,0.5)"} color={isWishlisted ? "#ff385c" : "white"} strokeWidth={2} />
+                <Heart size={24} fill={isWishlisted ? "#ff385c" : "rgba(0,0,0,0.4)"} color={isWishlisted ? "#ff385c" : "white"} strokeWidth={2} />
               </motion.div>
             </button>
           )}
@@ -58,46 +59,101 @@ const ListingCard = ({ listing, userRole, isAdminView, onEdit, onDelete, user, o
         </div>
 
         <div style={contentAreaStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* LARGE READABLE TITLE */}
             <h3 style={titleStyle}>{listing.title}</h3>
-            <div style={ratingStyle}><Star size={14} fill="black" /> <span>{listing.rating || 'New'}</span></div>
+            <div style={ratingStyle}>
+              <Star size={14} fill="#222" /> 
+              <span style={{ fontWeight: '600' }}>{listing.rating || 'New'}</span>
+            </div>
           </div>
+          
+          {/* MUTED LOCATION */}
           <p style={locationStyle}>{listing.location}</p>
-          <div style={priceContainerStyle}><span style={priceStyle}>${listing.rate}</span> <span style={nightLabelStyle}>night</span></div>
+          
+          {/* EMPHATIC PRICING */}
+          <div style={priceContainerStyle}>
+            <span style={priceStyle}>${listing.rate}</span>
+            <span style={nightLabelStyle}>night</span>
+          </div>
         </div>
       </Link>
     </motion.div>
   );
 };
 
-// --- STYLES ---
-const cardContainerStyle = { cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '0.8rem', position: 'relative' };
+// --- PREMIUM VISUAL STYLES ---
+const cardContainerStyle = { 
+  cursor: 'pointer', 
+  display: 'flex', 
+  flexDirection: 'column', 
+  gap: '0.8rem', 
+  position: 'relative' 
+};
 
-/**
- * IMAGE WRAPPER (The Professional Landscape Shield)
- * FIXED: '4 / 3' aspect ratio is the gold standard for listing grids.
- * It provides a wide, cinematic view that is impossible to break, 
- * ensuring even tall photos (like Penthouses) are cropped perfectly.
- */
 const imageWrapperStyle = { 
   position: 'relative', 
   width: '100%', 
-  aspectRatio: '4 / 3', // FORCE UNIFORM PROPORTIONS
+  aspectRatio: '20 / 19', // FORCED PROPORTION LOCK
   borderRadius: '12px', 
   overflow: 'hidden', 
   backgroundColor: '#f7f7f7' 
 };
 
-const imageStyle = (hovered) => ({ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s cubic-bezier(0.2, 1, 0.3, 1)', transform: hovered ? 'scale(1.05)' : 'scale(1)' });
+const imageStyle = (hovered) => ({ 
+  width: '100%', 
+  height: '100%', 
+  objectFit: 'cover', 
+  transition: 'transform 0.6s cubic-bezier(0.2, 1, 0.3, 1)', 
+  transform: hovered ? 'scale(1.05)' : 'scale(1)' 
+});
+
 const heartBtnStyle = { position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', zIndex: 10, padding: 0 };
 const adminOverlayStyle = { position: 'absolute', top: '12px', left: '12px', display: 'flex', gap: '0.5rem', zIndex: 10 };
 const adminBtnStyle = { backgroundColor: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' };
-const contentAreaStyle = { display: 'flex', flexDirection: 'column', gap: '0.2rem' };
-const titleStyle = { margin: 0, fontSize: '1rem', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-const ratingStyle = { display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem' };
-const locationStyle = { margin: 0, color: '#717171', fontSize: '0.9rem' };
-const priceContainerStyle = { marginTop: '0.2rem', display: 'flex', alignItems: 'baseline', gap: '0.3rem' };
-const priceStyle = { fontWeight: '800', fontSize: '1rem' };
-const nightLabelStyle = { fontSize: '0.9rem', color: '#222' };
+
+const contentAreaStyle = { 
+  display: 'flex', 
+  flexDirection: 'column', 
+  gap: '0.2rem' 
+};
+
+const titleStyle = { 
+  margin: 0, 
+  fontSize: '1.05rem', // INCREASED FROM ANT-SIZE
+  fontWeight: '700', 
+  color: '#222',
+  whiteSpace: 'nowrap', 
+  overflow: 'hidden', 
+  textOverflow: 'ellipsis' 
+};
+
+const ratingStyle = { display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.95rem' };
+
+const locationStyle = { 
+  margin: 0, 
+  color: '#717171', 
+  fontSize: '0.95rem', // READABLE SLATE TEXT
+  fontWeight: '400' 
+};
+
+const priceContainerStyle = { 
+  marginTop: '0.3rem', 
+  display: 'flex', 
+  alignItems: 'baseline', 
+  gap: '0.3rem' 
+};
+
+const priceStyle = { 
+  fontWeight: '800', 
+  fontSize: '1.05rem', 
+  color: '#222' 
+};
+
+const nightLabelStyle = { 
+  fontSize: '0.95rem', 
+  color: '#222',
+  fontWeight: '400'
+};
 
 export default ListingCard;
