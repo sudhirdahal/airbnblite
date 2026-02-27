@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize, Camera, Utensils, ChevronDown, Grid, Loader2
+  Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize, Camera, 
+  Utensils, ChevronDown, Grid, Loader2,
+  Wifi, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, Home // --- NEW: AMENITY ICONS ---
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, isValid } from 'date-fns'; 
@@ -10,6 +12,28 @@ import 'react-calendar/dist/Calendar.css';
 import API from '../services/api'; 
 import ChatWindow from '../components/chat/ChatWindow'; 
 import { theme } from '../theme';
+
+/**
+ * ============================================================================
+ * AMENITY MAPPER UTILITY
+ * ============================================================================
+ * Logic: Maps raw backend strings to high-fidelity Lucide icons.
+ * This ensures visual consistency between the Admin form and the Detail view.
+ */
+const getAmenityIcon = (name) => {
+  const map = {
+    'WiFi': Wifi,
+    'Kitchen': Utensils,
+    'Pool': Waves,
+    'Parking': Car,
+    'TV': Tv,
+    'AC': Wind,
+    'Gym': Dumbbell,
+    'Security': Shield,
+    'Breakfast': Coffee
+  };
+  return map[name] || CheckCircle; // Fallback to high-fidelity check
+};
 
 /**
  * ============================================================================
@@ -37,11 +61,11 @@ const RatingBreakdown = ({ reviews = [] }) => {
 
 /**
  * ============================================================================
- * LISTING DETAIL PAGE (V20 - THE REVIEW OVERHAUL)
+ * LISTING DETAIL PAGE (V21 - THE AMENITY ICON UPDATE)
  * ============================================================================
- * UPDATED: Integrated Sentiment Intelligence.
- * This component now translates raw star numbers into semantic labels 
- * (Exceptional, Recommended) to improve guest trust and conversion.
+ * UPDATED: Replaced generic checkmarks with context-aware icons.
+ * This elevates the visual language of the page, allowing guests to 
+ * scan for key features (like WiFi or a Pool) instantly.
  */
 const ListingDetail = ({ user, onChatOpened }) => { 
   const { id } = useParams(); 
@@ -59,14 +83,6 @@ const ListingDetail = ({ user, onChatOpened }) => {
   const [dateRange, setDateRange] = useState([null, null]); 
   const [pricing, setPricing] = useState({ nights: 0, total: 0 });
 
-  // --- SENTIMENT ENGINE ---
-  const getSentiment = (rating) => {
-    if (rating >= 4.8) return "Exceptional";
-    if (rating >= 4.5) return "Highly Rated";
-    if (rating >= 4.0) return "Recommended";
-    return "Reviewed";
-  };
-
   useEffect(() => {
     window.scrollTo(0, 0);
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -78,7 +94,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
     setLoading(true);
     try {
       const res = await API.get(`/listings/${id}`);
-      if (!res.data) throw new Error("Context Lost.");
+      if (!res.data) throw new Error("Context Unavailable.");
       setListing(res.data);
       const reviewRes = await API.get(`/reviews/${id}`).catch(() => ({ data: [] }));
       setReviews(reviewRes.data || []);
@@ -104,7 +120,6 @@ const ListingDetail = ({ user, onChatOpened }) => {
   if (loading) return <div style={centerStyle}><Loader2 size={48} className="spin" color={theme.colors.brand} /><h2 style={{ marginTop: '1rem' }}>Synchronizing details...</h2></div>;
   if (error || !listing) return <div style={centerStyle}><h2>Property Unavailable</h2><Link to="/" style={{ color: theme.colors.brand }}>Return Home</Link></div>;
 
-  const isHost = user && (user.id === listing.adminId || user._id === listing.adminId);
   const images = listing.images?.length > 0 ? listing.images : ['https://via.placeholder.com/1200x800'];
 
   return (
@@ -140,16 +155,8 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
             <div style={{ padding: isMobile ? '1.5rem' : '2.5rem 0' }}>
               {isMobile && <h1 style={{ fontSize: '1.8rem', fontWeight: theme.typography.weights.extraBold }}>{listing.title}</h1>}
-              
-              {/* --- HIGH-FIDELITY SENTIMENT DISPLAY --- */}
               <div style={ratingSummary}>
-                <Star size={18} fill={theme.colors.charcoal} /> 
-                <span>{listing.rating || '4.5'}</span>
-                <span style={dotSeparator}>·</span>
-                <span style={{ textDecoration: 'underline' }}>{listing.reviewsCount || 0} reviews</span>
-                <span style={dotSeparator}>·</span>
-                {/* Semantic Label */}
-                <span style={sentimentLabelStyle}>{getSentiment(listing.rating)}</span>
+                <Star size={18} fill={theme.colors.charcoal} /> {listing.rating || '4.5'} · {listing.reviewsCount || 0} reviews · {listing.location}
               </div>
 
               <div style={dividerSection}>
@@ -157,10 +164,19 @@ const ListingDetail = ({ user, onChatOpened }) => {
                 <p style={descText}>{listing.fullDescription || listing.description}</p>
               </div>
 
+              {/* --- UPDATED: HIGH-FIDELITY AMENITY GRID --- */}
               <div style={dividerSection}>
                 <h3 style={sectionLabel}>What this place offers</h3>
                 <div style={amenityGrid}>
-                  {(listing.amenities || []).map((a, i) => (<div key={i} style={amenityItem}><CheckCircle size={22} color={theme.colors.brand} /> {a}</div>))}
+                  {(listing.amenities || []).map((a, i) => {
+                    const Icon = getAmenityIcon(a);
+                    return (
+                      <div key={i} style={amenityItem}>
+                        <Icon size={24} strokeWidth={1.5} color={theme.colors.charcoal} /> 
+                        <span>{a}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -208,6 +224,13 @@ const ListingDetail = ({ user, onChatOpened }) => {
         </div>
       </div>
 
+      {isMobile && (
+        <div style={mobileBar}>
+          <div><div style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>${listing.rate} night</div><div style={{ fontSize: '0.8rem', textDecoration: 'underline' }}>{pricing.nights > 0 ? `${pricing.nights} nights` : 'Select dates'}</div></div>
+          <button onClick={() => navigate('/pay', { state: { listingId: id, bookingDetails: { checkIn: dateRange[0], checkOut: dateRange[1], total: pricing.total, nights: pricing.nights }, listing }})} style={mobileBtn}>Reserve</button>
+        </div>
+      )}
+
       <ChatWindow listingId={id} currentUser={user} isHost={user?.id === listing.adminId} history={chatHistory} />
     </div>
   );
@@ -226,14 +249,12 @@ const sideImage = { width: '100%', height: '100%', overflow: 'hidden' };
 const fullFit = { width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' };
 const showBtn = { position: 'absolute', bottom: '24px', right: '24px', backgroundColor: theme.colors.white, border: `1px solid ${theme.colors.charcoal}`, borderRadius: theme.radius.sm, padding: '0.6rem 1.2rem', fontWeight: theme.typography.weights.extraBold, display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', fontSize: '0.9rem', boxShadow: theme.shadows.sm };
 const ratingSummary = { display: 'flex', alignItems: 'center', gap: '0.5rem', color: theme.colors.charcoal, fontWeight: theme.typography.weights.bold, fontSize: '1rem' };
-const dotSeparator = { margin: '0 0.2rem', color: '#717171' };
-const sentimentLabelStyle = { backgroundColor: '#f7f7f7', padding: '0.2rem 0.8rem', borderRadius: '4px', fontSize: '0.85rem', color: theme.colors.brand, fontWeight: '800', textTransform: 'uppercase' };
 const dividerSection = { marginTop: '2.5rem', borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '2.5rem' };
 const hostTitle = { fontSize: '1.5rem', fontWeight: theme.typography.weights.bold };
 const descText = { color: theme.colors.charcoal, fontSize: '1.1rem', lineHeight: '1.6', marginTop: '1rem' };
 const sectionLabel = { fontSize: '1.3rem', fontWeight: theme.typography.weights.bold };
-const amenityGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.5rem' };
-const amenityItem = { display: 'flex', alignItems: 'center', gap: '0.8rem', color: theme.colors.charcoal };
+const amenityGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1.5rem' };
+const amenityItem = { display: 'flex', alignItems: 'center', gap: '1rem', color: theme.colors.charcoal, fontSize: '1.05rem' };
 const reviewHeader = (isMobile) => ({ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '4rem', alignItems: 'flex-start', marginBottom: '3rem' });
 const largeRating = { fontSize: '2.5rem', margin: 0, fontWeight: theme.typography.weights.extraBold };
 const reviewsCountText = { color: theme.colors.slate, fontWeight: theme.typography.weights.semibold };
@@ -247,10 +268,14 @@ const sidebarPrice = { fontSize: '1.6rem', fontWeight: theme.typography.weights.
 const priceRow = { display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginBottom: '0.8rem', color: theme.colors.charcoal };
 const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: theme.typography.weights.bold, borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '1rem', color: theme.colors.charcoal, fontSize: '1.2rem' };
 const reserveBtn = { width: '100%', marginTop: '2rem', padding: '1.1rem', backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.md, fontWeight: theme.typography.weights.extraBold, fontSize: '1.1rem', cursor: 'pointer', boxShadow: `0 4px 15px rgba(255, 56, 92, 0.3)` };
+const mobileBar = { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: theme.colors.white, borderTop: `1px solid ${theme.colors.divider}`, padding: '1.2rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1000, boxShadow: '0 -8px 24px rgba(0,0,0,0.08)' };
+const mobileBtn = { backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.md, fontWeight: theme.typography.weights.extraBold, fontSize: '1.1rem', cursor: 'pointer', padding: '0.8rem 2.5rem' };
 const lightboxOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const closeBtnStyle = { position: 'absolute', top: '40px', right: '40px', background: 'none', border: 'none', color: theme.colors.white, cursor: 'pointer' };
 const lightboxContent = { textAlign: 'center', maxWidth: '90vw' };
 const lightboxImg = { maxHeight: '80vh', maxWidth: '100%', borderRadius: theme.radius.md, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' };
+const lightboxNav = { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '3rem', marginTop: '2.5rem', color: theme.colors.white, fontWeight: 'bold', fontSize: '1.1rem' };
+const navBtn = { background: theme.colors.white, color: theme.colors.charcoal, border: 'none', borderRadius: theme.radius.full, padding: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', boxShadow: theme.shadows.sm };
 const breakdownContainerStyle = { flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' };
 const breakdownRowStyle = { display: 'flex', alignItems: 'center', gap: '1.2rem' };
 const starLabelStyle = { fontSize: '0.9rem', width: '70px', fontWeight: theme.typography.weights.semibold };
