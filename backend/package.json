@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon --ignore uploads/ index.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "repair": "node repair.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",
