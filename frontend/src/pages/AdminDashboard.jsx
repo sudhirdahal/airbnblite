@@ -188,12 +188,26 @@ const AdminDashboard = ({ user, refreshListings }) => {
     } finally { setIsUploading(false); }
   };
 
+  /* ============================================================================
+   * 👻 HISTORICAL GHOST: PHASE 28 (The Management Handshake Failure)
+   * ============================================================================
+   * const handleSubmitLegacy = async (e) => {
+   *    await API.put(`/listings/${formData._id}`, formData); 
+   * }
+   * 
+   * THE FLAW: The backend model expects 'coordinates' to be a nested object
+   * { lat, lng }. The original formData was "flattening" these at the top 
+   * level. While this worked locally, Production Atlas (Phase 29) rejected 
+   * the update because the mandatory 'coordinates' field was technically missing.
+   * 
+   * THE FIX: A Payload Interceptor that manually nests the data into the
+   * structure expected by the Persistence Layer.
+   * ============================================================================ */
   const handleSubmit = async (e) => {
     e.preventDefault();
     const actionToast = toast.loading(formData._id ? 'Saving changes...' : 'Publishing listing...');
     
     // RECOVERY LOGIC (Phase 28): The backend expects a nested 'coordinates' object.
-    // If we send lat/lng at the top level, the Persistence Layer fails.
     const payload = {
       ...formData,
       coordinates: {
