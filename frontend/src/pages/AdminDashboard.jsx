@@ -189,12 +189,23 @@ const AdminDashboard = ({ user, refreshListings }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const actionToast = toast.loading(formData._id ? 'Saving changes...' : 'Publishing listing...');
+    
+    // RECOVERY LOGIC (Phase 28): The backend expects a nested 'coordinates' object.
+    // If we send lat/lng at the top level, the Persistence Layer fails.
+    const payload = {
+      ...formData,
+      coordinates: {
+        lat: Number(formData.lat) || 40.7128,
+        lng: Number(formData.lng) || -74.0060
+      }
+    };
+
     try {
       if (formData._id) {
-        await API.put(`/listings/${formData._id}`, formData);
+        await API.put(`/listings/${formData._id}`, payload);
         toast.success('Changes saved successfully.', { id: actionToast });
       } else {
-        await API.post('/listings', formData);
+        await API.post('/listings', payload);
         toast.success('Listing published.', { id: actionToast });
       }
       setShowForm(false);
