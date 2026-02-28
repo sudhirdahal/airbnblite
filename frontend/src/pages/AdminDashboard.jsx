@@ -98,7 +98,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
   const [formData, setFormData] = useState({
     _id: null, title: '', location: '', description: '', fullDescription: '', 
     rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
-    maxGuests: 2, bedrooms: 1, beds: 1, amenities: []
+    maxGuests: 2, bedrooms: 1, beds: 1, amenities: [],
+    childRate: null, infantRate: null
   });
 
   const fetchAdminData = async () => {
@@ -158,7 +159,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
       rate: listing.rate, category: listing.category, images: listing.images, 
       lat: listing.coordinates?.lat || '', lng: listing.coordinates?.lng || '', 
       imageUrlInput: '', maxGuests: listing.maxGuests, bedrooms: listing.bedrooms, 
-      beds: listing.beds, amenities: listing.amenities || []
+      beds: listing.beds, amenities: listing.amenities || [],
+      childRate: listing.childRate || null, infantRate: listing.infantRate || null
     });
     setShowForm(true); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -211,7 +213,10 @@ const AdminDashboard = ({ user, refreshListings }) => {
       setShowForm(false);
       fetchAdminData();
       if (refreshListings) refreshListings();
-    } catch (err) { toast.error('Management Handshake Failure', { id: actionToast }); }
+    } catch (err) { 
+      const errorMsg = err.response?.data?.message || err.response?.data || 'Management Handshake Failure';
+      toast.error(errorMsg, { id: actionToast }); 
+    }
   };
 
   /* ============================================================================
@@ -258,7 +263,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
                 setFormData({
                   _id: null, title: '', location: '', description: '', fullDescription: '', 
                   rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
-                  maxGuests: 2, bedrooms: 1, beds: 1, amenities: []
+                  maxGuests: 2, bedrooms: 1, beds: 1, amenities: [],
+                  childRate: null, infantRate: null
                 });
               }
               setShowForm(!showForm);
