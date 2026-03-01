@@ -17,6 +17,19 @@ import { theme } from '../theme';
  * 2. Stage 2: Basic 'Confirmed' vs 'Cancelled' filtering (Phase 4).
  * 3. Stage 3: Smart Temporal Segmentation (Upcoming vs Past) (Current).
  */
+import SkeletonTrip from '../components/listings/SkeletonTrip';
+
+/**
+ * ============================================================================
+ * BOOKINGS PAGE (The Traveler History Hub)
+ * ============================================================================
+ * This component manages the lifecycle presentation of user reservations.
+ * Evolution:
+ * 1. Stage 1: Basic flat list of all records (Phase 1).
+ * 2. Stage 2: Basic 'Confirmed' vs 'Cancelled' filtering (Phase 4).
+ * 3. Stage 3: Smart Temporal Segmentation (Upcoming vs Past) (Current).
+ * 4. Stage 4: Phase 30: Banned 'Synchronizing...' text in favor of Skeleton UI.
+ */
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,16 +68,6 @@ const Bookings = () => {
     }
   };
 
-  /* --- HISTORICAL STAGE 1: PRIMITIVE LIST ---
-   * return (
-   *   <div>
-   *     {bookings.map(b => <div key={b._id}>{b.listingId.title}</div>)}
-   *   </div>
-   * );
-   */
-
-  if (loading) return <div style={{ textAlign: 'center', padding: '10rem' }}>Synchronizing your travel history...</div>;
-
   /**
    * ============================================================================
    * SMART SEGMENTATION ENGINE
@@ -80,9 +83,13 @@ const Bookings = () => {
 
   return (
     <div style={{ maxWidth: '2560px', width: '98%', margin: '3rem auto', padding: '0 4rem' }}>
-      <PageHeader title="Trips" subtitle={`You have ${upcoming.length} upcoming adventures planned.`} icon={PlaneTakeoff} />
+      <PageHeader title="Trips" subtitle={loading ? "Synchronizing your travel history..." : `You have ${upcoming.length} upcoming adventures planned.`} icon={PlaneTakeoff} />
 
-      {bookings.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '2rem' }}>
+          {[1, 2, 3].map(i => <SkeletonTrip key={i} />)}
+        </div>
+      ) : bookings.length === 0 ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={emptyStateStyle}>
           <div style={emptyIconWrapper}><PlaneTakeoff size={48} color={theme.colors.brand} /></div>
           <h2 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>No trips booked... yet!</h2>

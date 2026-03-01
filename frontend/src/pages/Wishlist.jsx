@@ -7,6 +7,8 @@ import PageHeader from '../components/layout/PageHeader';
 import ListingCard from '../components/listings/ListingCard';
 import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
 
+import SkeletonListing from '../components/listings/SkeletonListing';
+
 /**
  * ============================================================================
  * WISHLIST PAGE (The Dream Collection)
@@ -14,6 +16,8 @@ import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
  * OVERHAUL: Refactored to consume the centralized Design Token system.
  * This ensures that saved property grids and empty-state rewards are
  * visually synchronized with the global SaaS identity.
+ * 
+ * Update: Phase 30: Banned 'Synchronizing...' text in favor of Skeleton UI.
  */
 const Wishlist = ({ user }) => {
   const [wishlist, setWishlist] = useState([]);
@@ -37,13 +41,15 @@ const Wishlist = ({ user }) => {
     setWishlist(prev => prev.filter(item => updatedIds.includes(item._id)));
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '10rem' }}>Synchronizing collections...</div>;
-
   return (
     <div style={{ maxWidth: '2560px', width: '98%', margin: '3rem auto', padding: '0 4rem' }}>
-      <PageHeader title="Wishlist" subtitle={`You have ${wishlist.length} properties saved for future stays.`} icon={Heart} />
+      <PageHeader title="Wishlist" subtitle={loading ? "Synchronizing your dream stays..." : `You have ${wishlist.length} properties saved for future stays.`} icon={Heart} />
 
-      {wishlist.length === 0 ? (
+      {loading ? (
+        <div style={gridContainerStyle}>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => <SkeletonListing key={i} />)}
+        </div>
+      ) : wishlist.length === 0 ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={emptyStateStyle}>
           <div style={emptyIconWrapper}><Heart size={48} color={theme.colors.brand} fill={theme.colors.brand} /></div>
           <h2 style={{ fontSize: '1.8rem', marginBottom: '0.5rem', fontWeight: theme.typography.weights.extraBold }}>Start your next collection</h2>
