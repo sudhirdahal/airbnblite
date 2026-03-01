@@ -323,13 +323,68 @@ const ListingDetail = ({ user, onChatOpened }) => {
                      <div style={totalRow}><span>Total</span><span>${pricing.total}</span></div>
                   </div>
                 )}
-                <button onClick={() => navigate('/pay')} style={reserveBtn}>Reserve Now</button>
+                <button 
+                  onClick={() => {
+                    if (!dateRange[0] || !dateRange[1]) {
+                      toast.error('Please select your dates first.');
+                      return;
+                    }
+                    navigate('/pay', { 
+                      state: { 
+                        listingId: id, 
+                        listing: listing,
+                        bookingDetails: {
+                          checkIn: dateRange[0],
+                          checkOut: dateRange[1],
+                          nights: pricing.nights,
+                          total: pricing.total
+                        } 
+                      } 
+                    });
+                  }} 
+                  style={reserveBtn}
+                >
+                  Reserve Now
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
       
+      {/* 💳 MOBILE RESERVATION BAR */}
+      {isMobile && (
+        <div style={mobileReserveBar}>
+          <div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>${listing.rate} <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>night</span></div>
+            <div style={{ fontSize: '0.8rem', textDecoration: 'underline' }}>{new Date(dateRange[0] || Date.now()).toLocaleDateString()} – {new Date(dateRange[1] || Date.now()).toLocaleDateString()}</div>
+          </div>
+          <button 
+            onClick={() => {
+              if (!dateRange[0] || !dateRange[1]) {
+                toast.error('Please select dates.');
+                return;
+              }
+              navigate('/pay', { 
+                state: { 
+                  listingId: id, 
+                  listing: listing,
+                  bookingDetails: {
+                    checkIn: dateRange[0],
+                    checkOut: dateRange[1],
+                    nights: pricing.nights,
+                    total: pricing.total
+                  } 
+                } 
+              });
+            }} 
+            style={mobileReserveBtn}
+          >
+            Reserve
+          </button>
+        </div>
+      )}
+
       {/* 💬 REAL-TIME CHAT WIDGET */}
       <ChatWindow 
         listingId={id} 
@@ -387,5 +442,7 @@ const starLabelStyle = { fontSize: '0.9rem', width: '70px', fontWeight: theme.ty
 const barBgStyle = { flex: 1, height: '8px', backgroundColor: theme.colors.lightGrey, borderRadius: '4px', overflow: 'hidden' };
 const barFillStyle = { height: '100%', backgroundColor: theme.colors.charcoal, borderRadius: '4px' };
 const percentLabelStyle = { fontSize: '0.9rem', width: '50px', textAlign: 'right', color: theme.colors.slate };
+const mobileReserveBar = { position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: theme.colors.white, borderTop: `1px solid ${theme.colors.divider}`, padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1000, boxShadow: '0 -4px 10px rgba(0,0,0,0.05)' };
+const mobileReserveBtn = { padding: '0.8rem 2rem', backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' };
 
 export default ListingDetail;
