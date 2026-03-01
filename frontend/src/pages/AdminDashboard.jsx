@@ -13,6 +13,7 @@ import 'react-calendar/dist/Calendar.css';
 import API from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
 import { theme } from '../theme';
+import { useResponsive } from '../hooks/useResponsive';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -171,6 +172,7 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
  * - Phase 42: Omni-Channel Communication & Luxury Availability UI.
  */
 const AdminDashboard = ({ user, refreshListings }) => {
+  const { isMobile } = useResponsive();
   const [activeTab, setActiveTab] = useState('listings');
   const [adminListings, setAdminListings] = useState([]);
   const [bookings, setBookings] = useState([]);
