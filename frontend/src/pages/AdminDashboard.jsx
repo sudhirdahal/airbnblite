@@ -190,7 +190,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
     unavailableDates: []
   });
 
-  const [newMaintenanceRange, setNewMaintenanceRange] = useState({ start: '', end: '' });
+  const [newMaintenanceRange, setNewMaintenanceRange] = useState([null, null]);
+  const [showEditorCalendar, setShowEditorCalendar] = useState(false);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -289,19 +290,16 @@ const AdminDashboard = ({ user, refreshListings }) => {
   };
 
   const addMaintenancePeriod = () => {
-    if (!newMaintenanceRange.start || !newMaintenanceRange.end) {
+    if (!newMaintenanceRange[0] || !newMaintenanceRange[1]) {
       toast.error("Select both start and end dates.");
-      return;
-    }
-    if (new Date(newMaintenanceRange.start) >= new Date(newMaintenanceRange.end)) {
-      toast.error("End date must be after start date.");
       return;
     }
     setFormData(prev => ({
       ...prev,
-      unavailableDates: [...prev.unavailableDates, { start: newMaintenanceRange.start, end: newMaintenanceRange.end }]
+      unavailableDates: [...prev.unavailableDates, { start: newMaintenanceRange[0], end: newMaintenanceRange[1] }]
     }));
-    setNewMaintenanceRange({ start: '', end: '' });
+    setNewMaintenanceRange([null, null]);
+    setShowEditorCalendar(false);
   };
 
   /* ============================================================================
@@ -455,18 +453,36 @@ const AdminDashboard = ({ user, refreshListings }) => {
                     </div>
                     <div style={inputGroup}>
                       <label style={labelStyle}>Temporal Service Control (Maintenance)</label>
-                      <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-end' }}>
-                        <div style={{ flex: 1 }}>
-                          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', color: theme.colors.slate }}>START</label>
-                          <input type="date" style={inputStyle} value={newMaintenanceRange.start} onChange={e => setNewMaintenanceRange({...newMaintenanceRange, start: e.target.value})} />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', color: theme.colors.slate }}>END</label>
-                          <input type="date" style={inputStyle} value={newMaintenanceRange.end} onChange={e => setNewMaintenanceRange({...newMaintenanceRange, end: e.target.value})} />
-                        </div>
-                        <button type="button" onClick={addMaintenancePeriod} style={{ ...iconCircleButton, backgroundColor: '#fee2e2', color: theme.colors.brand }} title="Add Maintenance Period"><Wrench size={20} /></button>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <span style={{ fontSize: '0.85rem', color: theme.colors.slate }}>Block out periods for maintenance or personal use.</span>
+                        <button type="button" onClick={() => setShowEditorCalendar(!showEditorCalendar)} style={showEditorCalendar ? cancelBtnSmall : mainAddBtnSmall}>
+                          {showEditorCalendar ? 'Cancel' : 'Block Dates'}
+                        </button>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+
+                      <AnimatePresence>
+                        {showEditorCalendar && (
+                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden', border: `1px solid ${theme.colors.divider}`, borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1 }}>
+                                {newMaintenanceRange[0] && newMaintenanceRange[1] ? (
+                                  <div style={{ ...rangePreview, marginTop: 0 }}>
+                                    <div style={previewBox}><span>START</span><strong>{newMaintenanceRange[0].toLocaleDateString()}</strong></div>
+                                    <ArrowRight size={20} color={theme.colors.slate} />
+                                    <div style={previewBox}><span>END</span><strong>{newMaintenanceRange[1].toLocaleDateString()}</strong></div>
+                                  </div>
+                                ) : <p style={{ fontSize: '0.8rem', color: theme.colors.slate }}>Select a range on the calendar to proceed.</p>}
+                                <button type="button" onClick={addMaintenancePeriod} disabled={!newMaintenanceRange[0] || !newMaintenanceRange[1]} style={{ ...applyBtnStyle, marginTop: '1.5rem' }}>Commit Downtime</button>
+                              </div>
+                              <div className="luxury-calendar-wrapper small-calendar">
+                                <Calendar selectRange={true} onChange={setNewMaintenanceRange} value={newMaintenanceRange} minDate={new Date()} />
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                         {formData.unavailableDates.map((d, i) => (
                           <div key={i} style={refinedTagStyleRed}>
                             <Wrench size={12} /> {new Date(d.start).toLocaleDateString()} - {new Date(d.end).toLocaleDateString()}

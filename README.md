@@ -620,10 +620,11 @@ We eliminated "Context Loss" during communication by refactoring the **Inbox** i
 *   **Inline Replies:** Clicking a message thread no longer navigates the user away. It now opens a **Context Panel** on the right side of the screen containing the full `ChatWindow`.
 *   **Workflow Efficiency:** This allows hosts to process dozens of inquiries in seconds by keeping the thread list visible while they reply, mirroring the behavior of enterprise-grade CRMs.
 
-**3. Luxury Availability UI:**
-We replaced the "Bare-Bones" HTML date inputs in the Availability Tab with a custom-styled **Luxury Calendar**.
-*   **High-Fidelity Interaction:** The scheduler now uses the `react-calendar` range-selection engine, wrapped in luxury shadows and brand-red accents.
-*   **Visual Commitments:** Hosts now see a "Commitment Preview" before saving downtime, ensuring that maintenance scheduling feels like a premium part of the platform's orchestration.
+**3. Luxury Availability UI (Universal Sync):**
+We replaced the rudimentary HTML date inputs with a custom-styled **Luxury Calendar** across the entire management suite.
+*   **Universal Implementation:** The scheduler now uses the `react-calendar` range-selection engine in both the dedicated **Availability Tab** and the **Property Editor**.
+*   **High-Fidelity Interaction:** Wrapped in luxury shadows and brand-red accents, providing a consistent, premium feel for all administrative tasks.
+*   **Visual Commitments:** Hosts now see a "Commitment Preview" before saving downtime, ensuring that maintenance scheduling feels like a professional part of the platform's orchestration.
 
 ---
 
