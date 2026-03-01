@@ -4,6 +4,7 @@ import { SendHorizontal, MessageCircle, X, Minus, ShieldCheck, Users, Loader2 } 
 import { formatDistanceToNow } from 'date-fns'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
+import { theme } from '../../theme';
 
 /**
  * ============================================================================

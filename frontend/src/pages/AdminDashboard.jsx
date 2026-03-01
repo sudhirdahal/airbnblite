@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   PlusCircle, Trash, Edit, Calendar as CalendarIcon, X, TrendingUp, DollarSign, 
-  LayoutDashboard, XCircle, Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, MapPin, Loader2, Upload, Users, Wrench, MessageSquare
+  LayoutDashboard, XCircle, Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, MapPin, Loader2, Upload, Users, Wrench, MessageSquare, ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
