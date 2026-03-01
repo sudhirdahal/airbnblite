@@ -1,5 +1,7 @@
 const Message = require('../models/Message');
 const Listing = require('../models/Listing');
+const Booking = require('../models/Booking');
+const User = require('../models/User');
 
 /**
  * ============================================================================
@@ -103,6 +105,28 @@ exports.getMessageHistory = async (req, res) => {
       .sort({ timestamp: 1 });
     res.json(messages);
   } catch (err) { res.status(500).send('History Retrieval Failure'); }
+};
+
+/**
+ * @desc Fetch all unique guests who have booked a specific property
+ * @route GET /api/auth/participants/:listingId
+ */
+exports.getListingParticipants = async (req, res) => {
+  try {
+    const { listingId } = req.params;
+    
+    // Authorization Check: Only the host can discover participants
+    const listing = await Listing.findById(listingId);
+    if (!listing || listing.adminId.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Unauthorized participant discovery' });
+    }
+
+    // Discovery: Aggregate all unique guests from the booking ledger
+    const guestIds = await Booking.find({ listingId }).distinct('userId');
+    const participants = await User.find({ _id: { $in: guestIds } }).select('name avatar');
+    
+    res.json(participants);
+  } catch (err) { res.status(500).send('Discovery Engine Failure'); }
 };
 
 /**

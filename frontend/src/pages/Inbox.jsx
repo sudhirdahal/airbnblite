@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, MessageCircle, ArrowRight, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns'; 
 import API from '../services/api';
@@ -19,6 +19,7 @@ import ChatWindow from '../components/chat/ChatWindow';
  * visually synchronized across the platform.
  * 
  * Update: Phase 42: Integrated Context-Aware Chat (Inline replies).
+ * Update: Phase 43: Ghost Thread Seeding (Proactive Host initiation).
  */
 const Inbox = ({ onThreadOpened }) => {
   const { user } = useAuth();
@@ -26,11 +27,43 @@ const Inbox = ({ onThreadOpened }) => {
   const [loading, setLoading] = useState(true);
   const [selectedThread, setSelectedThread] = useState(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const fetchInbox = async () => {
     try {
       const response = await API.get('/auth/inbox');
       setThreads(response.data);
+      
+      // Phase 43: Auto-selection Handshake
+      const queryListing = searchParams.get('listing');
+      const queryGuest = searchParams.get('guest');
+      
+      if (queryListing && queryGuest) {
+        // Search for existing thread using composite key check
+        const existing = response.data.find(t => 
+          t.listing._id === queryListing && 
+          (t.guest?._id === queryGuest || t.guest === queryGuest)
+        );
+
+        if (existing) {
+          setSelectedThread(existing);
+        } else {
+          // GHOST THREAD SEEDING: Fetch metadata to start a fresh thread
+          try {
+            const [lRes, gRes] = await Promise.all([
+              API.get(`/listings/${queryListing}`),
+              API.get(`/auth/profile/${queryGuest}`)
+            ]);
+            setSelectedThread({
+              listing: lRes.data,
+              guest: gRes.data,
+              lastMessage: { content: 'Start a new conversation...', sender: user, timestamp: new Date() },
+              unreadCount: 0,
+              isGhost: true
+            });
+          } catch (e) { console.warn("Ghost Thread Discovery Failed"); }
+        }
+      }
     } catch (err) { console.error('Inbox Sync Failure'); } finally { setLoading(false); }
   };
 

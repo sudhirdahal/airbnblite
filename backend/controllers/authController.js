@@ -221,6 +221,18 @@ exports.resetPassword = async (req, res) => {
   } catch (err) { res.status(500).send('Sync Failure'); }
 };
 
+/**
+ * @desc Fetch public metadata for a specific user
+ * @route GET /api/auth/profile/:id
+ */
+exports.getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('name avatar');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (err) { res.status(500).send('Discovery Failure'); }
+};
+
 exports.toggleWishlist = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);

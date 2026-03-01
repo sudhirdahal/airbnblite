@@ -37,7 +37,9 @@ Over **27 distinct phases of engineering maturity**, we have documented every lo
     *   *Maintenance Blocking, Temporal Integrity, and Adaptive Calendar Grey-Outs.*
 14. **[Volume XIII: The Omni-Channel Communication Suite (Phase 42)](#volume-xiii-the-omni-channel-communication-suite-phase-42)**
     *   *Host Multiplexing, Luxury Availability UI, and Integrated Context-Aware Chat.*
-15. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
+15. **[Volume XIV: Proactive Communication & Guest Discovery (Phase 43)](#volume-xiv-proactive-communication--guest-discovery-phase-43)**
+    *   *The Participant Discovery Engine, Deep-Link Handshaking, and Ghost Thread Seeding.*
+16. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
     *   *Our definitive guide to Defensive Engineering and Crash-Proof UX.*
 
 ---
@@ -620,6 +622,30 @@ We eliminated "Context Loss" during communication by refactoring the **Inbox** i
 We replaced the "Bare-Bones" HTML date inputs in the Availability Tab with a custom-styled **Luxury Calendar**.
 *   **High-Fidelity Interaction:** The scheduler now uses the `react-calendar` range-selection engine, wrapped in luxury shadows and brand-red accents.
 *   **Visual Commitments:** Hosts now see a "Commitment Preview" before saving downtime, ensuring that maintenance scheduling feels like a premium part of the platform's orchestration.
+
+---
+
+## 🏗️ Volume XIV: Proactive Communication & Guest Discovery (Phase 43)
+
+### Chapter 23: The Proactive Host & Ghost Thread Seeding
+True management requires **proactive engagement**, not just reactive responses. In Phase 43, we bridged the gap between the "Reservation Ledger" and the "Communication Hub."
+
+**1. The Participant Discovery Engine:**
+Conversations were previously limited to guests who reached out first. We implemented a **Relational Discovery Layer** that cross-references the `Bookings` collection to identify every traveler who has ever engaged with a property.
+*   **The Endpoint:** `GET /api/auth/participants/:listingId` extracts unique guest identities from the booking history.
+*   **Host Authority:** Owners can now open their property's chat bubble and see a full list of all past and present clients, allowing them to initiate a message at any time.
+
+**2. Deep-Link Handshaking:**
+We integrated the **Host Dashboard** directly with the **Inbox** via contextual URL parameters.
+*   **The Action:** Clicking the new `MessageSquare` icon on a reservation row now navigates the host to the Inbox with `?listing=ID&guest=ID`.
+*   **The Payload:** This ensures the Inbox immediately knows exactly which property and guest the host wants to discuss.
+
+**3. Ghost Thread Seeding:**
+To solve the "Empty State" problem (where a host wants to talk to a guest for the first time), we implemented **Ghost Seeding**.
+*   **UI Projection:** If the host arrives via a deep-link for a guest with no prior chat history, the Inbox proactively fetches the guest and property metadata and projects a **"Ghost Thread"** into the list.
+*   **Persistence Transition:** This allows the host to start typing immediately. The thread transition from "Ghost" to "Permanent" occurs automatically the moment the first message is sent.
+
+This evolution ensures that the host is always the orchestrator of the guest experience, with total conversational authority across their entire portfolio.
 
 ---
 

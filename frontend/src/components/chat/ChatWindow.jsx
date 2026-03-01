@@ -65,19 +65,17 @@ const ChatWindow = ({ listingId, guestId: initialGuestId, currentUser, isHost, h
   }, [initialGuestId]);
 
   /**
-   * HOST MULTIPLEXING ENGINE (Phase 42)
-   * Logic: If I am the host and I open the window, find everyone I've talked to.
+   * HOST MULTIPLEXING ENGINE (Phase 42/43)
+   * Logic: If I am the host and I open the window, find everyone who has 
+   * ever booked this property so I can initiate or continue conversations.
    */
   const fetchParticipants = async () => {
     if (!isHost || !isOpen) return;
     setLoadingThreads(true);
     try {
-      const res = await API.get(`/auth/inbox`);
-      // Filter inbox threads to only show participants for THIS property
-      const participants = res.data
-        .filter(t => t.listing._id === listingId)
-        .map(t => t.guest);
-      setGuestList(participants);
+      // Phase 43 Upgrade: Use the participants discovery endpoint
+      const res = await API.get(`/auth/participants/${listingId}`);
+      setGuestList(res.data);
     } catch (err) { console.error("Thread Discovery Failure"); }
     finally { setLoadingThreads(false); }
   };

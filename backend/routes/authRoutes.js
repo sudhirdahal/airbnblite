@@ -26,6 +26,7 @@ router.post('/reset-password', authController.resetPassword);
 // These routes require a valid JWT via the 'auth' middleware.
 router.get('/profile', auth, authController.getProfile);
 router.put('/profile', auth, authController.updateProfile);
+router.get('/profile/:id', auth, authController.getUserById);
 router.post('/logout-all', auth, authController.logoutAll);
 
 /**
@@ -46,6 +47,7 @@ router.get('/wishlist', auth, authController.getWishlist);
 router.get('/inbox', auth, chatController.getInbox);
 router.put('/chat-read/:listingId/:guestId', auth, chatController.markAsRead);
 router.get('/chat-history/:listingId/:guestId', auth, chatController.getMessageHistory);
+router.get('/participants/:listingId', auth, chatController.getListingParticipants);
 
 // --- PROTECTED ACCESS: SYSTEM ALERTS ---
 router.get('/notifications', auth, notificationController.getNotifications);
