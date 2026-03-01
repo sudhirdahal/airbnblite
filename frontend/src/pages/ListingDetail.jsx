@@ -209,7 +209,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
       }
 
       // 3. Fetch Chat History (Defensive Pattern - Phase 40)
-      if (localStorage.getItem('token') && listing) {
+      if (localStorage.getItem('token') && res.data) {
         const isHost = (user?._id || user?.id) === (res.data.adminId?._id || res.data.adminId);
         const targetGuestId = isHost ? queryGuestId : (user?._id || user?.id);
 

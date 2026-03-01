@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import socket from '../../services/socket';
-import { SendHorizontal, MessageCircle, X, Minus, ShieldCheck } from 'lucide-react';
+import { SendHorizontal, MessageCircle, X, Minus, ShieldCheck, Users, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns'; 
 import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../services/api';
