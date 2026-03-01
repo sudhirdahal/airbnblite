@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, isValid } from 'date-fns'; 
 import Calendar from 'react-calendar'; 
 import 'react-calendar/dist/Calendar.css'; 
+import toast from 'react-hot-toast'; 
 import API from '../services/api'; 
 import ChatWindow from '../components/chat/ChatWindow'; 
 import DetailSkeleton from '../components/listings/DetailSkeleton';
@@ -56,6 +57,7 @@ const RatingBreakdown = ({ reviews = [] }) => {
  * - Phase 26: The "Nuclear Stability Pattern" (Decoupled Fetches).
  * - Phase 31: Cinematic Lightbox Navigation (Keyboard + Indexing).
  * - Phase 33: The Checkout Handshake & Mobile Convergence.
+ * - Phase 35: Reference Synchronization (The Missing Toast Import).
  */
 const ListingDetail = ({ user, onChatOpened }) => { 
   const { id } = useParams(); 
@@ -142,6 +144,20 @@ const ListingDetail = ({ user, onChatOpened }) => {
    * 
    * THE FIX: A State-Aware Handshake that packages the booking payload before
    * navigation, and the implementation of a Sticky Mobile Reservation Bar.
+   * ============================================================================ */
+
+  /* ============================================================================
+   * 👻 HISTORICAL GHOST: PHASE 35 (The Missing Toast Import)
+   * ============================================================================
+   * toast.error('Please select dates');
+   * 
+   * THE FLAW: Although Phase 34 implemented the toast-based reminder, it failed 
+   * to import 'toast' from 'react-hot-toast'. This resulted in a ReferenceError 
+   * whenever the 'Reserve' button was clicked without dates, making the button 
+   * appear \"dead\" or unresponsive.
+   * 
+   * THE FIX: Synchronized the module imports to ensure the Hot Toast engine is 
+   * available to the detail view.
    * ============================================================================ */
 
   const handleNextImage = () => {
