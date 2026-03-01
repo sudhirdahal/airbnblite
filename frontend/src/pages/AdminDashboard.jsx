@@ -182,7 +182,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
       const res = await API.post('/listings/upload', uploadData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setFormData(prev => ({ ...prev, images: [...prev.images, res.data.url] }));
+      setFormData(prev => ({ ...prev, images: [...prev.images, res.data.imageUrl] }));
       toast.success('Asset synced successfully.', { id: uploadToast });
     } catch (err) { toast.error('Cloud Sync Failure', { id: uploadToast });
     } finally { setIsUploading(false); }
