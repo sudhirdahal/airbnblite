@@ -54,6 +54,8 @@ const RatingBreakdown = ({ reviews = [] }) => {
  * - Phase 15: Progressive Loading (Skeleton Skeletons).
  * - Phase 24: SEO-Driven Dynamic Titles.
  * - Phase 26: The "Nuclear Stability Pattern" (Decoupled Fetches).
+ * - Phase 31: Cinematic Lightbox Navigation (Keyboard + Indexing).
+ * - Phase 33: The Checkout Handshake & Mobile Convergence.
  */
 const ListingDetail = ({ user, onChatOpened }) => { 
   const { id } = useParams(); 
@@ -124,6 +126,22 @@ const ListingDetail = ({ user, onChatOpened }) => {
    * THE FLAW: If a brand-new property had NO reviews, the `reviews` endpoint
    * would return a 404. Because `Promise.all` fails if ANY promise fails, the 
    * ENTIRE page crashed, showing a blank screen for a perfectly valid property!
+   * ============================================================================ */
+
+  /* ============================================================================
+   * 👻 HISTORICAL GHOST: PHASE 33 (The Session Context Crisis)
+   * ============================================================================
+   * const handleReserveLegacy = () => {
+   *    navigate('/pay'); 
+   * }
+   * 
+   * THE FLAW: The original checkout trigger was \"Context-Blind.\" It navigated 
+   * to the payment screen without passing the selected dates or pricing data. 
+   * This caused the MockPayment page to throw a \"Session context lost\" error 
+   * and prevented users on mobile from seeing a 'Reserve' button entirely.
+   * 
+   * THE FIX: A State-Aware Handshake that packages the booking payload before
+   * navigation, and the implementation of a Sticky Mobile Reservation Bar.
    * ============================================================================ */
 
   const handleNextImage = () => {
