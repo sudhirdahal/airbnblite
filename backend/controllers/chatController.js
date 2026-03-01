@@ -55,15 +55,25 @@ exports.getInbox = async (req, res) => {
     messages.forEach(msg => {
       if (!msg.listingId || !msg.sender) return;
       
-      // The "Thread Key": Composite of Property and the specific Guest
-      const gid = msg.guestId?._id?.toString() || msg.guestId?.toString();
+      // Phase 44: Legacy Anchor Logic
+      // If guestId is missing (Pre-Phase 40), we infer it from the sender if they aren't the host.
+      const hostId = msg.listingId.adminId?.toString();
+      let gid = msg.guestId?._id?.toString() || msg.guestId?.toString();
+      
+      if (!gid && hostId) {
+        gid = msg.sender._id.toString() !== hostId ? msg.sender._id.toString() : null;
+      }
+
+      // If we still have no guest ID, this message is a "Host-to-Unknown" orphan and is skipped.
+      if (!gid) return;
+
       const lid = msg.listingId._id.toString();
       const threadKey = `${lid}-${gid}`;
       
       if (!threads[threadKey]) {
         threads[threadKey] = { 
           listing: msg.listingId, 
-          guest: msg.guestId,
+          guest: msg.guestId || msg.sender, // Fallback to sender for legacy anchor
           lastMessage: msg, 
           unreadCount: 0 
         };
@@ -100,9 +110,22 @@ exports.markAsRead = async (req, res) => {
 exports.getMessageHistory = async (req, res) => {
   try {
     const { listingId, guestId } = req.params;
-    const messages = await Message.find({ listingId, guestId })
-      .populate('sender', 'name avatar')
-      .sort({ timestamp: 1 });
+    
+    // Phase 44: Legacy-Inclusive History Query
+    // Finds messages that match the modern triangular ID 
+    // OR legacy messages (no guestId) where this user was the sender.
+    const messages = await Message.find({ 
+      listingId, 
+      $or: [
+        { guestId: guestId },
+        { guestId: { $exists: false }, sender: guestId },
+        // Also catch messages from the Host directed at this property if guestId is missing
+        // This assumes old property threads were primarily 1-on-1.
+        { guestId: { $exists: false }, sender: { $ne: guestId } } 
+      ]
+    })
+    .populate('sender', 'name avatar')
+    .sort({ timestamp: 1 });
     res.json(messages);
   } catch (err) { res.status(500).send('History Retrieval Failure'); }
 };

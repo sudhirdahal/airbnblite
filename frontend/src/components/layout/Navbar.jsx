@@ -42,6 +42,8 @@ const Navbar = ({ onLogout, resetHomeView }) => {
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [inboxThreads, setInboxThreads] = useState([]);
   const navigate = useNavigate();
 
   const handleBrandClick = () => { 
@@ -56,9 +58,25 @@ const Navbar = ({ onLogout, resetHomeView }) => {
    */
   const handleNotifClick = async () => {
     setIsNotifOpen(!isNotifOpen);
+    setIsInboxOpen(false); // Close other dropdowns
     if (!isNotifOpen && notifications.some(n => !n.isRead)) {
       await API.put('/auth/notifications/read');
       syncUpdates(); // Instantly wipe the red dot for a smooth UX
+    }
+  };
+
+  /**
+   * INBOX QUICK-VIEW (Phase 44)
+   * Logic: Fetches the latest threads when the dropdown is opened.
+   */
+  const handleInboxClick = async () => {
+    setIsInboxOpen(!isInboxOpen);
+    setIsNotifOpen(false); // Close notifications
+    if (!isInboxOpen) {
+      try {
+        const res = await API.get('/auth/inbox');
+        setInboxThreads(res.data.slice(0, 5)); // Show top 5 recent
+      } catch (err) { console.error("Inbox Peek Failure"); }
     }
   };
 
@@ -74,14 +92,51 @@ const Navbar = ({ onLogout, resetHomeView }) => {
           {/* RBAC Visibility: Only show Dashboard link to Hosts */}
           {user.role === 'admin' && <Link to="/admin" style={navLinkStyle}>Dashboard</Link>}
           
-          <Link to="/inbox" style={navLinkStyle}>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ position: 'relative' }}>
+            <button onClick={handleInboxClick} style={navLinkBtnStyle}>
               <MessageSquare size={18} /> 
               Inbox 
-              {/* REAL-TIME BADGE: Powered by Phase 25 Socket logic */}
               {unreadCount > 0 && <span style={badgeStyle}>{unreadCount}</span>}
-            </div>
-          </Link>
+            </button>
+
+            <AnimatePresence>
+              {isInboxOpen && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={notifDropdownStyle}>
+                  <div style={dropdownHeaderStyle}>
+                    <span>Recent Messages</span>
+                    <Link to="/inbox" onClick={() => setIsInboxOpen(false)} style={viewAllLink}>View all</Link>
+                  </div>
+                  <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    {inboxThreads.length === 0 ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: theme.colors.slate }}>No messages yet</div>
+                    ) : (
+                      inboxThreads.map(t => (
+                        <div 
+                          key={`${t.listing._id}-${t.guest?._id}`} 
+                          onClick={() => { 
+                            setIsInboxOpen(false); 
+                            navigate(`/listing/${t.listing._id}?guest=${t.guest?._id || user._id}`); 
+                          }} 
+                          style={notifCardStyle(t.unreadCount === 0)}
+                        >
+                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <img src={t.listing.images[0]} style={peekThumbStyle} alt="Listing" />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{t.listing.title}</div>
+                              <div style={{ fontSize: '0.75rem', color: theme.colors.slate, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
+                                {t.lastMessage.content}
+                              </div>
+                            </div>
+                            {t.unreadCount > 0 && <div style={dotSmall} />}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           
           <Link to="/wishlist" style={navLinkStyle}><Heart size={18} /> Wishlist</Link>
           <Link to="/bookings" style={navLinkStyle}><Briefcase size={18} /> Trips</Link>
@@ -181,12 +236,17 @@ const logoIconStyle = { width: '32px', height: '32px', backgroundColor: theme.co
 const logoTextStyle = { fontSize: '1.4rem', fontWeight: theme.typography.weights.extraBold, color: theme.colors.charcoal };
 const desktopMenuStyle = { display: 'flex', alignItems: 'center', gap: '1.5rem' };
 const navLinkStyle = { textDecoration: 'none', color: theme.colors.charcoal, fontSize: theme.typography.sizes.sm, fontWeight: theme.typography.weights.semibold, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: theme.radius.sm, transition: 'background 0.2s' };
+const navLinkBtnStyle = { ...navLinkStyle, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' };
 const signupBtnStyle = { backgroundColor: theme.colors.brand, color: theme.colors.white };
 const logoutBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.brand, fontSize: theme.typography.sizes.sm, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' };
 const mobileTriggerStyle = { display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' };
 const badgeStyle = { backgroundColor: theme.colors.brand, color: theme.colors.white, fontSize: '0.65rem', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' };
 const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.charcoal, display: 'flex', position: 'relative' };
 const dotStyle = { position: 'absolute', top: '-2px', right: '-2px', width: '12px', height: '12px', backgroundColor: theme.colors.brand, borderRadius: '50%', border: `2.5px solid ${theme.colors.white}`, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' };
+const dotSmall = { width: '8px', height: '8px', backgroundColor: theme.colors.brand, borderRadius: '50%' };
+const dropdownHeaderStyle = { padding: '1rem', borderBottom: `1px solid ${theme.colors.divider}`, fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const viewAllLink = { fontSize: '0.75rem', color: theme.colors.brand, textDecoration: 'underline', fontWeight: 'bold' };
+const peekThumbStyle = { width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover' };
 const notifDropdownStyle = { position: 'absolute', top: 60, right: 0, width: '320px', backgroundColor: '#fff', border: `1px solid ${theme.colors.divider}`, borderRadius: theme.radius.md, boxShadow: theme.shadows.lg, zIndex: 1001, overflow: 'hidden' };
 const notifCardStyle = (read) => ({ padding: '1.2rem', borderBottom: `1px solid ${theme.colors.lightGrey}`, cursor: 'pointer', backgroundColor: read ? '#fff' : '#fff1f2', transition: 'background 0.2s' });
 const navAvatarStyle = { width: '28px', height: '28px', borderRadius: theme.radius.full, objectFit: 'cover' };

@@ -39,7 +39,9 @@ Over **27 distinct phases of engineering maturity**, we have documented every lo
     *   *Host Multiplexing, Luxury Availability UI, and Integrated Context-Aware Chat.*
 15. **[Volume XIV: Proactive Communication & Guest Discovery (Phase 43)](#volume-xiv-proactive-communication--guest-discovery-phase-43)**
     *   *The Participant Discovery Engine, Deep-Link Handshaking, and Ghost Thread Seeding.*
-16. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
+16. **[Volume XV: The Unified Navigation & Legacy Synchronization (Phase 44)](#volume-xv-the-unified-navigation--legacy-synchronization-phase-44)**
+    *   *Inbox Quick-View, Thread Anchoring, and Legacy Inclusive Queries.*
+17. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
     *   *Our definitive guide to Defensive Engineering and Crash-Proof UX.*
 
 ---
@@ -646,6 +648,37 @@ To solve the "Empty State" problem (where a host wants to talk to a guest for th
 *   **Persistence Transition:** This allows the host to start typing immediately. The thread transition from "Ghost" to "Permanent" occurs automatically the moment the first message is sent.
 
 This evolution ensures that the host is always the orchestrator of the guest experience, with total conversational authority across their entire portfolio.
+
+---
+
+## 🏗️ Volume XV: The Unified Navigation & Legacy Synchronization (Phase 44)
+
+### Chapter 24: The Message Quick-View & Legacy Bridge
+Architectural evolution must never come at the cost of **historical data** or **navigational friction**. In Phase 44, we addressed "Orphaned Threads" and the "Intuition Gap" in the communication flow.
+
+**1. The Inbox Quick-View Dropdown:**
+Previously, the "Inbox" was a static link. To make the platform more intuitive, we transformed it into a **High-Fidelity Dropdown**.
+*   **Contextual Awareness:** Clicking "Inbox" now allows users to peek at their most recent threads (Thumbnails, Snippets, and Unread Badges) without leaving their current page.
+*   **Deep-Linking:** Users can navigate directly to a specific private thread from the navbar, reducing the "Click-Depth" required to reply.
+
+**2. The Legacy Anchor (Thread Recovery):**
+The "Conversational Isolation" refactor (Phase 40) introduced a mandatory `guestId`. This unintentionally orphaned thousands of legacy messages that lacked this field.
+*   **The Problem:** Because the new engine strictly looked for `guestId`, older conversations appeared "lost" to the user.
+*   **The Engineering Fix:** We implemented an **Intelligent Inferrer** in the aggregation layer. If a message is missing a `guestId`, the system dynamically "Anchors" it to a thread based on the non-host participant.
+
+**3. Inclusive History Queries:**
+We overhauled the `getMessageHistory` controller to use a **Polymorphic Search Pattern**.
+```javascript
+// THE LEGACY-INCLUSIVE QUERY
+const messages = await Message.find({ 
+  listingId, 
+  $or: [
+    { guestId: targetGuestId }, // Modern Structure
+    { guestId: { $exists: false }, sender: targetGuestId } // Legacy Anchor
+  ]
+});
+```
+This ensured that the privacy refactor remained **Backward Compatible**, restoring years of conversation history while maintaining strict isolation for all new messages.
 
 ---
 
