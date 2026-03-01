@@ -39,12 +39,14 @@ body {
   min-height: 100vh;
   width: 100%;
   background-color: #ffffff;
-  /* Standard block display for natural SaaS scrolling */
+  /* NO-SCROLL POLICY: Ban horizontal bleeding for mobile convergence */
+  overflow-x: hidden; 
   display: block; 
 }
 
 #root {
   width: 100%;
+  overflow-x: hidden;
 }
 
 /* ============================================================================

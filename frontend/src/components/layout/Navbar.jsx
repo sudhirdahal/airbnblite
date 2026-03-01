@@ -22,6 +22,7 @@ import { useResponsive } from '../../hooks/useResponsive';
  * - Phase 23: Context API Refactor (Removing props, consuming global state).
  * - Phase 25: Real-time Badge Hardening (Socket-driven unread counts).
  * - Phase 46: Mobile Convergence (Responsive Drawer & Adaptive Overlays).
+ * - Phase 47: Hybrid-Atomic Overhaul (Compact Greetings & No-Scroll Policy).
  */
 
 /* ============================================================================
@@ -36,6 +37,19 @@ import { useResponsive } from '../../hooks/useResponsive';
  * 
  * THE FLAW: It was impossible to use the Navbar outside of App.jsx without 
  * manually passing 4-5 props every time.
+ * ============================================================================ */
+
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 46 (The Static Brand Header)
+ * ============================================================================
+ * {!isMobile && <span style={logoTextStyle}>airnb...</span>}
+ * 
+ * THE FLAW: On mobile, the vertical space was wasted on a brand name the user 
+ * already knows. We needed a way to make the header feel more like a 
+ * "Personal Concierge."
+ * 
+ * THE FIX: Atomic Greeting. The brand text is replaced with a personalized
+ * welcome message on small screens, increasing the high-fidelity "Elite" feel.
  * ============================================================================ */
 
 const Navbar = ({ onLogout, resetHomeView }) => {
@@ -180,10 +194,14 @@ const Navbar = ({ onLogout, resetHomeView }) => {
     <nav style={navbarContainerStyle}>
       <div className="navbar-inner" style={navbarInnerStyle(isMobile)}>
         
-        {/* BRAND IDENTITY */}
+        {/* BRAND IDENTITY & ATOMIC GREETING */}
         <div onClick={handleBrandClick} style={logoStyle}>
           <div style={logoIconStyle}>A</div>
-          {!isMobile && <span style={logoTextStyle}>airnb<span style={{ color: theme.colors.brand }}>lite</span></span>}
+          {!isMobile ? (
+            <span style={logoTextStyle}>airnb<span style={{ color: theme.colors.brand }}>lite</span></span>
+          ) : (
+            user && <span style={mobileGreetingStyle}>Welcome, {user.name.split(' ')[0]}</span>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.8rem' : '1.5rem' }}>
@@ -302,6 +320,7 @@ const notifDropdownStyle = (isMobile) => ({ position: 'absolute', top: 60, right
 const notifCardStyle = (read) => ({ padding: '1.2rem', borderBottom: `1px solid ${theme.colors.lightGrey}`, cursor: 'pointer', backgroundColor: read ? '#fff' : '#fff1f2' });
 const navAvatarStyle = { width: '28px', height: '28px', borderRadius: theme.radius.full, objectFit: 'cover' };
 const navAvatarPlaceholderStyle = { width: '28px', height: '28px', borderRadius: theme.radius.full, backgroundColor: theme.colors.charcoal, color: theme.colors.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' };
+const mobileGreetingStyle = { fontSize: '1rem', fontWeight: '800', color: theme.colors.charcoal, marginLeft: '0.2rem' };
 
 // --- MOBILE DRAWER STYLES ---
 const mobileOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(4px)', zIndex: 1999 };

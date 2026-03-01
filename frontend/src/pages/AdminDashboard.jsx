@@ -172,6 +172,20 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
  *   Pill Navigation, and Hybrid S3/URL image uploads.
  * - Phase 42: Omni-Channel Communication & Luxury Availability UI.
  */
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 46 (The Desktop-Heavy Dashboard)
+ * ============================================================================
+ * Previously, the mobile dashboard showed all 4 tabs: 
+ * Properties, Availability, Reservations, Analytics.
+ * 
+ * THE FLAW: Typing property descriptions or analyzing revenue charts on a 
+ * 6-inch screen was high-friction and prone to user error.
+ * 
+ * THE FIX: Atomic Management. On mobile, we hide the "Maintenance Heavy" 
+ * tabs (Properties/Analytics) and focus purely on "Actionable" hospitality
+ * (Availability/Reservations).
+ * ============================================================================ */
+
 const AdminDashboard = ({ user, refreshListings }) => {
   const { isMobile } = useResponsive();
   const [activeTab, setActiveTab] = useState('listings');
@@ -199,6 +213,13 @@ const AdminDashboard = ({ user, refreshListings }) => {
 
   const [newMaintenanceRange, setNewMaintenanceRange] = useState([null, null]);
   const [showEditorCalendar, setShowEditorCalendar] = useState(false);
+
+  // Phase 47: Atomic Tab Enforcement
+  useEffect(() => {
+    if (isMobile && (activeTab === 'listings' || activeTab === 'insights')) {
+      setActiveTab('bookings');
+    }
+  }, [isMobile, activeTab]);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -384,38 +405,40 @@ const AdminDashboard = ({ user, refreshListings }) => {
 
   return (
     <div style={dashboardWrapper}>
-      <div style={{ maxWidth: '1600px', margin: '0 auto', padding: '4rem 2rem' }}>
+      <div style={{ maxWidth: '1600px', margin: '0 auto', padding: isMobile ? '2rem 1.5rem' : '4rem 2rem' }}>
         
         <div style={headerContainer}>
           <PageHeader 
             title="Host Dashboard" 
-            subtitle={`Orchestrating ${adminListings.length} premium properties.`} 
+            subtitle={isMobile ? "Manage arrivals and scheduling." : `Orchestrating ${adminListings.length} premium properties.`} 
             icon={LayoutDashboard} 
           />
-          <button 
-            onClick={() => {
-              if (!showForm) {
-                setFormData({
-                  _id: null, title: '', location: '', description: '', fullDescription: '', 
-                  rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
-                  maxGuests: 2, bedrooms: 1, beds: 1, amenities: [],
-                  childRate: null, infantRate: null,
-                  unavailableDates: []
-                });
-              }
-              setShowForm(!showForm);
-            }} 
-            style={showForm ? cancelButtonStyle : mainAddButtonStyle}
-          >
-            {showForm ? <><X size={18} /> Close Editor</> : <><PlusCircle size={18} /> New Listing</>}
-          </button>
+          {!isMobile && (
+            <button 
+              onClick={() => {
+                if (!showForm) {
+                  setFormData({
+                    _id: null, title: '', location: '', description: '', fullDescription: '', 
+                    rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
+                    maxGuests: 2, bedrooms: 1, beds: 1, amenities: [],
+                    childRate: null, infantRate: null,
+                    unavailableDates: []
+                  });
+                }
+                setShowForm(!showForm);
+              }} 
+              style={showForm ? cancelButtonStyle : mainAddButtonStyle}
+            >
+              {showForm ? <><X size={18} /> Close Editor</> : <><PlusCircle size={18} /> New Listing</>}
+            </button>
+          )}
         </div>
         
         <div style={pillNavContainer}>
-          <button onClick={() => setActiveTab('listings')} style={pillTabStyle(activeTab === 'listings')}>Properties</button>
+          {!isMobile && <button onClick={() => setActiveTab('listings')} style={pillTabStyle(activeTab === 'listings')}>Properties</button>}
           <button onClick={() => setActiveTab('availability')} style={pillTabStyle(activeTab === 'availability')}>Availability</button>
           <button onClick={() => setActiveTab('bookings')} style={pillTabStyle(activeTab === 'bookings')}>Reservations</button>
-          <button onClick={() => setActiveTab('insights')} style={pillTabStyle(activeTab === 'insights')}>Analytics</button>
+          {!isMobile && <button onClick={() => setActiveTab('insights')} style={pillTabStyle(activeTab === 'insights')}>Analytics</button>}
         </div>
 
         {activeTab === 'insights' && (

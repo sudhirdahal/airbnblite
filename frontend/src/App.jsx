@@ -11,6 +11,7 @@ import ListingMap from './components/listings/ListingMap';
 import API from './services/api';
 import { AuthProvider, useAuth } from './context/AuthContext'; 
 import { AnimatePresence } from 'framer-motion';
+import { useResponsive } from './hooks/useResponsive';
 
 /**
  * ============================================================================
@@ -53,23 +54,30 @@ const PageLoader = () => (
 
 const Home = ({ listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange, onHoverListing }) => {
   const { user } = useAuth();
+  const { isMobile } = useResponsive();
+
   return (
     <PageWrapper>
       <div style={{ position: 'relative' }}>
-        <Hero user={user} />
+        {/* ATOMIC HOME (Phase 47): Direct Entry Discovery */}
+        {!isMobile && <Hero user={user} />}
         <SearchBar onSearch={onSearch} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4rem', maxWidth: '2560px', margin: '0 auto' }}>
-          <CategoryBar activeCategory={activeCategory} onSelect={onCategorySelect} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button onClick={() => setShowMap(!showMap)} style={mapToggleStyle}>{showMap ? 'Show List' : 'Show Map'}</button>
-            <select value={sort} onChange={(e) => onSortChange(e.target.value)} style={sortSelectStyle}>
-              <option value="newest">Newest First</option>
-              <option value="price-asc">Price: Low to High</option>
-              <option value="price-desc">Price: High to Low</option>
-            </select>
+        
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4rem', maxWidth: '2560px', margin: '0 auto' }}>
+            <CategoryBar activeCategory={activeCategory} onSelect={onCategorySelect} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button onClick={() => setShowMap(!showMap)} style={mapToggleStyle}>{showMap ? 'Show List' : 'Show Map'}</button>
+              <select value={sort} onChange={(e) => onSortChange(e.target.value)} style={sortSelectStyle}>
+                <option value="newest">Newest First</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+            </div>
           </div>
-        </div>
-        {showMap ? <ListingMap listings={listings} /> : <ListingGrid listings={listings} loading={loading} onSearch={onSearch} onHoverListing={onHoverListing} />}
+        )}
+
+        {showMap && !isMobile ? <ListingMap listings={listings} /> : <ListingGrid listings={listings} loading={loading} onSearch={onSearch} onHoverListing={onHoverListing} />}
       </div>
     </PageWrapper>
   );

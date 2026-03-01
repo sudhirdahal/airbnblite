@@ -13,6 +13,7 @@ import API from '../services/api';
 import ChatWindow from '../components/chat/ChatWindow'; 
 import DetailSkeleton from '../components/listings/DetailSkeleton';
 import { theme } from '../theme';
+import { useResponsive } from '../hooks/useResponsive';
 
 /**
  * ============================================================================
@@ -59,8 +60,10 @@ const RatingBreakdown = ({ reviews = [], isMobile }) => {
  * - Phase 33: The Checkout Handshake & Mobile Convergence.
  * - Phase 35: Reference Synchronization (The Missing Toast Import).
  * - Phase 40: Conversational Isolation (Privacy-Safe Chat threads).
+ * - Phase 47: Hybrid-Atomic Overhaul (Mobile Simplification).
  */
 const ListingDetail = ({ user, onChatOpened }) => { 
+  const { isMobile } = useResponsive();
   const { id } = useParams(); 
   const navigate = useNavigate(); 
   const [searchParams] = useSearchParams();
@@ -74,11 +77,12 @@ const ListingDetail = ({ user, onChatOpened }) => {
   
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [dateRange, setDateRange] = useState([null, null]); 
   const [guests, setGuests] = useState({ adults: 1, children: 0, infants: 0 });
   const [pricing, setPricing] = useState({ nights: 0, total: 0 });
   const [showGuestPicker, setShowGuestPicker] = useState(false);
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   // --- DERIVE IMAGES EARLY (Phase 31 Correction) ---
   // We must define this before the navigation functions and effects 
@@ -114,9 +118,6 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   /* ============================================================================
@@ -394,11 +395,16 @@ const ListingDetail = ({ user, onChatOpened }) => {
               <div style={dividerSection}>
                 <h3 style={sectionLabel}>What this place offers</h3>
                 <div style={amenityGrid}>
-                  {(listing.amenities || []).map((a, i) => {
+                  {(isMobile && !showAllAmenities ? (listing.amenities || []).slice(0, 4) : (listing.amenities || [])).map((a, i) => {
                     const Icon = getAmenityIcon(a);
                     return (<div key={i} style={amenityItem}><Icon size={24} color={theme.colors.charcoal} /> <span>{a}</span></div>);
                   })}
                 </div>
+                {isMobile && (listing.amenities || []).length > 4 && (
+                  <button onClick={() => setShowAllAmenities(!showAllAmenities)} style={showMoreBtnStyle}>
+                    {showAllAmenities ? 'Show less' : `Show all ${listing.amenities.length} amenities`}
+                  </button>
+                )}
               </div>
 
               <div style={dividerSection}>
@@ -422,7 +428,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
                   <RatingBreakdown reviews={reviews} isMobile={isMobile} />
                 </div>
                 <div style={reviewGrid(isMobile)}>
-                  {reviews.map(r => (
+                  {(isMobile && !showAllReviews ? reviews.slice(0, 2) : reviews).map(r => (
                     <div key={r._id} style={{ marginBottom: '1.5rem' }}>
                       <div style={userRow}>
                         <div style={avatarCircle}>{r.userId?.name?.charAt(0) || 'U'}</div>
@@ -432,6 +438,11 @@ const ListingDetail = ({ user, onChatOpened }) => {
                     </div>
                   ))}
                 </div>
+                {isMobile && reviews.length > 2 && (
+                  <button onClick={() => setShowAllReviews(!showAllReviews)} style={showMoreBtnStyle}>
+                    {showAllReviews ? 'Show less' : `Show all ${reviews.length} reviews`}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -590,6 +601,7 @@ const navBtnStyle = { position: 'absolute', top: '50%', transform: 'translateY(-
 const lightboxIndicator = { position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)', color: theme.colors.white, fontSize: '1rem', fontWeight: 'bold', letterSpacing: '0.1em', background: 'rgba(0,0,0,0.5)', padding: '0.5rem 1.2rem', borderRadius: '20px', zIndex: 10001 };
 const lightboxContent = { textAlign: 'center', maxWidth: '90vw', position: 'relative' };
 const lightboxImg = { maxHeight: '80vh', maxWidth: '100%', borderRadius: theme.radius.md, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' };
+const showMoreBtnStyle = { width: '100%', padding: '0.8rem', backgroundColor: '#fff', border: `1px solid ${theme.colors.charcoal}`, color: theme.colors.charcoal, borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer', marginTop: '1.5rem' };
 const breakdownContainerStyle = { flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' };
 const breakdownRowStyle = { display: 'flex', alignItems: 'center', gap: '1.2rem' };
 const starLabelStyle = { fontSize: '0.9rem', width: '70px', fontWeight: theme.typography.weights.semibold };

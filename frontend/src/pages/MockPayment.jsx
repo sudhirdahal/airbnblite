@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../services/api';
 import { theme } from '../theme';
+import { useResponsive } from '../hooks/useResponsive';
 
 /**
  * ============================================================================
@@ -14,6 +15,8 @@ import { theme } from '../theme';
  * - Phase 4: Simple card-number-only mock.
  * - Phase 33: Context-Aware Handshake (Received booking state).
  * - Phase 36: The Financial Integrity Engine (Internationalized validation).
+ * - Phase 37: The Logic Lock (Geographic Hierarchical Validation).
+ * - Phase 47: Atomic Checkout (Mobile summary bypass).
  */
 
 /* ============================================================================
@@ -25,6 +28,7 @@ import { theme } from '../theme';
  * ============================================================================ */
 
 const MockPayment = () => {
+  const { isMobile } = useResponsive();
   const { state } = useLocation();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
@@ -151,7 +155,7 @@ const MockPayment = () => {
         <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: theme.typography.weights.extraBold }}>Confirm and pay</h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1.2fr 1fr', gap: '6rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: isMobile ? '2rem' : '6rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
           
           <section>
@@ -249,34 +253,36 @@ const MockPayment = () => {
           </form>
         </div>
 
-        <aside style={summaryCardStyle}>
-          <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem', borderBottom: `1px solid ${theme.colors.divider}`, paddingBottom: '2rem' }}>
-            <img src={listing.images[0]} style={listingThumbStyle} alt="Thumb" />
-            <div>
-              <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{listing.title}</div>
-              <div style={{ fontSize: '0.9rem', color: theme.colors.slate, marginTop: '0.3rem' }}>{listing.location}</div>
+        {!isMobile && (
+          <aside style={summaryCardStyle}>
+            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem', borderBottom: `1px solid ${theme.colors.divider}`, paddingBottom: '2rem' }}>
+              <img src={listing.images[0]} style={listingThumbStyle} alt="Thumb" />
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{listing.title}</div>
+                <div style={{ fontSize: '0.9rem', color: theme.colors.slate, marginTop: '0.3rem' }}>{listing.location}</div>
+              </div>
             </div>
-          </div>
-          <h3 style={sectionTitle}>Price details</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={priceRow}><span>Guests</span><span>{bookingDetails.guests.adults} Adults{bookingDetails.guests.children > 0 ? `, ${bookingDetails.guests.children} Children` : ''}{bookingDetails.guests.infants > 0 ? `, ${bookingDetails.guests.infants} Infants` : ''}</span></div>
-            <div style={priceRow}><span>${listing.rate} x {bookingDetails.nights} nights</span><span>${listing.rate * bookingDetails.nights}</span></div>
-            {bookingDetails.guests.children > 0 && listing.childRate > 0 && (
-              <div style={priceRow}><span>Children surcharge</span><span>${bookingDetails.guests.children * listing.childRate * bookingDetails.nights}</span></div>
-            )}
-            {bookingDetails.guests.infants > 0 && listing.infantRate > 0 && (
-              <div style={priceRow}><span>Infant surcharge</span><span>${bookingDetails.guests.infants * listing.infantRate * bookingDetails.nights}</span></div>
-            )}
-            <div style={priceRow}><span>AirnbLite service fee (14%)</span><span>${Math.round((bookingDetails.total / 1.14) * 0.14)}</span></div>
-            <div style={totalRow}><span>Total (USD)</span><span>${bookingDetails.total}</span></div>
-          </div>
-          <div style={{ marginTop: '2rem', padding: '1.2rem', backgroundColor: '#f9fafb', borderRadius: '12px', display: 'flex', gap: '1rem' }}>
-            <Lock size={18} color={theme.colors.slate} />
-            <p style={{ margin: 0, fontSize: '0.85rem', color: theme.colors.slate, lineHeight: '1.4' }}>
-              Your payment is encrypted and processed via our secure mock gateway. We never store your full card details.
-            </p>
-          </div>
-        </aside>
+            <h3 style={sectionTitle}>Price details</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={priceRow}><span>Guests</span><span>{bookingDetails.guests.adults} Adults{bookingDetails.guests.children > 0 ? `, ${bookingDetails.guests.children} Children` : ''}{bookingDetails.guests.infants > 0 ? `, ${bookingDetails.guests.infants} Infants` : ''}</span></div>
+              <div style={priceRow}><span>${listing.rate} x {bookingDetails.nights} nights</span><span>${listing.rate * bookingDetails.nights}</span></div>
+              {bookingDetails.guests.children > 0 && listing.childRate > 0 && (
+                <div style={priceRow}><span>Children surcharge</span><span>${bookingDetails.guests.children * listing.childRate * bookingDetails.nights}</span></div>
+              )}
+              {bookingDetails.guests.infants > 0 && listing.infantRate > 0 && (
+                <div style={priceRow}><span>Infant surcharge</span><span>${bookingDetails.guests.infants * listing.infantRate * bookingDetails.nights}</span></div>
+              )}
+              <div style={priceRow}><span>AirnbLite service fee (14%)</span><span>${Math.round((bookingDetails.total / 1.14) * 0.14)}</span></div>
+              <div style={totalRow}><span>Total (USD)</span><span>${bookingDetails.total}</span></div>
+            </div>
+            <div style={{ marginTop: '2rem', padding: '1.2rem', backgroundColor: '#f9fafb', borderRadius: '12px', display: 'flex', gap: '1rem' }}>
+              <Lock size={18} color={theme.colors.slate} />
+              <p style={{ margin: 0, fontSize: '0.85rem', color: theme.colors.slate, lineHeight: '1.4' }}>
+                Your payment is encrypted and processed via our secure mock gateway. We never store your full card details.
+              </p>
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );
