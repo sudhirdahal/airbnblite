@@ -592,8 +592,10 @@ If an overlap is detected, the transaction is rejected with a **"Property Out of
 To maintain high-fidelity UX, we unified the data source for the frontend **React Calendar**. The `getTakenDates` endpoint now merges confirmed bookings with maintenance periods.
 *   **Result:** Guests proactively see these dates as "Greyed Out" and non-clickable, preventing friction before they even attempt to book.
 
-**3. The Host Maintenance Suite:**
-The **Admin Dashboard** was upgraded with a specialized management UI. Hosts can now visually define start and end dates for maintenance and manage these periods without touching the core listing configuration.
+**3. The Host Availability Suite:**
+The **Admin Dashboard** was upgraded with a dedicated **"Availability" Tab**. This centralized suite allows hosts to manage downtime across their entire portfolio from a single view.
+*   **Availability Cards:** Each property features an inline management console for adding and removing maintenance ranges.
+*   **Real-Time Synchronization:** Changes are instantly persisted to the backend and synchronized with the guest-facing calendars.
 
 ---
 

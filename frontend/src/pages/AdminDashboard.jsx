@@ -67,6 +67,54 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
   </div>
 );
 
+const AvailabilityCard = ({ listing, onUpdate }) => {
+  const [range, setRange] = useState({ start: '', end: '' });
+
+  const handleAdd = () => {
+    if (!range.start || !range.end) return toast.error("Dates required");
+    const newDates = [...(listing.unavailableDates || []), { start: range.start, end: range.end }];
+    onUpdate(listing._id, newDates);
+    setRange({ start: '', end: '' });
+  };
+
+  const handleRemove = (index) => {
+    const newDates = listing.unavailableDates.filter((_, i) => i !== index);
+    onUpdate(listing._id, newDates);
+  };
+
+  return (
+    <div style={listingCardStyle}>
+      <div style={imageWrapper}><img src={listing.images[0]} style={refinedThumbStyle} alt="listing" /></div>
+      <div style={{ flex: 1 }}>
+        <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800' }}>{listing.title}</h4>
+        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+          {(listing.unavailableDates || []).length === 0 ? (
+            <span style={{ fontSize: '0.85rem', color: theme.colors.slate }}>No maintenance periods defined.</span>
+          ) : (
+            listing.unavailableDates.map((d, i) => (
+              <div key={i} style={refinedTagStyleRed}>
+                <Wrench size={12} /> {new Date(d.start).toLocaleDateString()} - {new Date(d.end).toLocaleDateString()}
+                <button onClick={() => handleRemove(i)} style={removeTagBtnStyle}><X size={10} /></button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-end' }}>
+        <div>
+          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', display: 'block', marginBottom: '0.3rem' }}>START</label>
+          <input type="date" style={{ ...inputStyle, padding: '0.6rem' }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
+        </div>
+        <div>
+          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', display: 'block', marginBottom: '0.3rem' }}>END</label>
+          <input type="date" style={{ ...inputStyle, padding: '0.6rem' }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
+        </div>
+        <button onClick={handleAdd} style={{ ...pillActionButton(theme.colors.brand), width: '40px', height: '40px' }}><PlusCircle size={18} /></button>
+      </div>
+    </div>
+  );
+};
+
 /**
  * ============================================================================
  * 🏢 ADMIN DASHBOARD (The Host Management Suite)
@@ -110,7 +158,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
   const fetchAdminData = async () => {
     setLoading(true);
     try {
-      if (activeTab === 'listings') {
+      if (activeTab === 'listings' || activeTab === 'availability') {
         const response = await API.get(`/listings?adminId=${user?.id || user?._id}`);
         setAdminListings(response.data);
       } else {
@@ -192,6 +240,15 @@ const AdminDashboard = ({ user, refreshListings }) => {
       toast.success('Asset synced successfully.', { id: uploadToast });
     } catch (err) { toast.error('Cloud Sync Failure', { id: uploadToast });
     } finally { setIsUploading(false); }
+  };
+
+  const updateListingAvailability = async (listingId, newDates) => {
+    const syncToast = toast.loading('Syncing availability...');
+    try {
+      await API.put(`/listings/${listingId}`, { unavailableDates: newDates });
+      toast.success('Availability synchronized.', { id: syncToast });
+      fetchAdminData();
+    } catch (err) { toast.error('Sync failure.', { id: syncToast }); }
   };
 
   const addMaintenancePeriod = () => {
@@ -314,6 +371,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
         
         <div style={pillNavContainer}>
           <button onClick={() => setActiveTab('listings')} style={pillTabStyle(activeTab === 'listings')}>Properties</button>
+          <button onClick={() => setActiveTab('availability')} style={pillTabStyle(activeTab === 'availability')}>Availability</button>
           <button onClick={() => setActiveTab('bookings')} style={pillTabStyle(activeTab === 'bookings')}>Reservations</button>
           <button onClick={() => setActiveTab('insights')} style={pillTabStyle(activeTab === 'insights')}>Analytics</button>
         </div>
@@ -459,6 +517,19 @@ const AdminDashboard = ({ user, refreshListings }) => {
                   </motion.div>
                 ))}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* AVAILABILITY MANAGEMENT (Phase 41) */}
+        {activeTab === 'availability' && (
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            {adminListings.length === 0 ? (
+              <div style={emptyStateStyle}><h3>No properties found to manage.</h3></div>
+            ) : (
+              adminListings.map(l => (
+                <AvailabilityCard key={l._id} listing={l} onUpdate={updateListingAvailability} />
+              ))
             )}
           </div>
         )}
