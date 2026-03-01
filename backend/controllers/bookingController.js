@@ -172,7 +172,8 @@ exports.createBooking = async (req, res) => {
       userId: req.user.id, 
       checkIn: newCheckIn, 
       checkOut: newCheckOut, 
-      totalPrice 
+      totalPrice,
+      guests: guests || { adults: 1, children: 0, infants: 0 } // Persisting the breakdown (Phase 38)
     });
     await booking.save();
 

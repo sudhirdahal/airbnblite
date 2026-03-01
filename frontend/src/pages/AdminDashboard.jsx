@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   PlusCircle, Trash, Edit, Calendar, X, TrendingUp, DollarSign, 
-  LayoutDashboard, XCircle, Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, MapPin, Loader2, Upload
+  LayoutDashboard, XCircle, Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, MapPin, Loader2, Upload, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -417,7 +417,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
           </div>
         )}
 
-        {/* RESERVATIONS MANAGEMENT */}
+        {/* RESERVATIONS MANAGEMENT (Phase 39) */}
         {activeTab === 'bookings' && (
           <div style={{ backgroundColor: '#fff', borderRadius: '24px', overflow: 'hidden', boxShadow: theme.shadows.card, border: '1px solid rgba(0,0,0,0.05)' }}>
             {bookings.length === 0 ? (
@@ -426,7 +426,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f9fafb', textAlign: 'left', borderBottom: '1px solid #eee' }}>
-                    <th style={tableTh}>Traveler</th>
+                    <th style={tableTh}>Guest Identity</th>
                     <th style={tableTh}>Property</th>
                     <th style={tableTh}>Dates</th>
                     <th style={tableTh}>Total</th>
@@ -434,22 +434,34 @@ const AdminDashboard = ({ user, refreshListings }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings.map(b => (
-                    <tr key={b._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={tableTd}>
-                        <div style={{ fontWeight: '700' }}>{b.userId?.name}</div>
-                        <div style={{ fontSize: '0.8rem', color: theme.colors.slate }}>{b.userId?.email}</div>
-                      </td>
-                      <td style={tableTd}>{b.listingId?.title}</td>
-                      <td style={tableTd}>{new Date(b.checkIn).toLocaleDateString()} - {new Date(b.checkOut).toLocaleDateString()}</td>
-                      <td style={tableTd}><div style={{ fontWeight: '800' }}>${b.totalPrice}</div></td>
-                      <td style={tableTd}>
-                        <span style={statusBadgeStyle(b.status === 'confirmed' ? theme.colors.success : theme.colors.brand)}>
-                          {b.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {bookings.map(b => {
+                    const guestCount = (b.guests?.adults || 0) + (b.guests?.children || 0);
+                    return (
+                      <tr key={b._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={tableTd}>
+                          <Link to="/inbox" style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <div style={{ fontWeight: '700', color: theme.colors.brand }}>{b.userId?.name}</div>
+                            <div style={{ fontSize: '0.8rem', color: theme.colors.slate, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <Users size={12} /> {guestCount || 1} guest{guestCount !== 1 ? 's' : ''} 
+                              {b.guests?.infants > 0 && ` · ${b.guests.infants} infant${b.guests.infants > 1 ? 's' : ''}`}
+                            </div>
+                          </Link>
+                        </td>
+                        <td style={tableTd}>
+                          <Link to={`/listing/${b.listingId?._id}`} style={{ textDecoration: 'none', color: theme.colors.charcoal, fontWeight: '600' }}>
+                            {b.listingId?.title}
+                          </Link>
+                        </td>
+                        <td style={tableTd}>{new Date(b.checkIn).toLocaleDateString()} - {new Date(b.checkOut).toLocaleDateString()}</td>
+                        <td style={tableTd}><div style={{ fontWeight: '800' }}>${b.totalPrice}</div></td>
+                        <td style={tableTd}>
+                          <span style={statusBadgeStyle(b.status === 'confirmed' ? theme.colors.success : theme.colors.brand)}>
+                            {b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

@@ -29,7 +29,9 @@ Over **27 distinct phases of engineering maturity**, we have documented every lo
     *   *Internationalized Validation, Temporal Card Checks, and Identity Verification.*
 10. **[Volume IX: UI Refinement & Geographic Integrity (Phase 37)](#volume-ix-ui-refinement--geographic-integrity-phase-37)**
     *   *The Logic Lock, Hierarchical Data Mapping, and Cinematic Pulse Notifications.*
-11. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
+11. **[Volume X: Multi-Dimensional Guests & Dashboard Context (Phase 38-39)](#volume-x-multi-dimensional-guests--dashboard-context-phase-38-39)**
+    *   *The Guest Engine, Dynamic Surcharges, and Interactive Host Interactivity.*
+12. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
     *   *Our definitive guide to Defensive Engineering and Crash-Proof UX.*
 
 ---
@@ -501,6 +503,35 @@ The "Mock Payment" page previously allowed users to enter inconsistent addresses
 *   **The Backend Shield:** If a user bypasses the UI and sends mismatched data, the server cross-references the selection and returns a **"Geographic Disynchronization"** error.
 
 This ensures that our database remains a "Source of Truth" for high-quality, realistic transaction records.
+
+---
+
+## 🏗️ Volume X: Multi-Dimensional Guests & Dashboard Context (Phase 38-39)
+
+### Chapter 18: The Guest Engine & Dynamic Surcharges
+A professional reservation system must understand the **composition** of the traveling party. In Phase 38, we moved beyond a simple "total guest count" into a **Multi-Dimensional Guest Engine**.
+
+**1. Granular Categorization:**
+The reservation flow now includes a high-fidelity **Guest Picker** that segregates travelers into:
+*   **Adults (13+):** The base mathematical unit.
+*   **Children (2-12):** Subject to `childRate` surcharges.
+*   **Infants (Under 2):** Subject to `infantRate` surcharges, often excluded from the `maxGuests` capacity limit.
+
+**2. Dynamic Pricing with Surcharges:**
+We overhauled the `Pricing Engine` to factor in these categories in real-time. The total cost is no longer just `nights * rate`. It is now a complex summation:
+`Total = ((nights * baseRate) + (nights * children * childRate) + (nights * infants * infantRate)) * 1.14 serviceFee`.
+
+**3. Capacity Enforcement:**
+The UI now proactively prevents "Over-Booking" by enforcing the property's `maxGuests` limit within the Guest Picker component itself.
+
+### Chapter 19: Interactive Host Context & Renaming
+In Phase 39, we refined the **Host Dashboard** to transition from a static reporting tool to an interactive management suite.
+
+*   **Renaming for Professionalism:** We replaced the generic "Traveler" heading with **"Guest Identity"**, aligning with professional hospitality terminology.
+*   **Clickable Contextual Links:** 
+    *   **The Identity Link:** Clicking a Guest's name now initiates a deep-link to the **Inbox**, allowing hosts to contact travelers instantly regarding their reservation.
+    *   **The Property Link:** Clicking the property title takes the host directly to the **Listing Detail** view for quick availability checks.
+*   **Metadata Integration:** We injected the Guest Composition (e.g., "👤 2 guests · 1 infant") directly into the table rows, providing the host with instant situational awareness without needing to open sub-menus.
 
 ---
 

@@ -75,6 +75,16 @@ const bookingSchema = new mongoose.Schema({
   },
   
   /**
+   * 👥 GUEST BREAKDOWN (Phase 38)
+   * Tracks the composition of the traveling party.
+   */
+  guests: {
+    adults: { type: Number, default: 1, min: 1 },
+    children: { type: Number, default: 0, min: 0 },
+    infants: { type: Number, default: 0, min: 0 }
+  },
+
+  /**
    * 🚥 STATUS LIFE-CYCLE
    * pending: Initial request stage (Pre-Payment).
    * confirmed: Payment successful / Handshake complete.

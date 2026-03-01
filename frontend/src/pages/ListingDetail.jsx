@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize, Camera, Utensils, ChevronDown, Grid, Loader2,
-  Wifi, Waves, Car, Tv, Wind, Dumbbell, Shield, Coffee
+  Wifi, Waves, Car, Tv, Wind, Dumbbell, Shield, Coffee, Users, Minus, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, isValid } from 'date-fns'; 
@@ -73,7 +73,9 @@ const ListingDetail = ({ user, onChatOpened }) => {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [dateRange, setDateRange] = useState([null, null]); 
+  const [guests, setGuests] = useState({ adults: 1, children: 0, infants: 0 });
   const [pricing, setPricing] = useState({ nights: 0, total: 0 });
+  const [showGuestPicker, setShowGuestPicker] = useState(false);
 
   // --- DERIVE IMAGES EARLY (Phase 31 Correction) ---
   // We must define this before the navigation functions and effects 
@@ -224,19 +226,83 @@ const ListingDetail = ({ user, onChatOpened }) => {
   useEffect(() => { if (id) loadPageData(); }, [id, user]);
 
   /**
-   * DYNAMIC PRICING ENGINE
-   * Logic: Calculates the total price in real-time as the user selects dates.
-   * Includes a 14% simulated "Service Fee" for realism.
+   * DYNAMIC PRICING ENGINE (Phase 38)
+   * Logic: Calculates the total price in real-time. 
+   * Formula: ((nights * rate) + (nights * children * childRate) + (nights * infants * infantRate)) * 1.14 fee.
    */
   useEffect(() => {
     if (dateRange[0] && dateRange[1] && listing) {
       const diff = Math.ceil(Math.abs(dateRange[1] - dateRange[0]) / (1000 * 60 * 60 * 24));
       if (diff > 0) {
-        const total = (diff * listing.rate) * 1.14;
+        const baseTotal = diff * listing.rate;
+        const childrenTotal = diff * guests.children * (listing.childRate || 0);
+        const infantsTotal = diff * guests.infants * (listing.infantRate || 0);
+        
+        const subtotal = baseTotal + childrenTotal + infantsTotal;
+        const total = subtotal * 1.14;
+        
         setPricing({ nights: diff, total: Math.round(total) });
       }
     }
-  }, [dateRange, listing]);
+  }, [dateRange, listing, guests]);
+
+  const totalGuests = guests.adults + guests.children;
+
+  const updateGuests = (type, delta) => {
+    setGuests(prev => {
+      const newVal = Math.max(type === 'adults' ? 1 : 0, prev[type] + delta);
+      if (type !== 'infants' && (prev.adults + prev.children + delta) > listing.maxGuests && delta > 0) {
+        toast.error(`Maximum ${listing.maxGuests} guests allowed.`);
+        return prev;
+      }
+      return { ...prev, [type]: newVal };
+    });
+  };
+
+  const GuestPicker = () => (
+    <div style={guestPickerContainer}>
+      <div style={guestPickerHeader} onClick={() => setShowGuestPicker(!showGuestPicker)}>
+        <div>
+          <div style={guestLabel}>GUESTS</div>
+          <div style={guestValue}>{totalGuests} guest{totalGuests > 1 ? 's' : ''}{guests.infants > 0 ? `, ${guests.infants} infant${guests.infants > 1 ? 's' : ''}` : ''}</div>
+        </div>
+        <ChevronDown size={20} style={{ transform: showGuestPicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+      </div>
+      
+      <AnimatePresence>
+        {showGuestPicker && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={guestDropdown}>
+            <div style={guestRow}>
+              <div><div style={rowTitle}>Adults</div><div style={rowSubtitle}>Age 13+</div></div>
+              <div style={counterGroup}>
+                <button onClick={() => updateGuests('adults', -1)} style={counterBtn} disabled={guests.adults <= 1}><Minus size={16} /></button>
+                <span style={counterVal}>{guests.adults}</span>
+                <button onClick={() => updateGuests('adults', 1)} style={counterBtn}><Plus size={16} /></button>
+              </div>
+            </div>
+            <div style={guestRow}>
+              <div><div style={rowTitle}>Children</div><div style={rowSubtitle}>Ages 2–12</div></div>
+              <div style={counterGroup}>
+                <button onClick={() => updateGuests('children', -1)} style={counterBtn} disabled={guests.children <= 0}><Minus size={16} /></button>
+                <span style={counterVal}>{guests.children}</span>
+                <button onClick={() => updateGuests('children', 1)} style={counterBtn}><Plus size={16} /></button>
+              </div>
+            </div>
+            <div style={guestRow}>
+              <div><div style={rowTitle}>Infants</div><div style={rowSubtitle}>Under 2</div></div>
+              <div style={counterGroup}>
+                <button onClick={() => updateGuests('infants', -1)} style={counterBtn} disabled={guests.infants <= 0}><Minus size={16} /></button>
+                <span style={counterVal}>{guests.infants}</span>
+                <button onClick={() => updateGuests('infants', 1)} style={counterBtn}><Plus size={16} /></button>
+              </div>
+            </div>
+            <p style={infantNote}>This place has a maximum of {listing.maxGuests} guests, not including infants.</p>
+            <button onClick={() => setShowGuestPicker(false)} style={closePickerBtn}>Close</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 
   if (loading) return <DetailSkeleton />;
   if (error || !listing) return <div style={centerStyle}><h2>Property Unavailable</h2><Link to="/" style={{ color: theme.colors.brand }}>Return Home</Link></div>;
@@ -319,6 +385,13 @@ const ListingDetail = ({ user, onChatOpened }) => {
               </div>
 
               <div style={dividerSection}>
+                <h3 style={sectionLabel}>Select guests</h3>
+                <div style={{ marginTop: '1.5rem', maxWidth: '400px' }}>
+                  <GuestPicker />
+                </div>
+              </div>
+
+              <div style={dividerSection}>
                 <h3 style={sectionLabel}>Select dates</h3>
                 <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: isMobile ? 'center' : 'flex-start' }}>
                   <Calendar selectRange={true} onChange={setDateRange} value={dateRange} minDate={new Date()} />
@@ -351,6 +424,11 @@ const ListingDetail = ({ user, onChatOpened }) => {
             <div style={{ flex: 1 }}>
               <div style={sidebarCard}>
                 <div style={sidebarPrice}>${listing.rate} <span style={{ fontSize: '1rem', fontWeight: 'normal' }}>night</span></div>
+                
+                <div style={{ margin: '1.5rem 0' }}>
+                  <GuestPicker />
+                </div>
+
                 {pricing.nights > 0 && (
                   <div style={{ marginBottom: '1.5rem' }}>
                      <div style={priceRow}><span>${listing.rate} x {pricing.nights} nights</span><span>${listing.rate * pricing.nights}</span></div>
@@ -374,7 +452,8 @@ const ListingDetail = ({ user, onChatOpened }) => {
                           checkIn: dateRange[0],
                           checkOut: dateRange[1],
                           nights: pricing.nights,
-                          total: pricing.total
+                          total: pricing.total,
+                          guests: guests
                         } 
                       } 
                     });
@@ -413,7 +492,8 @@ const ListingDetail = ({ user, onChatOpened }) => {
                     checkIn: dateRange[0],
                     checkOut: dateRange[1],
                     nights: pricing.nights,
-                    total: pricing.total
+                    total: pricing.total,
+                    guests: guests
                   } 
                 } 
               });
@@ -457,6 +537,22 @@ const descText = { color: theme.colors.charcoal, fontSize: '1.1rem', lineHeight:
 const sectionLabel = { fontSize: '1.3rem', fontWeight: theme.typography.weights.bold };
 const amenityGrid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1.5rem' };
 const amenityItem = { display: 'flex', alignItems: 'center', gap: '1rem', color: theme.colors.charcoal, fontSize: '1.05rem' };
+
+// --- GUEST PICKER STYLES ---
+const guestPickerContainer = { position: 'relative', border: `1px solid ${theme.colors.border}`, borderRadius: '8px', backgroundColor: '#fff' };
+const guestPickerHeader = { padding: '0.8rem 1.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' };
+const guestLabel = { fontSize: '0.65rem', fontWeight: '900', color: theme.colors.charcoal, marginBottom: '0.2rem' };
+const guestValue = { fontSize: '0.9rem', color: theme.colors.slate };
+const guestDropdown = { position: 'absolute', top: '110%', left: 0, right: 0, backgroundColor: '#fff', border: `1px solid ${theme.colors.divider}`, borderRadius: '12px', padding: '1.5rem', boxShadow: theme.shadows.lg, zIndex: 100 };
+const guestRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' };
+const rowTitle = { fontWeight: 'bold', fontSize: '1rem' };
+const rowSubtitle = { fontSize: '0.85rem', color: theme.colors.slate };
+const counterGroup = { display: 'flex', alignItems: 'center', gap: '1rem' };
+const counterBtn = { width: '32px', height: '32px', borderRadius: '50%', border: `1px solid ${theme.colors.divider}`, backgroundColor: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const counterVal = { fontSize: '1rem', minWidth: '15px', textAlign: 'center' };
+const infantNote = { fontSize: '0.75rem', color: theme.colors.slate, lineHeight: '1.4', margin: '1rem 0' };
+const closePickerBtn = { width: '100%', padding: '0.6rem', backgroundColor: theme.colors.charcoal, color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' };
+
 const reviewHeader = (isMobile) => ({ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '4rem', alignItems: 'flex-start', marginBottom: '3rem' });
 const largeRating = { fontSize: '2.5rem', margin: 0, fontWeight: theme.typography.weights.extraBold };
 const reviewsCountText = { color: theme.colors.slate, fontWeight: theme.typography.weights.semibold };

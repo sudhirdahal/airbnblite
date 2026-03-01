@@ -117,6 +117,7 @@ const MockPayment = () => {
         checkIn: bookingDetails.checkIn,
         checkOut: bookingDetails.checkOut, 
         totalPrice: bookingDetails.total,
+        guests: bookingDetails.guests, // Sending the full breakdown (Phase 38)
         paymentDetails: paymentData // Sending the full manifest for backend verification
       });
       
@@ -257,9 +258,16 @@ const MockPayment = () => {
             </div>
           </div>
           <h3 style={sectionTitle}>Price details</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={priceRow}><span>Guests</span><span>{bookingDetails.guests.adults} Adults{bookingDetails.guests.children > 0 ? `, ${bookingDetails.guests.children} Children` : ''}{bookingDetails.guests.infants > 0 ? `, ${bookingDetails.guests.infants} Infants` : ''}</span></div>
             <div style={priceRow}><span>${listing.rate} x {bookingDetails.nights} nights</span><span>${listing.rate * bookingDetails.nights}</span></div>
-            <div style={priceRow}><span>AirnbLite service fee (14%)</span><span>${Math.round(listing.rate * bookingDetails.nights * 0.14)}</span></div>
+            {bookingDetails.guests.children > 0 && listing.childRate > 0 && (
+              <div style={priceRow}><span>Children surcharge</span><span>${bookingDetails.guests.children * listing.childRate * bookingDetails.nights}</span></div>
+            )}
+            {bookingDetails.guests.infants > 0 && listing.infantRate > 0 && (
+              <div style={priceRow}><span>Infant surcharge</span><span>${bookingDetails.guests.infants * listing.infantRate * bookingDetails.nights}</span></div>
+            )}
+            <div style={priceRow}><span>AirnbLite service fee (14%)</span><span>${Math.round((bookingDetails.total / 1.14) * 0.14)}</span></div>
             <div style={totalRow}><span>Total (USD)</span><span>${bookingDetails.total}</span></div>
           </div>
           <div style={{ marginTop: '2rem', padding: '1.2rem', backgroundColor: '#f9fafb', borderRadius: '12px', display: 'flex', gap: '1rem' }}>
