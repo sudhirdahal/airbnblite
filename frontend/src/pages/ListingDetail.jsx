@@ -121,6 +121,26 @@ const ListingDetail = ({ user, onChatOpened }) => {
    * ENTIRE page crashed, showing a blank screen for a perfectly valid property!
    * ============================================================================ */
 
+  const handleNextImage = () => {
+    setLightboxIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const handlePrevImage = () => {
+    setLightboxIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  // --- KEYBOARD NAVIGATION (Phase 31) ---
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isLightboxOpen) return;
+      if (e.key === 'ArrowRight') handleNextImage();
+      if (e.key === 'ArrowLeft') handlePrevImage();
+      if (e.key === 'Escape') setIsLightboxOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, images.length]);
+
   /**
    * THE NUCLEAR STABILITY PATTERN (Phase 26)
    * Logic: We decouple the fetches. The Listing is "Critical." If it fails,
@@ -187,13 +207,30 @@ const ListingDetail = ({ user, onChatOpened }) => {
   return (
     <div style={{ minHeight: '100vh', width: '100%', backgroundColor: theme.colors.white }}>
       
-      {/* 🖼️ HIGH-FIDELITY LIGHTBOX (Phase 13) */}
+      {/* 🖼️ HIGH-FIDELITY LIGHTBOX (Phase 13+) */}
       <AnimatePresence>
         {isLightboxOpen && (
-          <div style={lightboxOverlayStyle}>
-            <button onClick={() => setIsLightboxOpen(false)} style={closeBtnStyle}><X size={32} /></button>
-            <div style={lightboxContent}><img src={images[lightboxIndex]} style={lightboxImg} /></div>
-          </div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={lightboxOverlayStyle}>
+            <button onClick={() => setIsLightboxOpen(false)} style={closeOverlayBtnStyle} title="Close Esc"><X size={32} /></button>
+            
+            {images.length > 1 && (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); handlePrevImage(); }} style={{ ...navBtnStyle, left: '20px' }} title="Previous"><ChevronLeft size={48} /></button>
+                <button onClick={(e) => { e.stopPropagation(); handleNextImage(); }} style={{ ...navBtnStyle, right: '20px' }} title="Next"><ChevronRight size={48} /></button>
+                <div style={lightboxIndicator}>{lightboxIndex + 1} / {images.length}</div>
+              </>
+            )}
+
+            <div style={lightboxContent}>
+              <motion.img 
+                key={lightboxIndex}
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                src={images[lightboxIndex]} 
+                style={lightboxImg} 
+              />
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -335,9 +372,11 @@ const sidebarPrice = { fontSize: '1.6rem', fontWeight: theme.typography.weights.
 const priceRow = { display: 'flex', justifyContent: 'space-between', fontSize: '1rem', marginBottom: '0.8rem', color: theme.colors.charcoal };
 const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: theme.typography.weights.bold, borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '1rem', color: theme.colors.charcoal, fontSize: '1.2rem' };
 const reserveBtn = { width: '100%', marginTop: '2rem', padding: '1.1rem', backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.md, fontWeight: theme.typography.weights.extraBold, fontSize: '1.1rem', cursor: 'pointer', boxShadow: `0 4px 15px rgba(255, 56, 92, 0.3)` };
-const lightboxOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const closeBtnStyle = { position: 'absolute', top: '40px', right: '40px', background: 'none', border: 'none', color: theme.colors.white, cursor: 'pointer' };
-const lightboxContent = { textAlign: 'center', maxWidth: '90vw' };
+const lightboxOverlayStyle = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' };
+const closeOverlayBtnStyle = { position: 'absolute', top: '30px', right: '30px', background: 'rgba(255,255,255,0.1)', border: 'none', color: theme.colors.white, cursor: 'pointer', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s', zIndex: 10001 };
+const navBtnStyle = { position: 'absolute', top: '50%', transform: 'translateY(-50%)', background: 'rgba(255,255,255,0.1)', border: 'none', color: theme.colors.white, cursor: 'pointer', padding: '15px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', zIndex: 10001 };
+const lightboxIndicator = { position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)', color: theme.colors.white, fontSize: '1rem', fontWeight: 'bold', letterSpacing: '0.1em', background: 'rgba(0,0,0,0.5)', padding: '0.5rem 1.2rem', borderRadius: '20px', zIndex: 10001 };
+const lightboxContent = { textAlign: 'center', maxWidth: '90vw', position: 'relative' };
 const lightboxImg = { maxHeight: '80vh', maxWidth: '100%', borderRadius: theme.radius.md, boxShadow: '0 20px 60px rgba(0,0,0,0.5)' };
 const breakdownContainerStyle = { flex: 1, display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' };
 const breakdownRowStyle = { display: 'flex', alignItems: 'center', gap: '1.2rem' };
