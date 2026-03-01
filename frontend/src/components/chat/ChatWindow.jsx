@@ -19,23 +19,27 @@ import API from '../../services/api';
  */
 
 /* ============================================================================
- * 👻 HISTORICAL GHOST: PHASE 39 (The Property-Bound Leak)
+ * 👻 HISTORICAL GHOST: PHASE 40 (The Triangular Isolation)
  * ============================================================================
- * socket.emit('join room', listingId);
+ * socket.emit('join room', { listingId, guestId });
  * 
- * THE FLAW: Threads were only isolated by Listing ID. If Guest A and Guest B
- * both messaged the Host, they could see each other's messages because they
- * were in the same socket room. Major privacy breach!
+ * THE FLAW: Hosts could only see the thread for the "Current" or "Last" Guest.
+ * If multiple guests messaged about the same property, there was no way 
+ * for the host to switch between them from the property page.
  * 
- * THE FIX: 'Triangular Isolation' using a composite key: listingId-guestId.
+ * THE FIX: Omni-Channel Multiplexing. If a host opens the window without a 
+ * specific guestId, they are presented with a "Thread Selector" list.
  * ============================================================================ */
 
-const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onChatOpened }) => {
+const ChatWindow = ({ listingId, guestId: initialGuestId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   
   // Real-Time Interaction States
+  const [activeGuest, setActiveGuest] = useState(null);
+  const [guestList, setGuestList] = useState([]);
+  const [loadingThreads, setLoadingThreads] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [typingUser, setTypingUser] = useState(null); 
   
@@ -54,6 +58,34 @@ const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onC
    */
   useEffect(() => { if (history.length > 0) setMessages(history); }, [history]);
 
+  useEffect(() => {
+    if (initialGuestId) {
+      setActiveGuest({ _id: initialGuestId });
+    }
+  }, [initialGuestId]);
+
+  /**
+   * HOST MULTIPLEXING ENGINE (Phase 42)
+   * Logic: If I am the host and I open the window, find everyone I've talked to.
+   */
+  const fetchParticipants = async () => {
+    if (!isHost || !isOpen) return;
+    setLoadingThreads(true);
+    try {
+      const res = await API.get(`/auth/inbox`);
+      // Filter inbox threads to only show participants for THIS property
+      const participants = res.data
+        .filter(t => t.listing._id === listingId)
+        .map(t => t.guest);
+      setGuestList(participants);
+    } catch (err) { console.error("Thread Discovery Failure"); }
+    finally { setLoadingThreads(false); }
+  };
+
+  useEffect(() => {
+    if (isOpen && isHost && !activeGuest) fetchParticipants();
+  }, [isOpen, isHost, activeGuest]);
+
   /**
    * INTERACTION SYNC
    * Logic: When the user opens the window, we tell the backend to mark 
@@ -61,12 +93,16 @@ const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onC
    */
   useEffect(() => {
     isOpenRef.current = isOpen;
-    if (isOpen && listingId && guestId) {
+    const gid = activeGuest?._id;
+    if (isOpen && listingId && gid) {
       setUnreadCount(0);
-      API.put(`/auth/chat-read/${listingId}/${guestId}`).then(() => onChatOpened && onChatOpened()).catch(() => {});
+      API.put(`/auth/chat-read/${listingId}/${gid}`).then(() => onChatOpened && onChatOpened()).catch(() => {});
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      
+      // Fetch history for this specific guest if we just switched
+      API.get(`/auth/chat-history/${listingId}/${gid}`).then(res => setMessages(res.data)).catch(() => {});
     }
-  }, [isOpen, listingId, guestId, onChatOpened]);
+  }, [isOpen, listingId, activeGuest, onChatOpened]);
 
   const getUserId = (user) => user?._id || user?.id;
 
@@ -74,14 +110,15 @@ const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onC
    * ⚡ REAL-TIME ENGINE (Socket.IO Handshake)
    */
   useEffect(() => {
-    if (!currentUser || !listingId || !guestId) return; 
+    const gid = activeGuest?._id;
+    if (!currentUser || !listingId || !gid) return; 
     
     // Join isolated triangular room
-    socket.emit('join room', { listingId, guestId });
+    socket.emit('join room', { listingId, guestId: gid });
 
     const handleNewMessage = (message) => {
       // STRICT FILTERING: Must match both property AND the specific guest thread
-      if (message.listingId === listingId && message.guestId === guestId) {
+      if (message.listingId === listingId && message.guestId === gid) {
         setMessages(prev => [...prev, message]);
         setTypingUser(null);
         
@@ -93,13 +130,13 @@ const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onC
     };
 
     const handleTyping = (data) => {
-      if (data.listingId === listingId && data.guestId === guestId && data.userId !== getUserId(currentUser)) {
+      if (data.listingId === listingId && data.guestId === gid && data.userId !== getUserId(currentUser)) {
         setTypingUser(isHost ? 'Guest' : 'Host');
       }
     };
     
     const handleStopTyping = (data) => {
-      if (data.listingId === listingId && data.guestId === guestId) setTypingUser(null);
+      if (data.listingId === listingId && data.guestId === gid) setTypingUser(null);
     };
 
     socket.on('chat message', handleNewMessage);
@@ -111,7 +148,7 @@ const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onC
       socket.off('typing', handleTyping);
       socket.off('stop_typing', handleStopTyping);
     };
-  }, [listingId, guestId, currentUser, isHost]);
+  }, [listingId, activeGuest, currentUser, isHost]);
 
   // Auto-scroll logic: Keep the latest message in view
   useEffect(() => { if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
@@ -122,28 +159,31 @@ const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onC
    * Debounce Pattern: We emit 'stop_typing' after 3 seconds of inactivity.
    */
   const handleInputChange = (e) => {
+    const gid = activeGuest?._id;
+    if (!gid) return;
     setNewMessage(e.target.value);
-    socket.emit('typing', { listingId, guestId, userId: getUserId(currentUser) });
+    socket.emit('typing', { listingId, guestId: gid, userId: getUserId(currentUser) });
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('stop_typing', { listingId, guestId });
+      socket.emit('stop_typing', { listingId, guestId: gid });
     }, 3000);
   };
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (newMessage.trim() === '') return;
+    const gid = activeGuest?._id;
+    if (newMessage.trim() === '' || !gid) return;
     
     // Push event to server
     socket.emit('chat message', { 
       senderId: getUserId(currentUser), 
       listingId: listingId, 
-      guestId: guestId, // Critical for isolation
+      guestId: gid, // Critical for isolation
       content: newMessage 
     });
     
-    socket.emit('stop_typing', { listingId, guestId });
+    socket.emit('stop_typing', { listingId, guestId: gid });
     setNewMessage('');
   };
 
@@ -166,47 +206,70 @@ const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onC
         <div style={headerStyle(themeColor)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {isHost ? <ShieldCheck size={18} /> : <MessageCircle size={18} />}
-            <span style={{ fontWeight: 'bold' }}>{isHost ? 'Host Controls' : 'Message Host'}</span>
+            <span style={{ fontWeight: 'bold' }}>{isHost ? (activeGuest ? `Chatting with ${activeGuest.name}` : 'Select a Guest') : 'Message Host'}</span>
           </div>
-          <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}><Minus size={20} /></button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {isHost && activeGuest && <button onClick={() => { setActiveGuest(null); setMessages([]); }} style={headerActionBtn} title="Back to Threads"><Users size={16} /></button>}
+            <button onClick={() => setIsOpen(false)} style={headerActionBtn}><Minus size={20} /></button>
+          </div>
         </div>
 
-        <div style={messageListStyle}>
-          {messages.map((msg) => {
-            const isMe = getUserId(msg.sender) === getUserId(currentUser);
-            return (
-              <div key={msg._id} style={{ marginBottom: '1.2rem', alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                {!isMe && <div style={senderNameStyle}>{msg.sender?.name || 'User'}</div>}
-                <div style={bubbleStyle(isMe, themeColor)}>{msg.content}</div>
-                {msg.timestamp && (
-                  <div style={timeStyle(isMe)}>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</div>
-                )}
-              </div>
-            );
-          })}
-          
-          <AnimatePresence>
-            {typingUser && (
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} style={typingIndicatorStyle}>
-                <div className="pulse-dot" style={dotPulseStyle(themeColor)} />
-                <span style={{ fontWeight: '600' }}>{typingUser}</span> is typing...
-              </motion.div>
+        {isHost && !activeGuest ? (
+          <div style={messageListStyle}>
+            <div style={{ padding: '1rem', textAlign: 'center', color: theme.colors.slate, fontSize: '0.9rem' }}>Recent conversations for this property:</div>
+            {loadingThreads ? (
+              <div style={{ padding: '2rem', textAlign: 'center' }}><Loader2 className="spin" /></div>
+            ) : guestList.length === 0 ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: theme.colors.slate }}>No active threads found.</div>
+            ) : (
+              guestList.map(g => (
+                <div key={g?._id} onClick={() => setActiveGuest(g)} style={threadSelectorItem}>
+                  <div style={avatarCircleSmall}>{g?.name?.charAt(0) || 'U'}</div>
+                  <div style={{ fontWeight: 'bold' }}>{g?.name || 'Traveler'}</div>
+                </div>
+              ))
             )}
-          </AnimatePresence>
-          <div ref={messagesEndRef} />
-        </div>
+          </div>
+        ) : (
+          <>
+            <div style={messageListStyle}>
+              {messages.map((msg) => {
+                const isMe = getUserId(msg.sender) === getUserId(currentUser);
+                return (
+                  <div key={msg._id} style={{ marginBottom: '1.2rem', alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                    {!isMe && <div style={senderNameStyle}>{msg.sender?.name || 'User'}</div>}
+                    <div style={bubbleStyle(isMe, themeColor)}>{msg.content}</div>
+                    {msg.timestamp && (
+                      <div style={timeStyle(isMe)}>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              <AnimatePresence>
+                {typingUser && (
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} style={typingIndicatorStyle}>
+                    <div className="pulse-dot" style={dotPulseStyle(themeColor)} />
+                    <span style={{ fontWeight: '600' }}>{typingUser}</span> is typing...
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <div ref={messagesEndRef} />
+            </div>
 
-        <form onSubmit={handleSendMessage} style={formStyle}>
-          <input type="text" value={newMessage} onChange={handleInputChange} placeholder="Write a message..." style={inputStyle} />
-          <motion.button 
-            type="submit" 
-            whileHover={{ scale: 1.05, backgroundColor: isHost ? '#310e5d' : '#e31c5f' }}
-            whileTap={{ scale: 0.95 }}
-            style={sendBtnStyle(themeColor)}
-          >
-            <SendHorizontal size={32} color="white" strokeWidth={2.5} style={{ transform: 'translateX(2px)' }} />
-          </motion.button>
-        </form>
+            <form onSubmit={handleSendMessage} style={formStyle}>
+              <input type="text" value={newMessage} onChange={handleInputChange} placeholder="Write a message..." style={inputStyle} />
+              <motion.button 
+                type="submit" 
+                whileHover={{ scale: 1.05, backgroundColor: isHost ? '#310e5d' : '#e31c5f' }}
+                whileTap={{ scale: 0.95 }}
+                style={sendBtnStyle(themeColor)}
+              >
+                <SendHorizontal size={32} color="white" strokeWidth={2.5} style={{ transform: 'translateX(2px)' }} />
+              </motion.button>
+            </form>
+          </>
+        )}
       </div>
     </>
   );
@@ -226,5 +289,8 @@ const sendBtnStyle = (color) => ({ backgroundColor: color, border: 'none', borde
 const unreadBadgeStyle = { position: 'absolute', top: '-5px', right: '-5px', backgroundColor: '#222', color: 'white', borderRadius: '50%', width: '24px', height: '24px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' };
 const typingIndicatorStyle = { fontSize: '0.8rem', color: '#717171', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.5rem' };
 const dotPulseStyle = (color) => ({ width: '8px', height: '8px', backgroundColor: color, borderRadius: '50%' });
+const headerActionBtn = { background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const threadSelectorItem = { display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' };
+const avatarCircleSmall = { width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold', color: theme.colors.charcoal };
 
 export default ChatWindow;

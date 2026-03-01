@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  PlusCircle, Trash, Edit, Calendar, X, TrendingUp, DollarSign, 
+  PlusCircle, Trash, Edit, Calendar as CalendarIcon, X, TrendingUp, DollarSign, 
   LayoutDashboard, XCircle, Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, MapPin, Loader2, Upload, Users, Wrench
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bar } from 'react-chartjs-2'; 
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import API from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
 import { theme } from '../theme';
@@ -54,6 +56,17 @@ const amenityChipStyle = (active) => ({ display: 'flex', alignItems: 'center', g
 const removeImgBtnStyle = { position: 'absolute', top: '-8px', right: '-8px', backgroundColor: theme.colors.brand, color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: theme.shadows.sm };
 const primaryButtonStyle = { backgroundColor: theme.colors.charcoal, color: '#fff', border: 'none', padding: '1rem 2rem', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' };
 
+// --- LUXURY AVAILABILITY STYLES ---
+const availabilityCardStyle = { ...listingCardStyle, flexDirection: 'column', alignItems: 'stretch', gap: '0' };
+const mainAddBtnSmall = { padding: '0.6rem 1.2rem', backgroundColor: theme.colors.charcoal, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '800', cursor: 'pointer' };
+const cancelBtnSmall = { padding: '0.6rem 1.2rem', backgroundColor: '#fff', color: theme.colors.charcoal, border: `1px solid ${theme.colors.divider}`, borderRadius: '8px', fontWeight: '800', cursor: 'pointer' };
+const calendarDock = { marginTop: '2rem', paddingTop: '2rem', borderTop: `1px solid ${theme.colors.divider}`, display: 'flex', gap: '4rem', alignItems: 'flex-start' };
+const dockTitle = { margin: 0, fontSize: '1.1rem', fontWeight: '900' };
+const dockSubtitle = { fontSize: '0.85rem', color: theme.colors.slate, marginTop: '0.5rem', lineHeight: '1.5', maxWidth: '300px' };
+const rangePreview = { marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: '#f9fafb', padding: '1.2rem', borderRadius: '12px', width: 'fit-content' };
+const previewBox = { display: 'flex', flexDirection: 'column', gap: '0.3rem' };
+const applyBtnStyle = { ...primaryButtonStyle, marginTop: '2rem', width: '100%', maxWidth: '300px' };
+
 // --- SUB-COMPONENTS ---
 const StatCard = ({ icon: Icon, label, value, color }) => (
   <div style={statCardStyle}>
@@ -68,13 +81,15 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
 );
 
 const AvailabilityCard = ({ listing, onUpdate }) => {
-  const [range, setRange] = useState({ start: '', end: '' });
+  const [range, setRange] = useState([null, null]);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const handleAdd = () => {
-    if (!range.start || !range.end) return toast.error("Dates required");
-    const newDates = [...(listing.unavailableDates || []), { start: range.start, end: range.end }];
+    if (!range[0] || !range[1]) return toast.error("Selection incomplete");
+    const newDates = [...(listing.unavailableDates || []), { start: range[0], end: range[1] }];
     onUpdate(listing._id, newDates);
-    setRange({ start: '', end: '' });
+    setRange([null, null]);
+    setShowCalendar(false);
   };
 
   const handleRemove = (index) => {
@@ -83,34 +98,55 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
   };
 
   return (
-    <div style={listingCardStyle}>
-      <div style={imageWrapper}><img src={listing.images[0]} style={refinedThumbStyle} alt="listing" /></div>
-      <div style={{ flex: 1 }}>
-        <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800' }}>{listing.title}</h4>
-        <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          {(listing.unavailableDates || []).length === 0 ? (
-            <span style={{ fontSize: '0.85rem', color: theme.colors.slate }}>No maintenance periods defined.</span>
-          ) : (
-            listing.unavailableDates.map((d, i) => (
-              <div key={i} style={refinedTagStyleRed}>
-                <Wrench size={12} /> {new Date(d.start).toLocaleDateString()} - {new Date(d.end).toLocaleDateString()}
-                <button onClick={() => handleRemove(i)} style={removeTagBtnStyle}><X size={10} /></button>
+    <div style={availabilityCardStyle}>
+      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+        <div style={imageWrapper}><img src={listing.images[0]} style={refinedThumbStyle} alt="listing" /></div>
+        <div style={{ flex: 1 }}>
+          <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '900' }}>{listing.title}</h4>
+          <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+            {(listing.unavailableDates || []).length === 0 ? (
+              <span style={{ fontSize: '0.85rem', color: theme.colors.slate }}>Operational 24/7. No scheduled downtime.</span>
+            ) : (
+              listing.unavailableDates.map((d, i) => (
+                <div key={i} style={refinedTagStyleRed}>
+                  <Wrench size={12} /> {new Date(d.start).toLocaleDateString()} - {new Date(d.end).toLocaleDateString()}
+                  <button onClick={() => handleRemove(i)} style={removeTagBtnStyle}><X size={10} /></button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+        <button 
+          onClick={() => setShowCalendar(!showCalendar)} 
+          style={showCalendar ? cancelBtnSmall : mainAddBtnSmall}
+        >
+          {showCalendar ? 'Cancel' : 'Block Dates'}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {showCalendar && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
+            <div style={calendarDock}>
+              <div style={{ flex: 1 }}>
+                <h5 style={dockTitle}>Schedule Maintenance</h5>
+                <p style={dockSubtitle}>Select the range of dates this property will be unavailable for discovery.</p>
+                {range[0] && range[1] && (
+                  <div style={rangePreview}>
+                    <div style={previewBox}><span>START</span><strong>{range[0].toLocaleDateString()}</strong></div>
+                    <ArrowRight size={20} color={theme.colors.slate} />
+                    <div style={previewBox}><span>END</span><strong>{range[1].toLocaleDateString()}</strong></div>
+                  </div>
+                )}
+                <button onClick={handleAdd} disabled={!range[0] || !range[1]} style={applyBtnStyle}>Commit Downtime</button>
               </div>
-            ))
-          )}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-end' }}>
-        <div>
-          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', display: 'block', marginBottom: '0.3rem' }}>START</label>
-          <input type="date" style={{ ...inputStyle, padding: '0.6rem' }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
-        </div>
-        <div>
-          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', display: 'block', marginBottom: '0.3rem' }}>END</label>
-          <input type="date" style={{ ...inputStyle, padding: '0.6rem' }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
-        </div>
-        <button onClick={handleAdd} style={{ ...pillActionButton(theme.colors.brand), width: '40px', height: '40px' }}><PlusCircle size={18} /></button>
-      </div>
+              <div className="luxury-calendar-wrapper">
+                <Calendar selectRange={true} onChange={setRange} value={range} minDate={new Date()} />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -128,6 +164,7 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
  * - Phase 11: Introduction of State Recovery (pre-filling the edit form).
  * - Phase 27: The Cinematic Overhaul. Transitioned to a "Live Card" grid, 
  *   Pill Navigation, and Hybrid S3/URL image uploads.
+ * - Phase 42: Omni-Channel Communication & Luxury Availability UI.
  */
 const AdminDashboard = ({ user, refreshListings }) => {
   const [activeTab, setActiveTab] = useState('listings');
@@ -380,7 +417,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
               <StatCard icon={DollarSign} label="Total Confirmed Revenue" value={`$${totalRevenue.toLocaleString()}`} color="#4f46e5" />
-              <StatCard icon={Calendar} label="Successful Stays" value={totalBookings} color={theme.colors.brand} />
+              <StatCard icon={CalendarIcon} label="Successful Stays" value={totalBookings} color={theme.colors.brand} />
             </div>
             <div style={chartBoxStyle}><h3>Earnings Overview</h3><div style={{ height: '400px' }}><Bar data={getChartData()} options={{ maintainAspectRatio: false }} /></div></div>
           </div>
