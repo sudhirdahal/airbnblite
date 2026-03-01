@@ -514,7 +514,13 @@ const ListingDetail = ({ user, onChatOpened }) => {
         <div style={mobileReserveBar}>
           <div>
             <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>${listing.rate} <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>night</span></div>
-            <div style={{ fontSize: '0.8rem', textDecoration: 'underline' }}>{new Date(dateRange[0] || Date.now()).toLocaleDateString()} – {new Date(dateRange[1] || Date.now()).toLocaleDateString()}</div>
+            <div style={{ fontSize: '0.8rem', textDecoration: 'underline' }}>
+              {dateRange[0] && dateRange[1] ? (
+                `${new Date(dateRange[0]).toLocaleDateString()} – ${new Date(dateRange[1]).toLocaleDateString()}`
+              ) : (
+                'Add dates'
+              )}
+            </div>
           </div>
           <button 
             onClick={() => {
