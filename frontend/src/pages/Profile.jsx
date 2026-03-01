@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
-import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
+import { theme } from '../theme';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * ============================================================================
@@ -14,7 +15,8 @@ import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
  * This ensures that identity badges, stat cards, and avatar frames are
  * visually consistent with the application's global SaaS identity.
  */
-const Profile = ({ user, setUser }) => {
+const Profile = () => {
+  const { user, setUser } = useAuth();
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [stats, setStats] = useState({ totalSpent: 0, upcoming: 0, completed: 0 });
   const [loading, setLoading] = useState(false);

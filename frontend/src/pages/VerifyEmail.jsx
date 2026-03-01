@@ -4,6 +4,7 @@ import { ShieldCheck, Loader2, XCircle, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * ============================================================================
@@ -13,7 +14,8 @@ import API from '../services/api';
  * Logic: Extracts the hex token from the URL, validates it against the 
  * User collection, and activates the account status to 'isVerified: true'.
  */
-const VerifyEmail = ({ setUser }) => {
+const VerifyEmail = () => {
+  const { setUser } = useAuth();
   const { token } = useParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState('verifying'); // 'loading' | 'success' | 'error'

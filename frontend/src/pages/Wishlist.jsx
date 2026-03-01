@@ -8,6 +8,7 @@ import ListingCard from '../components/listings/ListingCard';
 import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
 
 import SkeletonListing from '../components/listings/SkeletonListing';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * ============================================================================
@@ -19,7 +20,8 @@ import SkeletonListing from '../components/listings/SkeletonListing';
  * 
  * Update: Phase 30: Banned 'Synchronizing...' text in favor of Skeleton UI.
  */
-const Wishlist = ({ user }) => {
+const Wishlist = () => {
+  const { user } = useAuth();
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
 

@@ -7,6 +7,7 @@ import API from '../services/api';
 import socket from '../services/socket';
 import PageHeader from '../components/layout/PageHeader';
 import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
+import { useAuth } from '../context/AuthContext';
 
 /**
  * ============================================================================
@@ -16,7 +17,8 @@ import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
  * Ensures that message threads, status badges, and typography are 
  * visually synchronized across the platform.
  */
-const Inbox = ({ user, onThreadOpened }) => {
+const Inbox = ({ onThreadOpened }) => {
+  const { user } = useAuth();
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
