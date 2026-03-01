@@ -50,7 +50,7 @@ const ListingGrid = ({
    */
   if (loading) {
     return (
-      <div style={gridContainerStyle}>
+      <div style={gridContainerStyle(isMobile)}>
         {[...Array(12)].map((_, i) => (<SkeletonListing key={i} />))}
       </div>
     );
