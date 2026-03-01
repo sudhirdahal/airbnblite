@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   PlusCircle, Trash, Edit, Calendar, X, TrendingUp, DollarSign, 
-  LayoutDashboard, XCircle, Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, MapPin, Loader2, Upload, Users
+  LayoutDashboard, XCircle, Wifi, Utensils, Waves, Car, Tv, Dumbbell, Shield, Wind, Coffee, MapPin, Loader2, Upload, Users, Wrench
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,6 +28,8 @@ const refinedThumbStyle = { width: '100%', height: '100%', objectFit: 'cover' };
 const statusBadge = { position: 'absolute', top: '10px', left: '10px', backgroundColor: 'rgba(22, 163, 74, 0.9)', color: '#fff', fontSize: '0.65rem', fontWeight: '900', padding: '0.3rem 0.7rem', borderRadius: '6px', letterSpacing: '0.05em' };
 const listingLinkStyle = { display: 'flex', alignItems: 'center', gap: '3rem', flex: 1, textDecoration: 'none', color: 'inherit' };
 const refinedTagStyle = { fontSize: '0.7rem', fontWeight: '800', backgroundColor: '#f3f4f6', padding: '0.5rem 1rem', borderRadius: '8px', color: '#4b5563', textTransform: 'uppercase' };
+const refinedTagStyleRed = { ...refinedTagStyle, backgroundColor: '#fee2e2', color: theme.colors.brand, display: 'flex', alignItems: 'center', gap: '0.4rem' };
+const removeTagBtnStyle = { background: 'none', border: 'none', color: theme.colors.brand, cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px', borderRadius: '50%' };
 const listingMetricsStyle = { display: 'flex', alignItems: 'center', gap: '3rem' };
 const dividerVertical = { width: '1px', height: '50px', backgroundColor: '#eee' };
 const verticalDividerSmall = { width: '1px', height: '24px', backgroundColor: '#e5e7eb' };
@@ -99,8 +101,11 @@ const AdminDashboard = ({ user, refreshListings }) => {
     _id: null, title: '', location: '', description: '', fullDescription: '', 
     rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
     maxGuests: 2, bedrooms: 1, beds: 1, amenities: [],
-    childRate: null, infantRate: null
+    childRate: null, infantRate: null,
+    unavailableDates: []
   });
+
+  const [newMaintenanceRange, setNewMaintenanceRange] = useState({ start: '', end: '' });
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -160,7 +165,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
       lat: listing.coordinates?.lat || '', lng: listing.coordinates?.lng || '', 
       imageUrlInput: '', maxGuests: listing.maxGuests, bedrooms: listing.bedrooms, 
       beds: listing.beds, amenities: listing.amenities || [],
-      childRate: listing.childRate || null, infantRate: listing.infantRate || null
+      childRate: listing.childRate || null, infantRate: listing.infantRate || null,
+      unavailableDates: listing.unavailableDates || []
     });
     setShowForm(true); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -186,6 +192,22 @@ const AdminDashboard = ({ user, refreshListings }) => {
       toast.success('Asset synced successfully.', { id: uploadToast });
     } catch (err) { toast.error('Cloud Sync Failure', { id: uploadToast });
     } finally { setIsUploading(false); }
+  };
+
+  const addMaintenancePeriod = () => {
+    if (!newMaintenanceRange.start || !newMaintenanceRange.end) {
+      toast.error("Select both start and end dates.");
+      return;
+    }
+    if (new Date(newMaintenanceRange.start) >= new Date(newMaintenanceRange.end)) {
+      toast.error("End date must be after start date.");
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      unavailableDates: [...prev.unavailableDates, { start: newMaintenanceRange.start, end: newMaintenanceRange.end }]
+    }));
+    setNewMaintenanceRange({ start: '', end: '' });
   };
 
   /* ============================================================================
@@ -278,7 +300,8 @@ const AdminDashboard = ({ user, refreshListings }) => {
                   _id: null, title: '', location: '', description: '', fullDescription: '', 
                   rate: '', category: 'pools', images: [], lat: '', lng: '', imageUrlInput: '',
                   maxGuests: 2, bedrooms: 1, beds: 1, amenities: [],
-                  childRate: null, infantRate: null
+                  childRate: null, infantRate: null,
+                  unavailableDates: []
                 });
               }
               setShowForm(!showForm);
@@ -335,6 +358,29 @@ const AdminDashboard = ({ user, refreshListings }) => {
                         ))}
                       </div>
                     </div>
+                    <div style={inputGroup}>
+                      <label style={labelStyle}>Temporal Service Control (Maintenance)</label>
+                      <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'flex-end' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', color: theme.colors.slate }}>START</label>
+                          <input type="date" style={inputStyle} value={newMaintenanceRange.start} onChange={e => setNewMaintenanceRange({...newMaintenanceRange, start: e.target.value})} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.65rem', fontWeight: 'bold', color: theme.colors.slate }}>END</label>
+                          <input type="date" style={inputStyle} value={newMaintenanceRange.end} onChange={e => setNewMaintenanceRange({...newMaintenanceRange, end: e.target.value})} />
+                        </div>
+                        <button type="button" onClick={addMaintenancePeriod} style={{ ...iconCircleButton, backgroundColor: '#fee2e2', color: theme.colors.brand }} title="Add Maintenance Period"><Wrench size={20} /></button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                        {formData.unavailableDates.map((d, i) => (
+                          <div key={i} style={refinedTagStyleRed}>
+                            <Wrench size={12} /> {new Date(d.start).toLocaleDateString()} - {new Date(d.end).toLocaleDateString()}
+                            <button type="button" onClick={() => setFormData(prev => ({ ...prev, unavailableDates: prev.unavailableDates.filter((_, idx) => idx !== i) }))} style={removeTagBtnStyle}><X size={10} /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <div style={inputGroup}>
                       <label style={labelStyle}>Photos</label>
                       <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>

@@ -33,7 +33,9 @@ Over **27 distinct phases of engineering maturity**, we have documented every lo
     *   *The Guest Engine, Dynamic Surcharges, and Interactive Host Interactivity.*
 12. **[Volume XI: Conversational Isolation & Privacy Protection (Phase 40)](#volume-xi-conversational-isolation--privacy-protection-phase-40)**
     *   *Triangular Identification, Guest-Centric Threads, and Real-Time Isolation.*
-13. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
+13. **[Volume XII: Temporal Service Control & Maintenance Shield (Phase 41)](#volume-xii-temporal-service-control--maintenance-shield-phase-41)**
+    *   *Maintenance Blocking, Temporal Integrity, and Adaptive Calendar Grey-Outs.*
+14. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
     *   *Our definitive guide to Defensive Engineering and Crash-Proof UX.*
 
 ---
@@ -562,6 +564,36 @@ The `Inbox` aggregation engine was rewritten to group messages by this same comp
 *   **For Guests:** The history is strictly filtered to only show messages where they are the designated `guestId`.
 
 This architectural pivot transforms the chat from a public-facing log into a secure, private communication channel that meets professional privacy standards.
+
+---
+
+## 🏗️ Volume XII: Temporal Service Control & Maintenance Shield (Phase 41)
+
+### Chapter 21: The Maintenance Shield & Calendar Convergence
+A property is not always ready for discovery. Hosts often need to take a property "Out of Service" for maintenance, renovations, or personal use. In Phase 41, we implemented **Temporal Service Control**.
+
+**The Crisis: The All-Or-Nothing Delisting**
+Previously, the only way for a host to stop bookings was to delete the entire listing. This destroyed historical data, reviews, and SEO progress. Users needed a way to block specific timeframes while keeping the property's digital identity intact.
+
+**The Engineering Fix: The Maintenance Shield**
+We evolved the `Listing` model to include an `unavailableDates` collection—a temporal manifest of host-defined downtime.
+
+**1. Hierarchical Blocking Logic:**
+We upgraded the `bookingController.js` with a secondary defense layer. In addition to checking for conflicting *guest* reservations, the system now cross-references the **Maintenance Manifest**.
+```javascript
+// THE MAINTENANCE SHIELD
+const isMaintenanceOverlap = listing.unavailableDates?.some(period => {
+  return (newCheckIn < period.end && newCheckOut > period.start);
+});
+```
+If an overlap is detected, the transaction is rejected with a **"Property Out of Service"** error.
+
+**2. Calendar Convergence:**
+To maintain high-fidelity UX, we unified the data source for the frontend **React Calendar**. The `getTakenDates` endpoint now merges confirmed bookings with maintenance periods.
+*   **Result:** Guests proactively see these dates as "Greyed Out" and non-clickable, preventing friction before they even attempt to book.
+
+**3. The Host Maintenance Suite:**
+The **Admin Dashboard** was upgraded with a specialized management UI. Hosts can now visually define start and end dates for maintenance and manage these periods without touching the core listing configuration.
 
 ---
 

@@ -165,6 +165,18 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Conflict Detected: Dates already reserved.' });
     }
 
+    // --- 🛡️ THE MAINTENANCE SHIELD (Phase 41) ---
+    // Logic: Ensure requested dates don't overlap with host-enforced downtime.
+    const isMaintenanceOverlap = listing.unavailableDates?.some(period => {
+      const start = new Date(period.start);
+      const end = new Date(period.end);
+      return (newCheckIn < end && newCheckOut > start);
+    });
+
+    if (isMaintenanceOverlap) {
+      return res.status(400).json({ message: 'Property Out of Service: Selected dates are during a maintenance period.' });
+    }
+
     // --- 💾 THE TRANSACTION ---
     const user = await User.findById(req.user.id);
     const booking = new Booking({ 
@@ -216,11 +228,20 @@ exports.createBooking = async (req, res) => {
  */
 exports.getTakenDates = async (req, res) => {
   try {
+    const listing = await Listing.findById(req.params.listingId).select('unavailableDates');
     const bookings = await Booking.find({ 
       listingId: req.params.listingId, 
       status: 'confirmed' 
-    }).select('checkIn checkOut'); // Only send the exact data needed
-    res.json(bookings);
+    }).select('checkIn checkOut');
+
+    // CONVERGENCE (Phase 41): Merge actual bookings with host-defined downtime
+    const maintenanceDates = (listing?.unavailableDates || []).map(d => ({
+      checkIn: d.start,
+      checkOut: d.end,
+      isMaintenance: true 
+    }));
+
+    res.json([...bookings, ...maintenanceDates]);
   } catch (err) { res.status(500).send('Server Error'); }
 };
 

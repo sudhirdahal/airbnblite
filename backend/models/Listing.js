@@ -119,7 +119,17 @@ const listingSchema = new mongoose.Schema({
   rating: { type: Number, default: 4.5 },
   reviewsCount: { type: Number, default: 0 },
 
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+
+  /**
+   * 🛠️ TEMPORAL SERVICE CONTROL (Phase 41)
+   * Allows hosts to block out specific date ranges for maintenance or 
+   * personal use without deleting the listing.
+   */
+  unavailableDates: [{
+    start: { type: Date, required: true },
+    end: { type: Date, required: true }
+  }]
 });
 
 module.exports = mongoose.model('Listing', listingSchema);
