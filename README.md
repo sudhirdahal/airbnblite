@@ -25,7 +25,9 @@ Over **27 distinct phases of engineering maturity**, we have documented every lo
     *   *The Coordinate Handshake, Nested Payloads, and Detailed Error Recovery.*
 8.  **[Volume VII: The Checkout Handshake & Mobile Convergence (Phase 31-34)](#volume-vii-the-checkout-handshake--mobile-convergence-phase-31-34)**
     *   *Cinematic Navigation, State-Aware Handshaking, and the Responsive Reserve Bar.*
-9.  **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
+9.  **[Volume VIII: The Financial Integrity Engine (Phase 36)](#volume-viii-the-financial-integrity-engine-phase-36)**
+    *   *Internationalized Validation, Temporal Card Checks, and Identity Verification.*
+10. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
     *   *Our definitive guide to Defensive Engineering and Crash-Proof UX.*
 
 ---
@@ -443,6 +445,41 @@ toast.error('Please select your travel dates on the calendar first.', {
   style: { borderRadius: '12px', background: theme.colors.charcoal, color: '#fff' }
 });
 ```
+
+---
+
+## 🏗️ Volume VIII: The Financial Integrity Engine (Phase 36)
+
+### Chapter 16: Internationalization & Financial Sanity
+A professional SaaS must handle global commerce with high precision. In Phase 36, we transitioned our "Mock Payment" system from a simple card-input placeholder into a robust **Financial Integrity Engine**.
+
+**The Crisis: Garbage Data Accumulation**
+Our early prototype only required a card number. This led to "Garbage Data" in our transaction history—fake names, expired cards, and absurd addresses. This reduced the realism of our financial dashboard and created a "trust gap" in the user experience.
+
+**The Engineering Fix: The Multi-Layered Validation Guard**
+We implemented a **Defensive Server Shield** inside the `bookingController.js` that performs deep validation before a reservation is ever saved to the database.
+
+**1. Identity & Name Integrity:**
+The engine enforces a "First and Last Name" policy. It allows for single-letter middle names and periods (e.g., "John Q. Public"), but strictly rejects numbers, symbols, or names that are too short to be realistic.
+
+**2. Temporal Card Intelligence:**
+We moved beyond checking for digits. The system now validates:
+*   **Card Format:** Strictly 16 digits (with auto-formatting on the frontend).
+*   **Liveness:** Rejects cards that have already expired.
+*   **Absurdity Prevention:** Rejects expiration dates more than 10 years in the future.
+
+**3. Internationalized Address Engine:**
+The frontend was upgraded with an **Adaptive UI**. Selecting a country (e.g., Canada) dynamically updates the form labels (switching from "Zip" to "Postal Code") and provides contextual region dropdowns (Provinces vs States). 
+
+On the backend, we implemented **Country-Specific Regex Sanity Checks**:
+```javascript
+// Example: Canadian Postal Code Enforcement
+if (country === 'Canada' && !/^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i.test(postalCode)) {
+  return res.status(400).json({ message: 'Invalid Canadian Postal Code (A1A 1A1).' });
+}
+```
+
+This ensures that our persistence layer only stores "Quality Transactions," mimicking the behavior of production gateways like Stripe or Adyen.
 
 ---
 

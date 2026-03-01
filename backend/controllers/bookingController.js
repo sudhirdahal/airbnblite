@@ -54,10 +54,57 @@ const { createNotification } = require('./notificationController');
  * 4. The Handshake: Fire asynchronous emails and real-time socket alerts.
  */
 exports.createBooking = async (req, res) => {
-  const { listingId, checkIn, checkOut, totalPrice } = req.body;
+  const { listingId, checkIn, checkOut, totalPrice, paymentDetails } = req.body;
   const io = req.app.get('socketio'); // Access the global socket instance
 
   try {
+    // --- 🛡️ THE FINANCIAL INTEGRITY GUARD (Phase 36) ---
+    // Although this is a mock gateway, we enforce realistic data quality to 
+    // maintain the integrity of our transaction history and prevent "Garbage Data."
+    if (!paymentDetails) return res.status(400).json({ message: 'Payment Context Missing' });
+
+    const { cardName, cardNumber, expiry, cvv, address, city, region, postalCode, country } = paymentDetails;
+
+    // 1. Identity Validation (The Name Check)
+    const nameParts = cardName.trim().split(/\s+/);
+    if (nameParts.length < 2) return res.status(400).json({ message: 'Full name required (First and Last).' });
+    if (!/^[A-Za-z\s\.]+$/.test(cardName)) return res.status(400).json({ message: 'Name contains invalid characters.' });
+    if (nameParts[0].length < 2) return res.status(400).json({ message: 'First name is too short.' });
+    if (nameParts[nameParts.length - 1].length < 2) return res.status(400).json({ message: 'Last name is too short.' });
+
+    // 2. Card Integrity
+    const cleanCard = cardNumber.replace(/\s/g, '');
+    if (!/^\d{16}$/.test(cleanCard)) return res.status(400).json({ message: 'Invalid Card Number: 16 digits required.' });
+
+    // 3. Temporal Validity (The Expiry Check)
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) return res.status(400).json({ message: 'Invalid Expiry Format: MM/YY required.' });
+    const [expMonth, expYear] = expiry.split('/').map(Number);
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = Number(now.getFullYear().toString().slice(-2));
+    
+    if (expMonth < 1 || expMonth > 12) return res.status(400).json({ message: 'Invalid Month in expiry.' });
+    if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+      return res.status(400).json({ message: 'The provided card has expired.' });
+    }
+    if (expYear > currentYear + 10) return res.status(400).json({ message: 'Absurd Expiry: Max 10 years in the future.' });
+
+    // 4. Security Code Integrity
+    if (!/^\d{3,4}$/.test(cvv)) return res.status(400).json({ message: 'Invalid CVV.' });
+
+    // 5. International Sanity Check (The Address Shield)
+    if (address.length < 5) return res.status(400).json({ message: 'Street Address appears incomplete.' });
+    if (city.length < 2) return res.status(400).json({ message: 'City name is too short.' });
+    if (region.length < 2) return res.status(400).json({ message: 'State/Province is too short.' });
+
+    if (country === 'United States' && !/^\d{5}$/.test(postalCode)) {
+      return res.status(400).json({ message: 'Invalid US Zip Code (5 digits).' });
+    }
+    if (country === 'Canada' && !/^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i.test(postalCode.replace(/\s/g, ''))) {
+      return res.status(400).json({ message: 'Invalid Canadian Postal Code (A1A 1A1).' });
+    }
+    if (postalCode.length < 3) return res.status(400).json({ message: 'Postal Code is too short.' });
+
     // PRE-FLIGHT: Ensure we aren't booking a deleted property
     const listing = await Listing.findById(listingId);
     if (!listing) return res.status(404).json({ message: 'Listing Context Lost' });

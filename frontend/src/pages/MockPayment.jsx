@@ -1,50 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CreditCard, Lock, ChevronLeft, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Lock, ChevronLeft, CheckCircle2, ShieldCheck, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import API from '../services/api';
-import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
+import { theme } from '../theme';
 
 /**
  * ============================================================================
- * MOCK PAYMENT PAGE (The Transaction Gateway)
+ * MOCK PAYMENT PAGE (The Global Transaction Gateway)
  * ============================================================================
- * OVERHAUL: Refactored to consume the centralized Design Token system.
- * This ensures that financial summaries and success rewards maintain
- * professional-grade visual consistency.
+ * Architectural Evolution:
+ * - Phase 4: Simple card-number-only mock.
+ * - Phase 33: Context-Aware Handshake (Received booking state).
+ * - Phase 36: The Financial Integrity Engine (Internationalized validation).
  */
+
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 4 (The Primitive Mock)
+ * ============================================================================
+ * const [cardNumber, setCardNumber] = useState('');
+ * // Problem: Too simplistic. Didn't validate expiration, CVV, or identity.
+ * // Result: High rates of "Garbage Data" in the database.
+ * ============================================================================ */
+
 const MockPayment = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false); 
 
+  // --- COMPREHENSIVE FORM STATE ---
+  const [paymentData, setPaymentData] = useState({
+    cardName: '',
+    cardNumber: '',
+    expiry: '',
+    cvv: '',
+    address: '',
+    city: '',
+    region: '',
+    postalCode: '',
+    country: 'United States'
+  });
+
+  // --- DYNAMIC DATA MANIFESTS ---
+  const countries = [
+    { name: 'United States', stateLabel: 'State', zipLabel: 'Zip Code' },
+    { name: 'Canada', stateLabel: 'Province', zipLabel: 'Postal Code' },
+    { name: 'United Kingdom', stateLabel: 'County', zipLabel: 'Postcode' },
+    { name: 'Australia', stateLabel: 'State', zipLabel: 'Postcode' }
+  ];
+
+  const regions = {
+    'United States': ['Alabama', 'Alaska', 'Arizona', 'California', 'Colorado', 'Florida', 'New York', 'Texas', 'Washington'],
+    'Canada': ['Alberta', 'British Columbia', 'Manitoba', 'Ontario', 'Quebec', 'Saskatchewan'],
+    'Australia': ['New South Wales', 'Queensland', 'Victoria', 'Western Australia']
+  };
+
+  const currentCountry = countries.find(c => c.name === paymentData.country) || countries[0];
+
   if (!state) return <div style={{ padding: '10rem', textAlign: 'center' }}>Session context lost. Please restart your booking.</div>;
 
   const { listingId, bookingDetails, listing } = state;
 
+  // --- AUTO-FORMATTERS (Perceived Performance) ---
+  const handleCardFormat = (e) => {
+    let val = e.target.value.replace(/\D/g, '').substring(0, 16);
+    val = val.replace(/(\d{4})(?=\d)/g, '$1 ');
+    setPaymentData({ ...paymentData, cardNumber: val });
+  };
+
+  const handleExpiryFormat = (e) => {
+    let val = e.target.value.replace(/\D/g, '').substring(0, 4);
+    if (val.length >= 3) val = val.substring(0, 2) + '/' + val.substring(2);
+    setPaymentData({ ...paymentData, expiry: val });
+  };
+
   const handlePayment = async (e) => {
     e.preventDefault();
     setProcessing(true);
-    const payToast = toast.loading('Securing your stay...');
+    const payToast = toast.loading('Authorizing Transaction...');
+    
     try {
       await API.post('/bookings', {
-        listingId, checkIn: bookingDetails.checkIn,
-        checkOut: bookingDetails.checkOut, totalPrice: bookingDetails.total
+        listingId, 
+        checkIn: bookingDetails.checkIn,
+        checkOut: bookingDetails.checkOut, 
+        totalPrice: bookingDetails.total,
+        paymentDetails: paymentData // Sending the full manifest for backend verification
       });
-      toast.success('Confirmed!', { id: payToast });
+      
+      toast.success('Transaction Authorized', { id: payToast });
       setShowSuccess(true);
       setTimeout(() => { navigate('/bookings'); }, 2500);
     } catch (err) {
-      toast.error('Sync Error', { id: payToast });
+      const errorMsg = err.response?.data?.message || 'Authorization Failure';
+      toast.error(errorMsg, { id: payToast });
       setProcessing(false);
     }
   };
 
   return (
     <div style={{ maxWidth: '1200px', margin: '4rem auto', padding: '0 2rem' }}>
-      
       <AnimatePresence>
         {showSuccess && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={successOverlayStyle}>
@@ -63,33 +120,114 @@ const MockPayment = () => {
         <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: theme.typography.weights.extraBold }}>Confirm and pay</h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '6rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1.2fr 1fr', gap: '6rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
           
           <section>
-            <h3 style={sectionTitle}>Your trip</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '1.5rem' }}>
+              <ShieldCheck size={24} color={theme.colors.success} />
+              <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold' }}>Secure Checkout</h3>
+            </div>
             <div style={tripDetailRow}>
-              <div><div style={{ fontWeight: 'bold' }}>Dates</div><div style={{ color: theme.colors.charcoal }}>{new Date(bookingDetails.checkIn).toLocaleDateString()} – {new Date(bookingDetails.checkOut).toLocaleDateString()}</div></div>
+              <div><div style={{ fontWeight: 'bold' }}>Travel Dates</div><div style={{ color: theme.colors.charcoal }}>{new Date(bookingDetails.checkIn).toLocaleDateString()} – {new Date(bookingDetails.checkOut).toLocaleDateString()}</div></div>
             </div>
           </section>
 
-          <section style={{ borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '2.5rem' }}>
-            <h3 style={sectionTitle}>Secure Payment</h3>
-            <form onSubmit={handlePayment} style={cardFormStyle}>
-              <div style={inputGroup}><label style={labelStyle}>Card Number</label><input type="text" placeholder="0000 0000 0000 0000" style={inputStyle} required /></div>
-              <button type="submit" disabled={processing} style={payBtnStyle}>{processing ? 'Processing...' : `Pay $${bookingDetails.total}`}</button>
-            </form>
-          </section>
+          <form onSubmit={handlePayment} style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+            {/* --- CARD SECTION --- */}
+            <section style={formSectionStyle}>
+              <h4 style={sectionSubTitle}>Credit Card Information</h4>
+              <div style={inputGroup}>
+                <label style={labelStyle}>Cardholder Name</label>
+                <input type="text" placeholder="John Q. Public" value={paymentData.cardName} onChange={(e) => setPaymentData({...paymentData, cardName: e.target.value})} style={inputStyle} required />
+              </div>
+              <div style={inputGroup}>
+                <label style={labelStyle}>Card Number</label>
+                <div style={{ position: 'relative' }}>
+                  <input type="text" placeholder="0000 0000 0000 0000" value={paymentData.cardNumber} onChange={handleCardFormat} style={inputStyle} required />
+                  <CreditCard size={18} style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', color: theme.colors.slate }} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={inputGroup}><label style={labelStyle}>Expiry Date</label><input type="text" placeholder="MM/YY" value={paymentData.expiry} onChange={handleExpiryFormat} style={inputStyle} required /></div>
+                <div style={inputGroup}><label style={labelStyle}>CVV</label><input type="text" placeholder="123" maxLength="4" value={paymentData.cvv} onChange={(e) => setPaymentData({...paymentData, cvv: e.target.value.replace(/\D/g, '')})} style={inputStyle} required /></div>
+              </div>
+            </section>
 
+            {/* --- BILLING SECTION --- */}
+            <section style={formSectionStyle}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem' }}>
+                <Globe size={18} color={theme.colors.slate} />
+                <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>Billing Address</h4>
+              </div>
+              
+              <div style={inputGroup}>
+                <label style={labelStyle}>Country / Region</label>
+                <select value={paymentData.country} onChange={(e) => setPaymentData({...paymentData, country: e.target.value, region: ''})} style={selectStyle}>
+                  {countries.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                </select>
+              </div>
+
+              <div style={inputGroup}>
+                <label style={labelStyle}>Street Address</label>
+                <input type="text" placeholder="123 Stay Street" value={paymentData.address} onChange={(e) => setPaymentData({...paymentData, address: e.target.value})} style={inputStyle} required />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={inputGroup}>
+                  <label style={labelStyle}>City</label>
+                  <input type="text" placeholder="New York" value={paymentData.city} onChange={(e) => setPaymentData({...paymentData, city: e.target.value})} style={inputStyle} required />
+                </div>
+                <div style={inputGroup}>
+                  <label style={labelStyle}>{currentCountry.stateLabel}</label>
+                  {regions[paymentData.country] ? (
+                    <select value={paymentData.region} onChange={(e) => setPaymentData({...paymentData, region: e.target.value})} style={selectStyle} required>
+                      <option value="">Select...</option>
+                      {regions[paymentData.country].map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  ) : (
+                    <input type="text" value={paymentData.region} onChange={(e) => setPaymentData({...paymentData, region: e.target.value})} style={inputStyle} required />
+                  )}
+                </div>
+              </div>
+
+              <div style={inputGroup}>
+                <label style={labelStyle}>{currentCountry.zipLabel}</label>
+                <input type="text" value={paymentData.postalCode} onChange={(e) => setPaymentData({...paymentData, postalCode: e.target.value})} style={inputStyle} required />
+              </div>
+            </section>
+
+            <button type="submit" disabled={processing} style={payBtnStyle}>
+              {processing ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center' }}>
+                  <div className="spin" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%' }} />
+                  Processing...
+                </div>
+              ) : `Confirm and Pay $${bookingDetails.total}`}
+            </button>
+          </form>
         </div>
 
         <aside style={summaryCardStyle}>
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: `1px solid ${theme.colors.divider}`, paddingBottom: '2rem' }}>
+          <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '2rem', borderBottom: `1px solid ${theme.colors.divider}`, paddingBottom: '2rem' }}>
             <img src={listing.images[0]} style={listingThumbStyle} alt="Thumb" />
-            <div><div style={{ fontWeight: 'bold' }}>{listing.title}</div><div style={{ fontSize: '0.8rem', color: theme.colors.slate }}>{listing.location}</div></div>
+            <div>
+              <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{listing.title}</div>
+              <div style={{ fontSize: '0.9rem', color: theme.colors.slate, marginTop: '0.3rem' }}>{listing.location}</div>
+            </div>
           </div>
           <h3 style={sectionTitle}>Price details</h3>
-          <div style={totalRow}><span>Total (USD)</span><span>${bookingDetails.total}</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={priceRow}><span>${listing.rate} x {bookingDetails.nights} nights</span><span>${listing.rate * bookingDetails.nights}</span></div>
+            <div style={priceRow}><span>AirnbLite service fee (14%)</span><span>${Math.round(listing.rate * bookingDetails.nights * 0.14)}</span></div>
+            <div style={totalRow}><span>Total (USD)</span><span>${bookingDetails.total}</span></div>
+          </div>
+          <div style={{ marginTop: '2rem', padding: '1.2rem', backgroundColor: '#f9fafb', borderRadius: '12px', display: 'flex', gap: '1rem' }}>
+            <Lock size={18} color={theme.colors.slate} />
+            <p style={{ margin: 0, fontSize: '0.85rem', color: theme.colors.slate, lineHeight: '1.4' }}>
+              Your payment is encrypted and processed via our secure mock gateway. We never store your full card details.
+            </p>
+          </div>
         </aside>
       </div>
     </div>
@@ -104,14 +242,17 @@ const loadingBarBg = { width: '100%', height: '6px', backgroundColor: theme.colo
 const loadingBarFill = { height: '100%', backgroundColor: theme.colors.success };
 const backBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', borderRadius: theme.radius.full, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const sectionTitle = { fontSize: '1.4rem', marginBottom: '1.8rem', fontWeight: 'bold' };
+const sectionSubTitle = { fontSize: '1.1rem', marginBottom: '1.5rem', fontWeight: 'bold', color: theme.colors.charcoal };
 const tripDetailRow = { display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' };
-const cardFormStyle = { display: 'flex', flexDirection: 'column', gap: '1.5rem', border: `1px solid ${theme.colors.border}`, padding: '2.5rem', borderRadius: theme.radius.md };
+const formSectionStyle = { border: `1px solid ${theme.colors.border}`, padding: '2.5rem', borderRadius: theme.radius.lg, display: 'flex', flexDirection: 'column', gap: '1.5rem' };
 const inputGroup = { display: 'flex', flexDirection: 'column', gap: '0.6rem' };
-const labelStyle = { fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', color: theme.colors.slate };
-const inputStyle = { padding: '0.9rem 1.2rem', borderRadius: theme.radius.sm, border: `1px solid ${theme.colors.divider}`, fontSize: '1rem' };
-const payBtnStyle = { marginTop: '1rem', padding: '1.1rem', backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: theme.radius.sm, fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer' };
-const summaryCardStyle = { border: `1px solid ${theme.colors.divider}`, borderRadius: theme.radius.lg, padding: '2.5rem', backgroundColor: theme.colors.white, boxShadow: theme.shadows.card };
-const listingThumbStyle = { width: '100px', height: '100px', borderRadius: theme.radius.md, objectFit: 'cover' };
-const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.15rem', color: theme.colors.charcoal };
+const labelStyle = { fontSize: '0.75rem', fontWeight: '900', textTransform: 'uppercase', color: theme.colors.slate, letterSpacing: '0.05em' };
+const inputStyle = { padding: '1rem 1.2rem', borderRadius: theme.radius.sm, border: `1px solid ${theme.colors.divider}`, fontSize: '1rem', transition: 'border-color 0.2s' };
+const selectStyle = { ...inputStyle, appearance: 'none', backgroundColor: 'white', backgroundImage: 'url(\"data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-2.6H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E\")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1.2rem top 50%', backgroundSize: '0.65rem auto' };
+const payBtnStyle = { marginTop: '1rem', padding: '1.3rem', backgroundColor: theme.colors.brand, color: theme.colors.white, border: 'none', borderRadius: '12px', fontWeight: '900', fontSize: '1.15rem', cursor: 'pointer', transition: 'transform 0.1s' };
+const summaryCardStyle = { border: `1px solid ${theme.colors.divider}`, borderRadius: theme.radius.lg, padding: '2.5rem', backgroundColor: theme.colors.white, boxShadow: theme.shadows.card, height: 'fit-content', position: 'sticky', top: '120px' };
+const listingThumbStyle = { width: '120px', height: '100px', borderRadius: '12px', objectFit: 'cover' };
+const priceRow = { display: 'flex', justifyContent: 'space-between', fontSize: '1rem', color: theme.colors.slate };
+const totalRow = { display: 'flex', justifyContent: 'space-between', fontWeight: '900', fontSize: '1.2rem', color: theme.colors.charcoal, borderTop: `1px solid ${theme.colors.divider}`, paddingTop: '1.5rem', marginTop: '0.5rem' };
 
 export default MockPayment;
