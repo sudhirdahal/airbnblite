@@ -52,6 +52,19 @@ const PageLoader = () => (
   </div>
 );
 
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 47 (The Desktop-Heavy Discovery)
+ * ============================================================================
+ * Previously, the mobile Home view included the Hero greeting and the 
+ * Category scrolling bar.
+ * 
+ * THE FLAW: The Hero section pushed listings off-screen, and the Category bar 
+ * introduced horizontal bleeding (fidelity gap).
+ * 
+ * THE FIX: Atomic Home. On mobile, we bypass these atmospheric elements to 
+ * provide "Direct Entry Discovery"—showing the first property card immediately.
+ * ============================================================================ */
+
 const Home = ({ listings, loading, onSearch, activeCategory, onCategorySelect, showMap, setShowMap, sort, onSortChange, onHoverListing }) => {
   const { user } = useAuth();
   const { isMobile } = useResponsive();

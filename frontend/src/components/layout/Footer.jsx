@@ -14,6 +14,27 @@ const Footer = () => {
   const { isMobile } = useResponsive();
   const currentYear = new Date().getFullYear();
 
+  /* --- HISTORICAL STAGE 1: PRIMITIVE FOOTER ---
+   * return (
+   *   <footer style={{ textAlign: 'center', padding: '1rem' }}>
+   *     © {currentYear} AirBnB Lite
+   *   </footer>
+   * );
+   */
+
+  /* ============================================================================
+   * 👻 HISTORICAL GHOST: PHASE 47 (The Global Sitemap Footer)
+   * ============================================================================
+   * Originally, we showed the entire 3-column "Support / Hosting / Corporate" 
+   * grid on all screen sizes.
+   * 
+   * THE FLAW: It added nearly 1000px of scrolling content that mobile users 
+   * rarely engage with, cluttering the discovery path.
+   * 
+   * THE FIX: Atomic Footer. On mobile, we bypass the sitemap grid and show 
+   * only the absolute legal essentials, ensuring a clean and fast page end.
+   * ============================================================================ */
+
   return (
     <footer style={footerContainer(isMobile)}>
       <div style={footerInner(isMobile)}>

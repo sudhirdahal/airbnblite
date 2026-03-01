@@ -62,6 +62,19 @@ const RatingBreakdown = ({ reviews = [], isMobile }) => {
  * - Phase 40: Conversational Isolation (Privacy-Safe Chat threads).
  * - Phase 47: Hybrid-Atomic Overhaul (Mobile Simplification).
  */
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 47 (The Unrestricted Mobile Scroll)
+ * ============================================================================
+ * Originally, the mobile detail page showed every amenity and every review 
+ * comment by default.
+ * 
+ * THE FLAW: For properties with 20+ amenities and 50+ reviews, the user had 
+ * to scroll through 3000px of text just to find the Footer or Chat bubble.
+ * 
+ * THE FIX: Progressive Disclosure. We hide long lists behind "Show all" 
+ * toggles, keeping the mobile conversion funnel fast and focused.
+ * ============================================================================ */
+
 const ListingDetail = ({ user, onChatOpened }) => { 
   const { isMobile } = useResponsive();
   const { id } = useParams(); 

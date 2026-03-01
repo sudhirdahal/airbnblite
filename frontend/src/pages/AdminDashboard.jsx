@@ -173,7 +173,7 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
  * - Phase 42: Omni-Channel Communication & Luxury Availability UI.
  */
 /* ============================================================================
- * 👻 HISTORICAL GHOST: PHASE 46 (The Desktop-Heavy Dashboard)
+ * 👻 HISTORICAL GHOST: PHASE 47 (The Desktop-Heavy Dashboard)
  * ============================================================================
  * Previously, the mobile dashboard showed all 4 tabs: 
  * Properties, Availability, Reservations, Analytics.

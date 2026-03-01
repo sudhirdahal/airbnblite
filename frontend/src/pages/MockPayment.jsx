@@ -27,6 +27,18 @@ import { useResponsive } from '../hooks/useResponsive';
  * // Result: High rates of "Garbage Data" in the database.
  * ============================================================================ */
 
+/* ============================================================================
+ * 👻 HISTORICAL GHOST: PHASE 47 (The Desktop-First Summary)
+ * ============================================================================
+ * Previously, the payment page showed a property summary sidebar on mobile.
+ * 
+ * THE FLAW: This pushed the Credit Card inputs below the fold, forcing the 
+ * user to scroll before they could even start paying.
+ * 
+ * THE FIX: Atomic Checkout. On mobile, we hide the redundant summary to 
+ * ensure the "Action" (Payment) is immediate and visible upon entry.
+ * ============================================================================ */
+
 const MockPayment = () => {
   const { isMobile } = useResponsive();
   const { state } = useLocation();
