@@ -111,17 +111,16 @@ exports.getMessageHistory = async (req, res) => {
   try {
     const { listingId, guestId } = req.params;
     
-    // Phase 44: Legacy-Inclusive History Query
-    // Finds messages that match the modern triangular ID 
-    // OR legacy messages (no guestId) where this user was the sender.
+    // Phase 45: Privacy-Hardened History Query
+    // Logic: Strictly fetch modern triangular ID matches OR legacy messages 
+    // where the user was the sender. 
+    // NOTE: We have intentionally removed the broad 'Host-to-Unknown' legacy 
+    // catch-all to prevent conversation bleeding across guests.
     const messages = await Message.find({ 
       listingId, 
       $or: [
-        { guestId: guestId },
-        { guestId: { $exists: false }, sender: guestId },
-        // Also catch messages from the Host directed at this property if guestId is missing
-        // This assumes old property threads were primarily 1-on-1.
-        { guestId: { $exists: false }, sender: { $ne: guestId } } 
+        { guestId: guestId }, // Modern Isolated Structure
+        { guestId: { $exists: false }, sender: guestId } // Guest's own legacy data
       ]
     })
     .populate('sender', 'name avatar')
