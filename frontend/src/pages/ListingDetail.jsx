@@ -326,7 +326,10 @@ const ListingDetail = ({ user, onChatOpened }) => {
                 <button 
                   onClick={() => {
                     if (!dateRange[0] || !dateRange[1]) {
-                      toast.error('Please select your dates first.');
+                      toast.error('Please select your travel dates on the calendar first.', {
+                        icon: '📅',
+                        style: { borderRadius: '12px', background: theme.colors.charcoal, color: '#fff', fontWeight: 'bold' }
+                      });
                       return;
                     }
                     navigate('/pay', { 
@@ -362,7 +365,10 @@ const ListingDetail = ({ user, onChatOpened }) => {
           <button 
             onClick={() => {
               if (!dateRange[0] || !dateRange[1]) {
-                toast.error('Please select dates.');
+                toast.error('Select travel dates on the calendar first.', {
+                  icon: '📅',
+                  style: { borderRadius: '12px', background: theme.colors.charcoal, color: '#fff', fontWeight: 'bold' }
+                });
                 return;
               }
               navigate('/pay', { 
