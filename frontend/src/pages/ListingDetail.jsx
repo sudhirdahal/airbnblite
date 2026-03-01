@@ -71,6 +71,11 @@ const ListingDetail = ({ user, onChatOpened }) => {
   const [dateRange, setDateRange] = useState([null, null]); 
   const [pricing, setPricing] = useState({ nights: 0, total: 0 });
 
+  // --- DERIVE IMAGES EARLY (Phase 31 Correction) ---
+  // We must define this before the navigation functions and effects 
+  // that depend on its length to avoid ReferenceErrors.
+  const images = listing?.images?.length > 0 ? listing.images : ['https://via.placeholder.com/1200x800'];
+
   const getSentiment = (rating) => {
     if (rating >= 4.8) return "Exceptional";
     if (rating >= 4.5) return "Highly Rated";
@@ -201,8 +206,6 @@ const ListingDetail = ({ user, onChatOpened }) => {
 
   if (loading) return <DetailSkeleton />;
   if (error || !listing) return <div style={centerStyle}><h2>Property Unavailable</h2><Link to="/" style={{ color: theme.colors.brand }}>Return Home</Link></div>;
-
-  const images = listing.images?.length > 0 ? listing.images : ['https://via.placeholder.com/1200x800'];
 
   return (
     <div style={{ minHeight: '100vh', width: '100%', backgroundColor: theme.colors.white }}>
