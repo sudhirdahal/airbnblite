@@ -8,6 +8,7 @@ import socket from '../services/socket';
 import PageHeader from '../components/layout/PageHeader';
 import { theme } from '../theme'; // --- NEW: THEME AUTHORITY ---
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 import ChatWindow from '../components/chat/ChatWindow';
 
 /**
@@ -23,6 +24,7 @@ import ChatWindow from '../components/chat/ChatWindow';
  */
 const Inbox = ({ onThreadOpened }) => {
   const { user } = useAuth();
+  const { isMobile } = useResponsive();
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedThread, setSelectedThread] = useState(null);
@@ -82,7 +84,7 @@ const Inbox = ({ onThreadOpened }) => {
 
   if (loading && threads.length === 0) {
     return (
-      <div style={{ maxWidth: '2560px', width: '98%', margin: '3rem auto', padding: '0 4rem' }}>
+      <div style={{ maxWidth: '2560px', width: '98%', margin: isMobile ? '1rem auto' : '3rem auto', padding: isMobile ? '0 1rem' : '0 4rem' }}>
         <PageHeader title="Messages" subtitle="Keep track of your conversations." icon={MessageCircle} />
         <div style={{ display: 'grid', gap: '1.2rem' }}>
           {[1, 2, 3].map(i => <InboxSkeleton key={i} />)}
@@ -92,12 +94,12 @@ const Inbox = ({ onThreadOpened }) => {
   }
 
   return (
-    <div style={{ maxWidth: '2560px', width: '98%', margin: '3rem auto', padding: '0 4rem' }}>
+    <div style={{ maxWidth: '2560px', width: '98%', margin: isMobile ? '1.5rem auto' : '3rem auto', padding: isMobile ? '0 1rem' : '0 4rem' }}>
       <PageHeader title="Messages" subtitle="Keep track of your conversations." icon={MessageCircle} />
       
-      <div style={inboxLayout}>
+      <div style={inboxLayout(isMobile)}>
         {/* THREAD LIST */}
-        <div style={{ ...threadListPanel, display: selectedThread && window.innerWidth < 1024 ? 'none' : 'block' }}>
+        <div style={{ ...threadListPanel, display: selectedThread && isMobile ? 'none' : 'block' }}>
           {threads.length === 0 ? (
             <div style={emptyStateStyle}><Mail size={48} color={theme.colors.divider} /><h2>No messages yet</h2></div>
           ) : (
@@ -149,6 +151,7 @@ const Inbox = ({ onThreadOpened }) => {
 };
 
 const ThreadCard = ({ thread, onOpen, currentUser, isActive }) => {
+  const { isMobile } = useResponsive();
   const { listing, lastMessage, unreadCount, guest } = thread;
   const isUnread = unreadCount > 0;
 
@@ -159,25 +162,25 @@ const ThreadCard = ({ thread, onOpen, currentUser, isActive }) => {
 
   return (
     <motion.div whileHover={{ y: -2 }} onClick={onOpen} style={threadCardStyle(isUnread, isActive)}>
-      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', width: '100%' }}>
-        <img src={listing.images[0]} style={thumbStyle} alt="Listing" />
+      <div style={{ display: 'flex', gap: isMobile ? '1rem' : '1.5rem', alignItems: 'center', width: '100%' }}>
+        <img src={listing.images[0]} style={isMobile ? mobileThumbStyle : thumbStyle} alt="Listing" />
         
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: theme.typography.weights.bold }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <h3 style={{ margin: 0, fontSize: isMobile ? '0.9rem' : '1.1rem', fontWeight: theme.typography.weights.bold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {listing.title} {isHost && <span style={{ fontWeight: 'normal', color: theme.colors.slate }}>· {participantName}</span>}
             </h3>
-            <span style={{ fontSize: '0.75rem', color: theme.colors.slate }}>{formatDistanceToNow(new Date(lastMessage.timestamp), { addSuffix: true })}</span>
+            {!isMobile && <span style={{ fontSize: '0.75rem', color: theme.colors.slate }}>{formatDistanceToNow(new Date(lastMessage.timestamp), { addSuffix: true })}</span>}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', alignItems: 'center' }}>
-            {participantAvatar && <img src={participantAvatar} style={{ width: '20px', height: '20px', borderRadius: '50%' }} alt="Av" />}
-            <div style={{ fontWeight: theme.typography.weights.bold, color: theme.colors.charcoal }}>{lastMessage.sender.name}:</div>
-            <p style={messagePreviewStyle}>{lastMessage.content}</p>
+            {participantAvatar && <img src={participantAvatar} style={{ width: '18px', height: '20px', borderRadius: '50%' }} alt="Av" />}
+            <div style={{ fontWeight: theme.typography.weights.bold, color: theme.colors.charcoal, fontSize: isMobile ? '0.8rem' : '1rem' }}>{lastMessage.sender.name}:</div>
+            <p style={{ ...messagePreviewStyle, fontSize: isMobile ? '0.8rem' : '0.9rem' }}>{lastMessage.content}</p>
           </div>
         </div>
 
         {isUnread && <div style={badgeStyle}>{unreadCount}</div>}
-        <button style={actionLinkStyle}>View Chat <ArrowRight size={16} /></button>
+        {!isMobile && <button style={actionLinkStyle}>View Chat <ArrowRight size={16} /></button>}
       </div>
     </motion.div>
   );
@@ -216,9 +219,10 @@ const badgeStyle = { backgroundColor: theme.colors.brand, color: theme.colors.wh
 const actionLinkStyle = { display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', color: theme.colors.brand, fontWeight: theme.typography.weights.bold, backgroundColor: '#fff1f2', padding: '0.6rem 1.2rem', borderRadius: theme.radius.sm, cursor: 'pointer' };
 
 // --- INTEGRATED INBOX STYLES ---
-const inboxLayout = { display: 'flex', gap: '2rem', height: '70vh', marginTop: '2rem' };
-const threadListPanel = { flex: 1, overflowY: 'auto', paddingRight: '1rem' };
-const chatPanel = { flex: 1.5, backgroundColor: '#fff', border: `1px solid ${theme.colors.divider}`, borderRadius: theme.radius.lg, overflow: 'hidden', flexDirection: 'column' };
+const inboxLayout = (isMobile) => ({ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '1rem' : '2rem', height: isMobile ? 'auto' : '70vh', marginTop: '2rem' });
+const threadListPanel = { flex: 1, overflowY: 'auto', paddingRight: '0.5rem' };
+const chatPanel = { flex: 1.5, backgroundColor: '#fff', border: `1px solid ${theme.colors.divider}`, borderRadius: theme.radius.lg, overflow: 'hidden', flexDirection: 'column', height: '70vh' };
+const mobileThumbStyle = { width: '60px', height: '60px', borderRadius: theme.radius.sm, objectFit: 'cover' };
 const noThreadSelected = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: theme.colors.slate };
 const closePanelBtn = { position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.slate, zIndex: 10 };
 const panelHeader = { padding: '1.5rem 2.5rem', borderBottom: `1px solid ${theme.colors.divider}`, backgroundColor: '#fff' };

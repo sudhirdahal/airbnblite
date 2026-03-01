@@ -59,7 +59,11 @@ const removeImgBtnStyle = { position: 'absolute', top: '-8px', right: '-8px', ba
 const primaryButtonStyle = { backgroundColor: theme.colors.charcoal, color: '#fff', border: 'none', padding: '1rem 2rem', borderRadius: '12px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' };
 
 // --- LUXURY AVAILABILITY STYLES ---
-const availabilityCardStyle = { ...listingCardStyle, flexDirection: 'column', alignItems: 'stretch', gap: '0' };
+const availabilityCardStyle = { ...listingCardStyle, flexDirection: 'column', alignItems: 'stretch', gap: '0', padding: '1.5rem' };
+const desktopCardHeader = { display: 'flex', gap: '2rem', alignItems: 'center' };
+const mobileCardHeader = { display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' };
+const mobileImageWrapper = { ...imageWrapper, width: '100%', height: '150px' };
+const mobileCalendarDock = { ...calendarDock, flexDirection: 'column', gap: '2rem' };
 const mainAddBtnSmall = { padding: '0.6rem 1.2rem', backgroundColor: theme.colors.charcoal, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '800', cursor: 'pointer' };
 const cancelBtnSmall = { padding: '0.6rem 1.2rem', backgroundColor: '#fff', color: theme.colors.charcoal, border: `1px solid ${theme.colors.divider}`, borderRadius: '8px', fontWeight: '800', cursor: 'pointer' };
 const calendarDock = { marginTop: '2rem', paddingTop: '2rem', borderTop: `1px solid ${theme.colors.divider}`, display: 'flex', gap: '4rem', alignItems: 'flex-start' };
@@ -86,7 +90,7 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
   </div>
 );
 
-const AvailabilityCard = ({ listing, onUpdate }) => {
+const AvailabilityCard = ({ listing, onUpdate, isMobile }) => {
   const [range, setRange] = useState([null, null]);
   const [showCalendar, setShowCalendar] = useState(false);
 
@@ -105,17 +109,19 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
 
   return (
     <div style={availabilityCardStyle}>
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-        <div style={imageWrapper}><img src={listing.images[0]} style={refinedThumbStyle} alt="listing" /></div>
-        <div style={{ flex: 1 }}>
-          <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '900' }}>{listing.title}</h4>
-          <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+      <div style={isMobile ? mobileCardHeader : desktopCardHeader}>
+        <div style={isMobile ? mobileImageWrapper : imageWrapper}>
+          <img src={listing.images[0]} style={refinedThumbStyle} alt="listing" />
+        </div>
+        <div style={{ flex: 1, minWidth: isMobile ? '100%' : 'auto' }}>
+          <h4 style={{ margin: 0, fontSize: isMobile ? '1.1rem' : '1.3rem', fontWeight: '900' }}>{listing.title}</h4>
+          <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
             {(listing.unavailableDates || []).length === 0 ? (
-              <span style={{ fontSize: '0.85rem', color: theme.colors.slate }}>Operational 24/7. No scheduled downtime.</span>
+              <span style={{ fontSize: '0.8rem', color: theme.colors.slate }}>Operational 24/7.</span>
             ) : (
               listing.unavailableDates.map((d, i) => (
                 <div key={i} style={refinedTagStyleRed}>
-                  <Wrench size={12} /> {new Date(d.start).toLocaleDateString()} - {new Date(d.end).toLocaleDateString()}
+                  <Wrench size={12} /> {new Date(d.start).toLocaleDateString()}
                   <button onClick={() => handleRemove(i)} style={removeTagBtnStyle}><X size={10} /></button>
                 </div>
               ))
@@ -124,7 +130,7 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
         </div>
         <button 
           onClick={() => setShowCalendar(!showCalendar)} 
-          style={showCalendar ? cancelBtnSmall : mainAddBtnSmall}
+          style={{ ...(showCalendar ? cancelBtnSmall : mainAddBtnSmall), width: isMobile ? '100%' : 'auto', marginTop: isMobile ? '1rem' : '0' }}
         >
           {showCalendar ? 'Cancel' : 'Block Dates'}
         </button>
@@ -133,7 +139,7 @@ const AvailabilityCard = ({ listing, onUpdate }) => {
       <AnimatePresence>
         {showCalendar && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
-            <div style={calendarDock}>
+            <div style={isMobile ? mobileCalendarDock : calendarDock}>
               <div style={{ flex: 1 }}>
                 <h5 style={dockTitle}>Schedule Maintenance</h5>
                 <p style={dockSubtitle}>Select the range of dates this property will be unavailable for discovery.</p>
@@ -613,7 +619,7 @@ const AdminDashboard = ({ user, refreshListings }) => {
               <div style={emptyStateStyle}><h3>No properties found to manage.</h3></div>
             ) : (
               adminListings.map(l => (
-                <AvailabilityCard key={l._id} listing={l} onUpdate={updateListingAvailability} />
+                <AvailabilityCard key={l._id} listing={l} onUpdate={updateListingAvailability} isMobile={isMobile} />
               ))
             )}
           </div>

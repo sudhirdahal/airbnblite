@@ -104,6 +104,15 @@ const Navbar = ({ onLogout, resetHomeView }) => {
     }
   };
 
+  /**
+   * SECURITY HANDSHAKE
+   * Logic: Performs global session revocation and redirects to safety.
+   */
+  const handleLogout = async () => {
+    await onLogout();
+    navigate('/');
+  };
+
   const NavLinks = ({ isMobileView }) => (
     <div style={isMobileView ? mobileStackStyle : desktopMenuStyle}>
       {!user ? (
@@ -184,7 +193,7 @@ const Navbar = ({ onLogout, resetHomeView }) => {
               <span>Profile</span>
             </div>
           </Link>
-          <button onClick={onLogout} style={isMobileView ? mobileLogoutBtn : logoutBtnStyle}><LogOut size={18} /> Logout</button>
+          <button onClick={handleLogout} style={isMobileView ? mobileLogoutBtn : logoutBtnStyle}><LogOut size={18} /> Logout</button>
         </>
       )}
     </div>

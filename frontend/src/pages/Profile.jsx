@@ -6,6 +6,8 @@ import API from '../services/api';
 import PageHeader from '../components/layout/PageHeader';
 import { theme } from '../theme';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * ============================================================================
@@ -17,6 +19,8 @@ import { useAuth } from '../context/AuthContext';
  */
 const Profile = () => {
   const { user, setUser } = useAuth();
+  const { isMobile } = useResponsive();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [stats, setStats] = useState({ totalSpent: 0, upcoming: 0, completed: 0 });
   const [loading, setLoading] = useState(false);
@@ -65,10 +69,15 @@ const Profile = () => {
     } catch (err) { toast.error('Sync failed'); } finally { setLoading(false); }
   };
 
+  // RECOVERY LOGIC (Phase 47): If user logs out while on this page, redirect to home.
+  useEffect(() => {
+    if (!user && !loading) navigate('/');
+  }, [user, navigate, loading]);
+
   if (!user) return <div style={{ textAlign: 'center', padding: '10rem' }}>Synchronizing user context...</div>;
 
   return (
-    <div style={{ maxWidth: '2560px', width: '98%', margin: '3rem auto', padding: '0 4rem' }}>
+    <div style={{ maxWidth: '2560px', width: '98%', margin: isMobile ? '1rem auto' : '3rem auto', padding: isMobile ? '0 1rem' : '0 4rem' }}>
       <PageHeader title="Identity & Profile" subtitle="Manage your traveler metadata and achievements." icon={User} />
 
       {/* KPI STAT CARDS */}
@@ -78,8 +87,8 @@ const Profile = () => {
         <StatCard icon={CreditCard} label="Travel Spend" value={`$${stats.totalSpent.toLocaleString()}`} color={theme.colors.success} />
       </div>
 
-      <div style={{ display: 'flex', gap: '4rem', marginTop: '2rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: '350px' }}>
+      <div style={{ display: 'flex', gap: isMobile ? '2rem' : '4rem', marginTop: '2rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: isMobile ? '100%' : '350px' }}>
           <div style={sectionCardStyle}>
             <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
               <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -109,7 +118,7 @@ const Profile = () => {
           </div>
         </div>
 
-        <div style={{ flex: 1.5, minWidth: '350px' }}>
+        <div style={{ flex: 1.5, minWidth: isMobile ? '100%' : '350px' }}>
           <div style={sectionCardStyle}>
             <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', fontWeight: theme.typography.weights.bold }}>
               <Award size={22} color={theme.colors.brand} /> Traveler Achievements
