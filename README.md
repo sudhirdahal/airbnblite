@@ -31,7 +31,9 @@ Over **27 distinct phases of engineering maturity**, we have documented every lo
     *   *The Logic Lock, Hierarchical Data Mapping, and Cinematic Pulse Notifications.*
 11. **[Volume X: Multi-Dimensional Guests & Dashboard Context (Phase 38-39)](#volume-x-multi-dimensional-guests--dashboard-context-phase-38-39)**
     *   *The Guest Engine, Dynamic Surcharges, and Interactive Host Interactivity.*
-12. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
+12. **[Volume XI: Conversational Isolation & Privacy Protection (Phase 40)](#volume-xi-conversational-isolation--privacy-protection-phase-40)**
+    *   *Triangular Identification, Guest-Centric Threads, and Real-Time Isolation.*
+13. **[The Nuclear Stability Handbook](#the-nuclear-stability-handbook)**
     *   *Our definitive guide to Defensive Engineering and Crash-Proof UX.*
 
 ---
@@ -532,6 +534,34 @@ In Phase 39, we refined the **Host Dashboard** to transition from a static repor
     *   **The Identity Link:** Clicking a Guest's name now initiates a deep-link to the **Inbox**, allowing hosts to contact travelers instantly regarding their reservation.
     *   **The Property Link:** Clicking the property title takes the host directly to the **Listing Detail** view for quick availability checks.
 *   **Metadata Integration:** We injected the Guest Composition (e.g., "👤 2 guests · 1 infant") directly into the table rows, providing the host with instant situational awareness without needing to open sub-menus.
+
+---
+
+## 🏗️ Volume XI: Conversational Isolation & Privacy Protection (Phase 40)
+
+### Chapter 20: The Triangular ID & Data Segregation
+In earlier phases, our real-time chat system was "Property-Bound." Messages were keyed only by `listingId`, meaning that if Guest A and Guest B both messaged the Host about the same property, they would inadvertently see each other's full conversation history—a critical privacy breach.
+
+**The Engineering Fix: Triangular Conversational Isolation**
+In Phase 40, we implemented a robust **Triangular ID** system. Every message and socket room is now isolated by a unique composite key consisting of the Host, the Property, and the specific Guest.
+
+**1. Data Model Evolution:**
+We injected a mandatory `guestId` into the `Message` schema. This field permanently tags every communication with the specific traveler involved, regardless of whether the message was sent by the guest or the host.
+
+**2. Composite Socket Rooms:**
+Instead of joining a room named simply after the property ID, clients now join a **Composite Room**: `${listingId}-${guestId}`. 
+```javascript
+// REAL-TIME ISOLATION
+socket.emit('join room', { listingId, guestId });
+```
+This ensures that the `Socket.IO` engine only broadcasts messages to the two specific parties involved in that unique thread.
+
+**3. The Symmetrical Inbox Overhaul:**
+The `Inbox` aggregation engine was rewritten to group messages by this same composite key. 
+*   **For Hosts:** The inbox now displays multiple entries for the same property if different guests have messaged them, each showing the guest's unique identity.
+*   **For Guests:** The history is strictly filtered to only show messages where they are the designated `guestId`.
+
+This architectural pivot transforms the chat from a public-facing log into a secure, private communication channel that meets professional privacy standards.
 
 ---
 

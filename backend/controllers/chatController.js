@@ -19,93 +19,72 @@ const Listing = require('../models/Listing');
 
 /**
  * PERSISTENCE UTILITY: saveMessage
- * Logic: Encapsulates the DB save operation. Even though chat is real-time,
- * we must persist every message to MongoDB so users can view history later.
+ * Logic: Encapsulates the DB save operation.
  */
-const saveMessage = async (senderId, listingId, content) => {
-  const newMessage = new Message({ sender: senderId, listingId, content });
+const saveMessage = async (senderId, listingId, guestId, content) => {
+  const newMessage = new Message({ sender: senderId, listingId, guestId, content });
   return await newMessage.save();
 };
-
-/* ============================================================================
- * 👻 HISTORICAL GHOST: PHASE 4 (The One-Way Inbox)
- * ============================================================================
- * Initially, our Inbox logic only worked for Hosts. It looked like this:
- * 
- * exports.getInboxLegacy = async (req, res) => {
- *   // 1. Find properties I own
- *   const myOwnedIds = await Listing.find({ adminId: req.user.id }).select('_id');
- *   // 2. Get messages for those properties
- *   const messages = await Message.find({ listingId: { $in: myOwnedIds } });
- *   res.json(messages); 
- * };
- * 
- * THE FLAW: Guests could send messages, but if they went to their Inbox, 
- * it was completely blank because they didn't "own" any properties! 
- * We needed a "Symmetrical" query that caught messages from both perspectives.
- * ============================================================================ */
 
 /**
  * @desc Fetch unique, organized conversation threads for the current user
  * @route GET /api/auth/inbox
- * 
- * ARCHITECTURE (The Symmetrical Inbox):
- * 1. Identity Matrix: Find properties the user owns OR messages they sent.
- * 2. Distinct Grouping: Extract unique listing IDs from that matrix.
- * 3. Thread Hydration: Fetch and populate all messages for those specific IDs.
- * 4. Data Shaping: Group messages into "Thread" objects with unread counts.
  */
 exports.getInbox = async (req, res) => {
   try {
-    // 1. Identification: Properties I own (Host Perspective)
     const myListings = await Listing.find({ adminId: req.user.id }).select('_id');
     const myListingIds = myListings.map(l => l._id);
 
-    // 2. Thread Discovery (Symmetrical Query)
-    // Find every conversation where I am the Sender OR the Owner
-    const allUserMessages = await Message.find({
-      $or: [{ sender: req.user.id }, { listingId: { $in: myListingIds } }]
-    }).distinct('listingId'); // Return only an array of unique Property IDs
+    // Thread Discovery: Group by Listing AND Guest (Phase 40)
+    // Find all messages where I am involved (Sender, Guest, or Owner)
+    const messages = await Message.find({
+      $or: [
+        { sender: req.user.id },
+        { guestId: req.user.id },
+        { listingId: { $in: myListingIds } }
+      ]
+    })
+    .populate('sender', 'name avatar')
+    .populate('guestId', 'name avatar')
+    .populate('listingId', 'title images adminId')
+    .sort({ timestamp: -1 });
 
-    // 3. Hydration & Aggregation
-    // Fetch the actual message data and populate relational fields
-    const messages = await Message.find({ listingId: { $in: allUserMessages } })
-      .populate('sender', 'name avatar')
-      .populate('listingId', 'title images adminId')
-      .sort({ timestamp: -1 });
-
-    // 4. Data Shaping (Building the Threads)
     const threads = {};
     messages.forEach(msg => {
       if (!msg.listingId || !msg.sender) return;
-      const lid = msg.listingId._id.toString();
       
-      // If this is the first time seeing this listing, create the Thread object
-      if (!threads[lid]) {
-        threads[lid] = { listing: msg.listingId, lastMessage: msg, unreadCount: 0 };
+      // The "Thread Key": Composite of Property and the specific Guest
+      const gid = msg.guestId?._id?.toString() || msg.guestId?.toString();
+      const lid = msg.listingId._id.toString();
+      const threadKey = `${lid}-${gid}`;
+      
+      if (!threads[threadKey]) {
+        threads[threadKey] = { 
+          listing: msg.listingId, 
+          guest: msg.guestId,
+          lastMessage: msg, 
+          unreadCount: 0 
+        };
       }
       
-      // Unread Rule: Increment count ONLY if I am the recipient and it is unread.
       if (!msg.isRead && msg.sender._id.toString() !== req.user.id) {
-        threads[lid].unreadCount++;
+        threads[threadKey].unreadCount++;
       }
     });
     
-    res.json(Object.values(threads)); // Return an array of Thread objects
+    res.json(Object.values(threads));
   } catch (err) { res.status(500).send('Inbox Engine Failure'); }
 };
 
 /**
- * @desc Mark messages as read when a user opens a chat thread
- * @route PUT /api/auth/inbox/:listingId/read
+ * @desc Mark messages as read for a specific isolated thread
+ * @route PUT /api/auth/inbox/:listingId/:guestId/read
  */
 exports.markAsRead = async (req, res) => {
   try {
-    const { listingId } = req.params;
-    // Security: Only update messages where I am NOT the sender.
-    // I shouldn't be able to mark my own sent messages as "read" by myself.
+    const { listingId, guestId } = req.params;
     await Message.updateMany(
-      { listingId, sender: { $ne: req.user.id }, isRead: false },
+      { listingId, guestId, sender: { $ne: req.user.id }, isRead: false },
       { $set: { isRead: true } }
     );
     res.json({ success: true });
@@ -113,61 +92,47 @@ exports.markAsRead = async (req, res) => {
 };
 
 /**
- * @desc Fetch full chronological chat history for a specific listing
- * @route GET /api/auth/chat-history/:listingId
+ * @desc Fetch isolated chronological chat history (Phase 40)
+ * @route GET /api/auth/chat-history/:listingId/:guestId
  */
 exports.getMessageHistory = async (req, res) => {
   try {
-    const messages = await Message.find({ listingId: req.params.listingId })
+    const { listingId, guestId } = req.params;
+    const messages = await Message.find({ listingId, guestId })
       .populate('sender', 'name avatar')
-      .sort({ timestamp: 1 }); // Sort ascending (oldest first) for chat UI flow
+      .sort({ timestamp: 1 });
     res.json(messages);
   } catch (err) { res.status(500).send('History Retrieval Failure'); }
 };
 
 /**
- * Socket.IO Event Handler: Joining a specific Property's chat room
+ * Socket.IO Event Handler: Joining an isolated conversation room
  */
-exports.handleJoinRoom = (io, socket, listingId) => {
-  socket.join(listingId);
+exports.handleJoinRoom = (io, socket, data) => {
+  // data: { listingId, guestId }
+  const roomName = `${data.listingId}-${data.guestId}`;
+  socket.join(roomName);
 };
-
-/* ============================================================================
- * 👻 HISTORICAL GHOST: PHASE 8 (The Unhydrated Broadcast Crash)
- * ============================================================================
- * When we first implemented sockets, we broadcasted the raw DB save:
- * 
- * const savedMessage = await newMessage.save();
- * io.emit('chat message', savedMessage); 
- * 
- * THE FLAW: `savedMessage` only contained IDs (e.g., `sender: '60d5ec...'`). 
- * The frontend expected `sender.name` and crashed, showing "Undefined said: ...".
- * THE FIX: Explicitly populate the message data *before* broadcasting.
- * ============================================================================ */
 
 /**
  * @desc Real-time chat handler (Socket.IO Event: 'chat message')
- * 
- * ARCHITECTURE (The Dual Push):
- * 1. Broadcasts the populated message to the active Property Room (for users with the window open).
- * 2. Calculates the recipient and pushes a targeted 'new_message_alert' to their private User Room.
  */
 exports.handleChatMessage = async (io, socket, msg) => {
   try {
-    // 1. Persistence
-    const savedMessage = await saveMessage(msg.senderId, msg.listingId, msg.content);
+    // 1. Persistence with Guest Isolation
+    const savedMessage = await saveMessage(msg.senderId, msg.listingId, msg.guestId, msg.content);
     
-    // 2. The Hydration Fix (Phase 8): Ensure the payload has names and avatars
     const populated = await Message.findById(savedMessage._id)
       .populate('sender', 'name avatar')
+      .populate('guestId', 'name avatar')
       .populate('listingId', 'adminId title');
 
     if (!populated || !populated.listingId) return;
 
-    // 3. Shape the perfect frontend payload
     const payload = {
       _id: populated._id,
       listingId: populated.listingId._id,
+      guestId: populated.guestId._id,
       sender: { 
         _id: populated.sender._id, 
         name: populated.sender.name, 
@@ -178,28 +143,18 @@ exports.handleChatMessage = async (io, socket, msg) => {
       isRead: false
     };
 
-    // 4. BROADCAST TO ROOM: Update the open chat windows instantly
-    io.to(populated.listingId._id.toString()).emit('chat message', payload);
+    // 2. BROADCAST TO ISOLATED ROOM
+    const roomName = `${populated.listingId._id}-${populated.guestId._id}`;
+    io.to(roomName).emit('chat message', payload);
 
-    // --- 5. TARGETED NOTIFICATION LOGIC (Phase 25) ---
-    // Figure out who should get the red "Inbox +1" badge
+    // 3. TARGETED ALERT (Phase 25/40)
     const hostId = populated.listingId.adminId.toString();
+    const guestId = populated.guestId._id.toString();
     const currentSenderId = populated.sender._id.toString();
 
-    if (currentSenderId !== hostId) {
-      // SCENARIO A: Guest sent the message -> Alert the Host
-      io.to(hostId).emit('new_message_alert', payload);
-    } else {
-      // SCENARIO B: Host sent the message -> Alert the Guest(s)
-      // Since multiple guests might have messaged this property in the past,
-      // we must find the specific participants of this thread.
-      const participants = await Message.find({ listingId: populated.listingId._id }).distinct('sender');
-      participants.forEach(pId => {
-        const participantId = pId.toString();
-        if (participantId !== hostId) {
-          io.to(participantId).emit('new_message_alert', payload); // Alert the guest
-        }
-      });
-    }
+    // Alert the "other" party in the triangle
+    const recipientId = currentSenderId === hostId ? guestId : hostId;
+    io.to(recipientId).emit('new_message_alert', payload);
+
   } catch (err) { console.error('Socket Message Sync Failure:', err); }
 };

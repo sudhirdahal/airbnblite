@@ -21,6 +21,18 @@ const messageSchema = new mongoose.Schema({
     ref: 'Listing', 
     required: true 
   },
+  /**
+   * CONVERSATIONAL ISOLATION (Phase 40)
+   * Why guestId? Previously, messages were only keyed by listingId. This meant
+   * every guest for a specific property could see the entire historical log!
+   * guestId ensures that every thread is a private 'Triangle' between:
+   * (Host + Property + Specific Guest).
+   */
+  guestId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   content: { 
     type: String, 
     required: true 

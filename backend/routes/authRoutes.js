@@ -44,8 +44,8 @@ router.get('/wishlist', auth, authController.getWishlist);
 
 // --- PROTECTED ACCESS: REAL-TIME HUB ---
 router.get('/inbox', auth, chatController.getInbox);
-router.put('/chat-read/:listingId', auth, chatController.markAsRead);
-router.get('/chat-history/:listingId', auth, chatController.getMessageHistory);
+router.put('/chat-read/:listingId/:guestId', auth, chatController.markAsRead);
+router.get('/chat-history/:listingId/:guestId', auth, chatController.getMessageHistory);
 
 // --- PROTECTED ACCESS: SYSTEM ALERTS ---
 router.get('/notifications', auth, notificationController.getNotifications);

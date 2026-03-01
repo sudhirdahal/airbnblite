@@ -37,12 +37,12 @@ const Inbox = ({ onThreadOpened }) => {
     return () => socket.off('new_message_alert', handleNewMessageInbox);
   }, []);
 
-  const handleOpenThread = async (listingId) => {
+  const handleOpenThread = async (listingId, guestId) => {
     try {
-      await API.put(`/auth/chat-read/${listingId}`);
+      await API.put(`/auth/chat-read/${listingId}/${guestId}`);
       if (onThreadOpened) onThreadOpened();
-      navigate(`/listing/${listingId}`);
-    } catch (err) { navigate(`/listing/${listingId}`); }
+      navigate(`/listing/${listingId}?guest=${guestId}`);
+    } catch (err) { navigate(`/listing/${listingId}?guest=${guestId}`); }
   };
 
   if (loading && threads.length === 0) {
@@ -65,7 +65,12 @@ const Inbox = ({ onThreadOpened }) => {
       ) : (
         <div style={{ display: 'grid', gap: '1.2rem' }}>
           {threads.map(thread => (
-            <ThreadCard key={thread.listing._id} thread={thread} onOpen={() => handleOpenThread(thread.listing._id)} />
+            <ThreadCard 
+              key={`${thread.listing._id}-${thread.guest?._id}`} 
+              thread={thread} 
+              currentUser={user}
+              onOpen={() => handleOpenThread(thread.listing._id, thread.guest?._id || user._id)} 
+            />
           ))}
         </div>
       )}
@@ -73,9 +78,14 @@ const Inbox = ({ onThreadOpened }) => {
   );
 };
 
-const ThreadCard = ({ thread, onOpen }) => {
-  const { listing, lastMessage, unreadCount } = thread;
+const ThreadCard = ({ thread, onOpen, currentUser }) => {
+  const { listing, lastMessage, unreadCount, guest } = thread;
   const isUnread = unreadCount > 0;
+
+  // Identify the "Other" party for the UI
+  const isHost = (currentUser?._id || currentUser?.id) === (listing.adminId?._id || listing.adminId);
+  const participantName = isHost ? guest?.name : 'Host';
+  const participantAvatar = isHost ? guest?.avatar : null;
 
   return (
     <motion.div whileHover={{ y: -2 }} onClick={onOpen} style={threadCardStyle(isUnread)}>
@@ -84,10 +94,13 @@ const ThreadCard = ({ thread, onOpen }) => {
         
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: theme.typography.weights.bold }}>{listing.title}</h3>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: theme.typography.weights.bold }}>
+              {listing.title} {isHost && <span style={{ fontWeight: 'normal', color: theme.colors.slate }}>· {participantName}</span>}
+            </h3>
             <span style={{ fontSize: '0.75rem', color: theme.colors.slate }}>{formatDistanceToNow(new Date(lastMessage.timestamp), { addSuffix: true })}</span>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', alignItems: 'center' }}>
+            {participantAvatar && <img src={participantAvatar} style={{ width: '20px', height: '20px', borderRadius: '50%' }} alt="Av" />}
             <div style={{ fontWeight: theme.typography.weights.bold, color: theme.colors.charcoal }}>{lastMessage.sender.name}:</div>
             <p style={messagePreviewStyle}>{lastMessage.content}</p>
           </div>

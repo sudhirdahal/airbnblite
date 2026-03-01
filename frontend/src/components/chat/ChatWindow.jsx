@@ -19,20 +19,18 @@ import API from '../../services/api';
  */
 
 /* ============================================================================
- * 👻 HISTORICAL GHOST: PHASE 4 (The Static Text-Only Chat)
+ * 👻 HISTORICAL GHOST: PHASE 39 (The Property-Bound Leak)
  * ============================================================================
- * Initially, we just emitted a raw string to the server:
+ * socket.emit('join room', listingId);
  * 
- * const handleSend = () => {
- *    socket.emit('chat message', { text: newMessage });
- * }
+ * THE FLAW: Threads were only isolated by Listing ID. If Guest A and Guest B
+ * both messaged the Host, they could see each other's messages because they
+ * were in the same socket room. Major privacy breach!
  * 
- * THE FLAW: The server didn't know who sent it or which listing it belonged to!
- * We had to refactor to include `senderId` and `listingId` for private 
- * thread isolation.
+ * THE FIX: 'Triangular Isolation' using a composite key: listingId-guestId.
  * ============================================================================ */
 
-const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened }) => {
+const ChatWindow = ({ listingId, guestId, currentUser, isHost, history = [], onChatOpened }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -63,36 +61,30 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
    */
   useEffect(() => {
     isOpenRef.current = isOpen;
-    if (isOpen) {
+    if (isOpen && listingId && guestId) {
       setUnreadCount(0);
-      API.put(`/auth/chat-read/${listingId}`).then(() => onChatOpened && onChatOpened()).catch(() => {});
+      API.put(`/auth/chat-read/${listingId}/${guestId}`).then(() => onChatOpened && onChatOpened()).catch(() => {});
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [isOpen, listingId, onChatOpened]);
+  }, [isOpen, listingId, guestId, onChatOpened]);
 
   const getUserId = (user) => user?._id || user?.id;
 
   /**
    * ⚡ REAL-TIME ENGINE (Socket.IO Handshake)
-   * 
-   * Logic:
-   * 1. Room Isolation: Join a room specific to this Listing ID.
-   * 2. Message Interception: Listen for 'chat message' and append to state.
-   * 3. Presence Interception: Listen for 'typing' events from the OTHER party.
    */
   useEffect(() => {
-    if (!currentUser || !listingId) return; 
+    if (!currentUser || !listingId || !guestId) return; 
     
-    // Join listing-specific room for private thread isolation
-    socket.emit('join room', listingId);
+    // Join isolated triangular room
+    socket.emit('join room', { listingId, guestId });
 
     const handleNewMessage = (message) => {
-      // Only process messages belonging to this property
-      if (message.listingId === listingId) {
+      // STRICT FILTERING: Must match both property AND the specific guest thread
+      if (message.listingId === listingId && message.guestId === guestId) {
         setMessages(prev => [...prev, message]);
-        setTypingUser(null); // Clear typing indicator upon message arrival
+        setTypingUser(null);
         
-        // If the window is CLOSED, increment the unread badge and play a sound
         if (!isOpenRef.current) {
           setUnreadCount(prev => prev + 1);
           audioRef.current.play().catch(() => {});
@@ -101,27 +93,25 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     };
 
     const handleTyping = (data) => {
-      // Logic: Only show indicator if the OTHER person is typing
-      if (data.listingId === listingId && data.userId !== getUserId(currentUser)) {
+      if (data.listingId === listingId && data.guestId === guestId && data.userId !== getUserId(currentUser)) {
         setTypingUser(isHost ? 'Guest' : 'Host');
       }
     };
     
     const handleStopTyping = (data) => {
-      if (data.listingId === listingId) setTypingUser(null);
+      if (data.listingId === listingId && data.guestId === guestId) setTypingUser(null);
     };
 
     socket.on('chat message', handleNewMessage);
     socket.on('typing', handleTyping);
     socket.on('stop_typing', handleStopTyping);
 
-    // CLEANUP: Nuclear stability - kill listeners when navigating away
     return () => {
       socket.off('chat message', handleNewMessage);
       socket.off('typing', handleTyping);
       socket.off('stop_typing', handleStopTyping);
     };
-  }, [listingId, currentUser, isHost]);
+  }, [listingId, guestId, currentUser, isHost]);
 
   // Auto-scroll logic: Keep the latest message in view
   useEffect(() => { if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isOpen]);
@@ -133,11 +123,11 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
    */
   const handleInputChange = (e) => {
     setNewMessage(e.target.value);
-    socket.emit('typing', { listingId, userId: getUserId(currentUser) });
+    socket.emit('typing', { listingId, guestId, userId: getUserId(currentUser) });
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      socket.emit('stop_typing', { listingId });
+      socket.emit('stop_typing', { listingId, guestId });
     }, 3000);
   };
 
@@ -149,10 +139,11 @@ const ChatWindow = ({ listingId, currentUser, isHost, history = [], onChatOpened
     socket.emit('chat message', { 
       senderId: getUserId(currentUser), 
       listingId: listingId, 
+      guestId: guestId, // Critical for isolation
       content: newMessage 
     });
     
-    socket.emit('stop_typing', { listingId });
+    socket.emit('stop_typing', { listingId, guestId });
     setNewMessage('');
   };
 

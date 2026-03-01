@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Star, MapPin, CheckCircle, ChevronLeft, ChevronRight, User, Trash2, X, Maximize, Camera, Utensils, ChevronDown, Grid, Loader2,
   Wifi, Waves, Car, Tv, Wind, Dumbbell, Shield, Coffee, Users, Minus, Plus
@@ -58,10 +58,13 @@ const RatingBreakdown = ({ reviews = [] }) => {
  * - Phase 31: Cinematic Lightbox Navigation (Keyboard + Indexing).
  * - Phase 33: The Checkout Handshake & Mobile Convergence.
  * - Phase 35: Reference Synchronization (The Missing Toast Import).
+ * - Phase 40: Conversational Isolation (Privacy-Safe Chat threads).
  */
 const ListingDetail = ({ user, onChatOpened }) => { 
   const { id } = useParams(); 
   const navigate = useNavigate(); 
+  const [searchParams] = useSearchParams();
+  const queryGuestId = searchParams.get('guest');
 
   const [listing, setListing] = useState(null);       
   const [reviews, setReviews] = useState([]);         
@@ -205,14 +208,19 @@ const ListingDetail = ({ user, onChatOpened }) => {
         setReviews([]);
       }
 
-      // 3. Fetch Chat History (Defensive Pattern)
-      if (localStorage.getItem('token')) {
-        try {
-          const chatRes = await API.get(`/auth/chat-history/${id}`);
-          setChatHistory(chatRes.data || []);
-        } catch (err) {
-          console.warn('Chat History Sync Failure (Non-Critical)');
-          setChatHistory([]);
+      // 3. Fetch Chat History (Defensive Pattern - Phase 40)
+      if (localStorage.getItem('token') && listing) {
+        const isHost = (user?._id || user?.id) === (res.data.adminId?._id || res.data.adminId);
+        const targetGuestId = isHost ? queryGuestId : (user?._id || user?.id);
+
+        if (targetGuestId) {
+          try {
+            const chatRes = await API.get(`/auth/chat-history/${id}/${targetGuestId}`);
+            setChatHistory(chatRes.data || []);
+          } catch (err) {
+            console.warn('Chat History Sync Failure (Non-Critical)');
+            setChatHistory([]);
+          }
         }
       }
     } catch (err) { 
@@ -508,6 +516,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
       {/* 💬 REAL-TIME CHAT WIDGET */}
       <ChatWindow 
         listingId={id} 
+        guestId={((user?._id || user?.id) === (listing.adminId?._id || listing.adminId)) ? queryGuestId : (user?._id || user?.id)}
         currentUser={user} 
         isHost={(user?._id || user?.id) === (listing.adminId?._id || listing.adminId)} 
         history={chatHistory} 
