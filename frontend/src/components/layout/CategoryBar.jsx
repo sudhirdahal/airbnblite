@@ -4,6 +4,7 @@ import {
   Waves, Castle, Palmtree, Mountain, Tent, 
   Flame, Snowflake, Landmark, Trees, Warehouse 
 } from 'lucide-react';
+import { useResponsive } from '../../hooks/useResponsive';
 
 /**
  * ============================================================================
@@ -38,6 +39,7 @@ import {
  * ============================================================================ */
 
 const CategoryBar = ({ activeCategory, onSelect }) => {
+  const { isMobile } = useResponsive();
   
   // THEMATIC DATASET
   const categories = [
@@ -54,8 +56,8 @@ const CategoryBar = ({ activeCategory, onSelect }) => {
   ];
 
   return (
-    <div style={containerStyle}>
-      <div style={scrollWrapper}>
+    <div style={containerStyle(isMobile)}>
+      <div style={scrollWrapper(isMobile)}>
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id;
           return (
@@ -95,27 +97,27 @@ const CategoryBar = ({ activeCategory, onSelect }) => {
 };
 
 // --- PREMIUM VISUAL STYLES ---
-const containerStyle = {
+const containerStyle = (isMobile) => ({
   width: '100%',
   backgroundColor: '#fff',
   borderBottom: '1px solid #f0f0f0',
   position: 'sticky',
-  top: '225px', // Positioning: Sits perfectly below the SearchBar
+  top: isMobile ? '80px' : '225px', // Mobile: Flush with Navbar. Desktop: Below SearchBar.
   zIndex: 90,
   padding: '0.5rem 0'
-};
+});
 
-const scrollWrapper = {
+const scrollWrapper = (isMobile) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: '2.5rem',
-  padding: '0 4rem',
+  gap: isMobile ? '1.5rem' : '2.5rem',
+  padding: isMobile ? '0 1.5rem' : '0 4rem',
   maxWidth: '2560px',
   margin: '0 auto',
   overflowX: 'auto',
-  scrollbarWidth: 'none', // Hide scrollbar for a sleek, app-like experience
+  scrollbarWidth: 'none', 
   WebkitOverflowScrolling: 'touch'
-};
+});
 
 const itemStyle = (active) => ({
   display: 'flex',

@@ -32,7 +32,7 @@ const listingLinkStyle = { display: 'flex', alignItems: 'center', gap: '3rem', f
 const refinedTagStyle = { fontSize: '0.7rem', fontWeight: '800', backgroundColor: '#f3f4f6', padding: '0.5rem 1rem', borderRadius: '8px', color: '#4b5563', textTransform: 'uppercase' };
 const refinedTagStyleRed = { ...refinedTagStyle, backgroundColor: '#fee2e2', color: theme.colors.brand, display: 'flex', alignItems: 'center', gap: '0.4rem' };
 const removeTagBtnStyle = { background: 'none', border: 'none', color: theme.colors.brand, cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px', borderRadius: '50%' };
-const listingMetricsStyle = { display: 'flex', alignItems: 'center', gap: '3rem' };
+const listingMetricsStyle = (isMobile) => ({ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '0.5rem' : '3rem' });
 const dividerVertical = { width: '1px', height: '50px', backgroundColor: '#eee' };
 const verticalDividerSmall = { width: '1px', height: '24px', backgroundColor: '#e5e7eb' };
 const propertyNameStyle = { fontWeight: '900', fontSize: '1.4rem', color: theme.colors.charcoal, letterSpacing: '-0.03em' };
@@ -66,6 +66,10 @@ const dockSubtitle = { fontSize: '0.85rem', color: theme.colors.slate, marginTop
 const rangePreview = { marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: '#f9fafb', padding: '1.2rem', borderRadius: '12px', width: 'fit-content' };
 const previewBox = { display: 'flex', flexDirection: 'column', gap: '0.3rem' };
 const applyBtnStyle = { ...primaryButtonStyle, marginTop: '2rem', width: '100%', maxWidth: '300px' };
+
+// --- MOBILE RESERVATION STYLES ---
+const mobileResCard = { backgroundColor: '#fff', padding: '1.5rem', borderRadius: '16px', boxShadow: theme.shadows.card, border: `1px solid ${theme.colors.divider}` };
+const mobileMessageBtn = { ...navLinkStyle(false), backgroundColor: '#f3f4f6', padding: '0.6rem 1.2rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 'bold' };
 
 // --- SUB-COMPONENTS ---
 const StatCard = ({ icon: Icon, label, value, color }) => (
@@ -537,9 +541,9 @@ const AdminDashboard = ({ user, refreshListings }) => {
                 <h3 style={{ marginTop: '1.5rem', color: theme.colors.slate }}>No active listings found.</h3>
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gap: isMobile ? '1rem' : '1.5rem' }}>
                 {adminListings.map(l => (
-                  <motion.div key={l._id} whileHover={{ y: -4, boxShadow: theme.shadows.lg }} style={listingCardStyle}>
+                  <motion.div key={l._id} whileHover={!isMobile ? { y: -4, boxShadow: theme.shadows.lg } : {}} style={listingCardStyle}>
                     <Link to={`/listing/${l._id}`} style={listingLinkStyle}>
                       <div style={imageWrapper}>
                         <img src={l.images[0]} style={refinedThumbStyle} alt={l.title} />
@@ -550,19 +554,21 @@ const AdminDashboard = ({ user, refreshListings }) => {
                         <div style={{ fontSize: '0.95rem', color: theme.colors.slate, marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                           <MapPin size={14} color={theme.colors.brand} /> {l.location}
                         </div>
-                        <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.6rem' }}>
-                           {l.amenities.slice(0, 3).map(a => <span key={a} style={refinedTagStyle}>{a}</span>)}
-                           {l.amenities.length > 3 && <span style={refinedTagStyle}>+{l.amenities.length - 3}</span>}
-                        </div>
+                        {!isMobile && (
+                          <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.6rem' }}>
+                             {l.amenities.slice(0, 3).map(a => <span key={a} style={refinedTagStyle}>{a}</span>)}
+                             {l.amenities.length > 3 && <span style={refinedTagStyle}>+{l.amenities.length - 3}</span>}
+                          </div>
+                        )}
                       </div>
                     </Link>
-                    <div style={listingMetricsStyle}>
-                      <div style={{ textAlign: 'right', minWidth: '140px' }}>
+                    <div style={listingMetricsStyle(isMobile)}>
+                      <div style={{ textAlign: isMobile ? 'left' : 'right', minWidth: isMobile ? 'auto' : '140px' }}>
                         <div style={priceValueStyle}><span style={{ fontSize: '1rem', fontWeight: '600' }}>$</span>{l.rate}</div>
                         <div style={priceLabelStyle}>Per Night</div>
                       </div>
-                      <div style={dividerVertical} />
-                      <div style={{ display: 'flex', gap: '1rem' }}>
+                      {!isMobile && <div style={dividerVertical} />}
+                      <div style={{ display: 'flex', gap: '1rem', justifyContent: isMobile ? 'flex-start' : 'flex-end', marginTop: isMobile ? '1rem' : '0' }}>
                         <button onClick={() => handleEditClick(l)} style={pillActionButton('#4f46e5')} title="Edit Configuration"><Edit size={18} /></button>
                         <button onClick={() => handleDelete(l._id)} style={{ ...pillActionButton(theme.colors.brand) }} title="Remove Listing"><Trash size={18} /></button>
                       </div>
@@ -587,12 +593,12 @@ const AdminDashboard = ({ user, refreshListings }) => {
           </div>
         )}
 
-        {/* RESERVATIONS MANAGEMENT (Phase 39) */}
+        {/* RESERVATIONS MANAGEMENT (Phase 39/46) */}
         {activeTab === 'bookings' && (
-          <div style={{ backgroundColor: '#fff', borderRadius: '24px', overflow: 'hidden', boxShadow: theme.shadows.card, border: '1px solid rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: isMobile ? 'transparent' : '#fff', borderRadius: '24px', overflow: 'hidden', boxShadow: isMobile ? 'none' : theme.shadows.card, border: isMobile ? 'none' : '1px solid rgba(0,0,0,0.05)' }}>
             {bookings.length === 0 ? (
               <div style={emptyStateStyle}><h3>No reservations found.</h3></div>
-            ) : (
+            ) : !isMobile ? (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f9fafb', textAlign: 'left', borderBottom: '1px solid #eee' }}>
@@ -639,6 +645,40 @@ const AdminDashboard = ({ user, refreshListings }) => {
                   })}
                 </tbody>
               </table>
+            ) : (
+              /* 📱 MOBILE RESERVATION CARDS */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {bookings.map(b => {
+                  const guestCount = (b.guests?.adults || 0) + (b.guests?.children || 0);
+                  return (
+                    <div key={b._id} style={mobileResCard}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: '800', color: theme.colors.brand, fontSize: '1.1rem' }}>{b.userId?.name}</div>
+                          <div style={{ fontSize: '0.85rem', color: theme.colors.slate, marginTop: '0.2rem' }}>
+                            {guestCount} guests {b.guests?.infants > 0 && `· ${b.guests.infants} infant`}
+                          </div>
+                        </div>
+                        <span style={statusBadgeStyle(b.status === 'confirmed' ? theme.colors.success : theme.colors.brand)}>{b.status}</span>
+                      </div>
+                      
+                      <div style={{ margin: '1rem 0', padding: '1rem 0', borderTop: `1px solid ${theme.colors.divider}`, borderBottom: `1px solid ${theme.colors.divider}` }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{b.listingId?.title}</div>
+                        <div style={{ fontSize: '0.8rem', color: theme.colors.slate, marginTop: '0.4rem' }}>
+                          {new Date(b.checkIn).toLocaleDateString()} - {new Date(b.checkOut).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ fontWeight: '900', fontSize: '1.1rem' }}>${b.totalPrice}</div>
+                        <Link to={`/inbox?listing=${b.listingId?._id}&guest=${b.userId?._id}`} style={mobileMessageBtn}>
+                          <MessageSquare size={18} /> Message
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

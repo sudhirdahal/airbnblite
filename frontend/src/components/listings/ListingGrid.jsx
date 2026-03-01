@@ -3,6 +3,7 @@ import ListingCard from './ListingCard';
 import SkeletonListing from './SkeletonListing';
 import { motion } from 'framer-motion';
 import { SearchX } from 'lucide-react';
+import { useResponsive } from '../../hooks/useResponsive';
 
 /**
  * ============================================================================
@@ -31,6 +32,7 @@ const ListingGrid = ({
   onWishlistUpdate, 
   onHoverListing 
 }) => {
+  const { isMobile } = useResponsive();
   
   // FRAMER MOTION: Staggered orchestration logic
   const containerVariants = {
@@ -74,12 +76,12 @@ const ListingGrid = ({
    * Logic: Stretches to fill the available space while maintaining card size.
    */
   return (
-    <div style={pagePaddingContainer}>
+    <div style={pagePaddingContainer(isMobile)}>
       <motion.div 
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        style={gridContainerStyle}
+        style={gridContainerStyle(isMobile)}
       >
         {listings.map((listing) => (
           <ListingCard 
@@ -103,13 +105,11 @@ const ListingGrid = ({
 };
 
 // --- DESIGN TOKEN STYLES ---
-const pagePaddingContainer = { padding: '0 4rem', maxWidth: '2560px', margin: '0 auto', width: '100%' };
+const pagePaddingContainer = (isMobile) => ({ padding: isMobile ? '0 1.5rem' : '0 4rem', maxWidth: '2560px', margin: '0 auto', width: '100%' });
 
-// RESPONSIVE GRID LOGIC:
-// repeat(auto-fill, minmax(300px, 1fr)) ensures that the cards wrap 
-// automatically depending on the screen size, always maintaining a 
-// minimum width of 300px.
-const gridContainerStyle = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', columnGap: '1.5rem', rowGap: '2.5rem', marginTop: '2rem', marginBottom: '5rem', width: '100%' };
+// RESPONSIVE GRID LOGIC (Phase 46):
+// We adjust the min-width from 300px to 250px on mobile to allow for 2 columns on small screens.
+const gridContainerStyle = (isMobile) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? '250px' : '300px'}, 1fr))`, columnGap: '1.5rem', rowGap: isMobile ? '1.5rem' : '2.5rem', marginTop: '2rem', marginBottom: '5rem', width: '100%' });
 
 const emptyStateStyle = { padding: '10rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' };
 

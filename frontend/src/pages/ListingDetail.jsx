@@ -21,14 +21,14 @@ import { theme } from '../theme';
  * Logic: Aggregates individual review scores into a visual, proportional bar chart.
  * Uses Framer Motion to animate the bars growing from 0 to their actual percentage.
  */
-const RatingBreakdown = ({ reviews = [] }) => {
+const RatingBreakdown = ({ reviews = [], isMobile }) => {
   const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   if (Array.isArray(reviews)) {
     reviews.forEach(r => { if (r && r.rating && counts[r.rating] !== undefined) counts[r.rating]++; });
   }
   const total = reviews.length || 1;
   return (
-    <div style={breakdownContainerStyle}>
+    <div style={{ ...breakdownContainerStyle, paddingLeft: isMobile ? 0 : '2rem', borderLeft: isMobile ? 'none' : `1px solid ${theme.colors.divider}` }}>
       {[5, 4, 3, 2, 1].map(star => (
         <div key={star} style={breakdownRowStyle}>
           <span style={starLabelStyle}>{star} stars</span>
@@ -367,18 +367,27 @@ const ListingDetail = ({ user, onChatOpened }) => {
             )}
 
             <div style={{ padding: isMobile ? '1.5rem' : '2.5rem 0' }}>
-              {isMobile && <h1 style={{ fontSize: '1.8rem', fontWeight: theme.typography.weights.extraBold }}>{listing.title}</h1>}
+              {isMobile && <h1 style={{ fontSize: '1.8rem', fontWeight: theme.typography.weights.extraBold, marginBottom: '0.5rem' }}>{listing.title}</h1>}
               <div style={ratingSummary}>
-                <Star size={18} fill={theme.colors.charcoal} /> 
-                <span>{listing.rating || '4.5'}</span>
+                <Star size={16} fill={theme.colors.charcoal} /> 
+                <span style={{ fontWeight: '800' }}>{listing.rating || '4.5'}</span>
                 <span style={dotSeparator}>·</span>
-                <span style={{ textDecoration: 'underline' }}>{listing.reviewsCount || 0} reviews</span>
-                <span style={dotSeparator}>·</span>
-                <span style={sentimentLabelStyle}>{getSentiment(listing.rating)}</span>
+                <span style={{ textDecoration: 'underline', fontWeight: '600' }}>{listing.reviewsCount || 0} reviews</span>
+                {!isMobile && (
+                  <>
+                    <span style={dotSeparator}>·</span>
+                    <span style={sentimentLabelStyle}>{getSentiment(listing.rating)}</span>
+                  </>
+                )}
               </div>
 
               <div style={dividerSection}>
-                <h2 style={hostTitle}>Hosted by {listing.host?.name || 'Professional Host'}</h2>
+                <h2 style={hostTitle}>Hosted by {listing.adminId?.name || 'Professional Host'}</h2>
+                <div style={{ display: 'flex', gap: '0.5rem', color: theme.colors.slate, fontSize: '0.9rem', marginTop: '0.4rem' }}>
+                  <span>{listing.bedrooms} bedroom{listing.bedrooms > 1 ? 's' : ''}</span> · 
+                  <span>{listing.beds} bed{listing.beds > 1 ? 's' : ''}</span> · 
+                  <span>{listing.maxGuests} guest{listing.maxGuests > 1 ? 's' : ''}</span>
+                </div>
                 <p style={descText}>{listing.fullDescription || listing.description}</p>
               </div>
 
@@ -410,7 +419,7 @@ const ListingDetail = ({ user, onChatOpened }) => {
               <div style={{ marginTop: '4rem' }}>
                 <div style={reviewHeader(isMobile)}>
                   <div><h2 style={largeRating}><Star size={32} fill="#000" /> {listing.rating || '4.5'}</h2><p style={reviewsCountText}>{listing.reviewsCount || 0} reviews</p></div>
-                  <RatingBreakdown reviews={reviews} />
+                  <RatingBreakdown reviews={reviews} isMobile={isMobile} />
                 </div>
                 <div style={reviewGrid(isMobile)}>
                   {reviews.map(r => (
