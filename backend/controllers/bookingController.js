@@ -97,6 +97,41 @@ exports.createBooking = async (req, res) => {
     if (city.length < 2) return res.status(400).json({ message: 'City name is too short.' });
     if (region.length < 2) return res.status(400).json({ message: 'State/Province is too short.' });
 
+    // --- 🛡️ THE GEOGRAPHIC SHIELD (Phase 37) ---
+    // CROSS-REFERENCE VALIDATION: Prevent logically inconsistent data (e.g. Toronto in BC)
+    const geoValidator = {
+      'United States': {
+        'California': ['Los Angeles', 'San Francisco', 'San Diego'],
+        'New York': ['New York City', 'Buffalo', 'Albany'],
+        'Texas': ['Houston', 'Austin', 'Dallas'],
+        'Florida': ['Miami', 'Orlando', 'Tampa']
+      },
+      'Canada': {
+        'Ontario': ['Toronto', 'Ottawa', 'Mississauga'],
+        'British Columbia': ['Vancouver', 'Victoria', 'Kelowna'],
+        'Quebec': ['Montreal', 'Quebec City', 'Laval'],
+        'Alberta': ['Calgary', 'Edmonton', 'Banff']
+      },
+      'United Kingdom': {
+        'Greater London': ['London', 'Westminster', 'Croydon'],
+        'West Midlands': ['Birmingham', 'Coventry', 'Wolverhampton'],
+        'Greater Manchester': ['Manchester', 'Salford', 'Bolton']
+      },
+      'Australia': {
+        'New South Wales': ['Sydney', 'Newcastle', 'Wollongong'],
+        'Victoria': ['Melbourne', 'Geelong', 'Ballarat'],
+        'Queensland': ['Brisbane', 'Gold Coast', 'Cairns']
+      }
+    };
+
+    const validCountry = geoValidator[country];
+    if (validCountry) {
+      const validRegionCities = validCountry[region];
+      if (validRegionCities && !validRegionCities.includes(city)) {
+        return res.status(400).json({ message: 'Geographic Disynchronization: Selected city does not exist in this region.' });
+      }
+    }
+
     if (country === 'United States' && !/^\d{5}$/.test(postalCode)) {
       return res.status(400).json({ message: 'Invalid US Zip Code (5 digits).' });
     }

@@ -43,21 +43,51 @@ const MockPayment = () => {
     country: 'United States'
   });
 
-  // --- DYNAMIC DATA MANIFESTS ---
-  const countries = [
-    { name: 'United States', stateLabel: 'State', zipLabel: 'Zip Code' },
-    { name: 'Canada', stateLabel: 'Province', zipLabel: 'Postal Code' },
-    { name: 'United Kingdom', stateLabel: 'County', zipLabel: 'Postcode' },
-    { name: 'Australia', stateLabel: 'State', zipLabel: 'Postcode' }
-  ];
-
-  const regions = {
-    'United States': ['Alabama', 'Alaska', 'Arizona', 'California', 'Colorado', 'Florida', 'New York', 'Texas', 'Washington'],
-    'Canada': ['Alberta', 'British Columbia', 'Manitoba', 'Ontario', 'Quebec', 'Saskatchewan'],
-    'Australia': ['New South Wales', 'Queensland', 'Victoria', 'Western Australia']
+  // --- HIERARCHICAL GEOGRAPHIC ENGINE (The Logic Lock) ---
+  const geoData = {
+    'United States': {
+      label: 'State',
+      zipLabel: 'Zip Code',
+      regions: {
+        'California': ['Los Angeles', 'San Francisco', 'San Diego'],
+        'New York': ['New York City', 'Buffalo', 'Albany'],
+        'Texas': ['Houston', 'Austin', 'Dallas'],
+        'Florida': ['Miami', 'Orlando', 'Tampa']
+      }
+    },
+    'Canada': {
+      label: 'Province',
+      zipLabel: 'Postal Code',
+      regions: {
+        'Ontario': ['Toronto', 'Ottawa', 'Mississauga'],
+        'British Columbia': ['Vancouver', 'Victoria', 'Kelowna'],
+        'Quebec': ['Montreal', 'Quebec City', 'Laval'],
+        'Alberta': ['Calgary', 'Edmonton', 'Banff']
+      }
+    },
+    'United Kingdom': {
+      label: 'County',
+      zipLabel: 'Postcode',
+      regions: {
+        'Greater London': ['London', 'Westminster', 'Croydon'],
+        'West Midlands': ['Birmingham', 'Coventry', 'Wolverhampton'],
+        'Greater Manchester': ['Manchester', 'Salford', 'Bolton']
+      }
+    },
+    'Australia': {
+      label: 'State',
+      zipLabel: 'Postcode',
+      regions: {
+        'New South Wales': ['Sydney', 'Newcastle', 'Wollongong'],
+        'Victoria': ['Melbourne', 'Geelong', 'Ballarat'],
+        'Queensland': ['Brisbane', 'Gold Coast', 'Cairns']
+      }
+    }
   };
 
-  const currentCountry = countries.find(c => c.name === paymentData.country) || countries[0];
+  const currentGeo = geoData[paymentData.country] || geoData['United States'];
+  const availableRegions = Object.keys(currentGeo.regions);
+  const availableCities = paymentData.region ? currentGeo.regions[paymentData.region] : [];
 
   if (!state) return <div style={{ padding: '10rem', textAlign: 'center' }}>Session context lost. Please restart your booking.</div>;
 
@@ -163,8 +193,8 @@ const MockPayment = () => {
               
               <div style={inputGroup}>
                 <label style={labelStyle}>Country / Region</label>
-                <select value={paymentData.country} onChange={(e) => setPaymentData({...paymentData, country: e.target.value, region: ''})} style={selectStyle}>
-                  {countries.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                <select value={paymentData.country} onChange={(e) => setPaymentData({...paymentData, country: e.target.value, region: '', city: ''})} style={selectStyle}>
+                  {Object.keys(geoData).map(name => <option key={name} value={name}>{name}</option>)}
                 </select>
               </div>
 
@@ -175,24 +205,34 @@ const MockPayment = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                 <div style={inputGroup}>
-                  <label style={labelStyle}>City</label>
-                  <input type="text" placeholder="New York" value={paymentData.city} onChange={(e) => setPaymentData({...paymentData, city: e.target.value})} style={inputStyle} required />
+                  <label style={labelStyle}>{currentGeo.label}</label>
+                  <select 
+                    value={paymentData.region} 
+                    onChange={(e) => setPaymentData({...paymentData, region: e.target.value, city: ''})} 
+                    style={selectStyle} 
+                    required
+                  >
+                    <option value="">Select...</option>
+                    {availableRegions.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
                 </div>
                 <div style={inputGroup}>
-                  <label style={labelStyle}>{currentCountry.stateLabel}</label>
-                  {regions[paymentData.country] ? (
-                    <select value={paymentData.region} onChange={(e) => setPaymentData({...paymentData, region: e.target.value})} style={selectStyle} required>
-                      <option value="">Select...</option>
-                      {regions[paymentData.country].map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  ) : (
-                    <input type="text" value={paymentData.region} onChange={(e) => setPaymentData({...paymentData, region: e.target.value})} style={inputStyle} required />
-                  )}
+                  <label style={labelStyle}>City</label>
+                  <select 
+                    value={paymentData.city} 
+                    onChange={(e) => setPaymentData({...paymentData, city: e.target.value})} 
+                    style={selectStyle} 
+                    disabled={!paymentData.region}
+                    required
+                  >
+                    <option value="">Select...</option>
+                    {availableCities.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
               </div>
 
               <div style={inputGroup}>
-                <label style={labelStyle}>{currentCountry.zipLabel}</label>
+                <label style={labelStyle}>{currentGeo.zipLabel}</label>
                 <input type="text" value={paymentData.postalCode} onChange={(e) => setPaymentData({...paymentData, postalCode: e.target.value})} style={inputStyle} required />
               </div>
             </section>

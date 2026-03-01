@@ -120,7 +120,14 @@ const Navbar = ({ onLogout, resetHomeView }) => {
             <div style={{ position: 'relative' }}>
               <button onClick={handleNotifClick} style={iconBtnStyle}>
                 <Bell size={22} />
-                {notifications.some(n => !n.isRead) && <div style={dotStyle} />}
+                {notifications.some(n => !n.isRead) && (
+                  <motion.div 
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: [1, 1.2, 1], opacity: 1 }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                    style={dotStyle} 
+                  />
+                )}
               </button>
               
               <AnimatePresence>
@@ -179,7 +186,7 @@ const logoutBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', 
 const mobileTriggerStyle = { display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' };
 const badgeStyle = { backgroundColor: theme.colors.brand, color: theme.colors.white, fontSize: '0.65rem', fontWeight: 'bold', minWidth: '18px', height: '18px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px' };
 const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.charcoal, display: 'flex', position: 'relative' };
-const dotStyle = { position: 'absolute', top: '2px', right: '2px', width: '8px', height: '8px', backgroundColor: theme.colors.brand, borderRadius: '50%', border: `2px solid ${theme.colors.white}` };
+const dotStyle = { position: 'absolute', top: '-2px', right: '-2px', width: '12px', height: '12px', backgroundColor: theme.colors.brand, borderRadius: '50%', border: `2.5px solid ${theme.colors.white}`, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' };
 const notifDropdownStyle = { position: 'absolute', top: 60, right: 0, width: '320px', backgroundColor: '#fff', border: `1px solid ${theme.colors.divider}`, borderRadius: theme.radius.md, boxShadow: theme.shadows.lg, zIndex: 1001, overflow: 'hidden' };
 const notifCardStyle = (read) => ({ padding: '1.2rem', borderBottom: `1px solid ${theme.colors.lightGrey}`, cursor: 'pointer', backgroundColor: read ? '#fff' : '#fff1f2', transition: 'background 0.2s' });
 const navAvatarStyle = { width: '28px', height: '28px', borderRadius: theme.radius.full, objectFit: 'cover' };
